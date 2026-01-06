@@ -156,7 +156,8 @@ __parse_offloader_capacity(conf_t * conf, char const * value)
 static void
 __parse_stats(conf_t * conf, char const * value)
 {
-    conf->report_stats_on_deinit = value ? atoi(value) : 0;
+    if (value)
+        conf->report_stats_on_deinit = atoi(value);
 }
 
 static void
