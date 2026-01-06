@@ -295,13 +295,15 @@ __parse_help(conf_t * conf, char const * value)
     {
         LOGGER_INFO("Available environment variables");
         for (conf_parse_t * var = CONF_PARSE ; var->name ; ++var)
-            LOGGER_INFO("  '%s' - %s", var->name, var->descr);
+            LOGGER_INFO("  'XKRT_%s' - %s", var->name, var->descr);
     }
 }
 
 static void
 __parse_with_respect_to_prefix(conf_t * conf, const char * prefix)
 {
+    static char VAR_NAME_BUFFER[128];
+
     // check all environment variable and report unknown variables begining by prefix
     const size_t prefix_len = strlen(prefix);
     for (char ** s = environ; *s; ++s)
@@ -333,7 +335,10 @@ __parse_with_respect_to_prefix(conf_t * conf, const char * prefix)
     for (conf_parse_t * var = CONF_PARSE ; var->name ; ++var)
     {
         if (var->parse)
-            var->parse(conf, getenv(var->name));
+        {
+            snprintf(VAR_NAME_BUFFER, sizeof(VAR_NAME_BUFFER), "%s%s", prefix, var->name);
+            var->parse(conf, getenv(VAR_NAME_BUFFER));
+        }
         else
             LOGGER_NOT_IMPLEMENTED_WARN(var->name);
     }
