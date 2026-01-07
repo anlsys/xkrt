@@ -38,8 +38,6 @@
 # define __LOGGER_HIP_H__
 
 # include <xkrt/logger/logger.h>
-
-# define __HIP_PLATFORM_AMD__
 # include <hip/hip_runtime.h>
 
 # define HIP_SAFE_CALL(X)                                                           \

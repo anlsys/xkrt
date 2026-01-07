@@ -42,7 +42,6 @@ xkoption(USE_CL       "Whether to build the OpenCL driver." OFF)
 xkoption(USE_CUDA     "Whether to build the CUDA driver." OFF)
 xkoption(USE_HIP      "Whether to build the HIP driver." OFF)
 xkoption(USE_NVML     "Use Nvidia's NVML management library." OFF)
-xkoption(USE_RSMI     "Use AMD's RSMI management library." OFF)
 xkoption(USE_STATS    "Whether to compile the built-in stat system." OFF)
 xkoption(USE_SYCL     "Whether to build the SYCL driver." OFF)
 xkoption(USE_ZE       "Whether to build the Level Zero driver." OFF)
@@ -62,14 +61,6 @@ convert_bool(DEBUG_BUILD)
 if (USE_MEMORY_REGISTER_ASSISTED AND (NOT USE_MEMORY_REGISTER_OVERFLOW_PROTECTION OR NOT USE_MEMORY_REGISTER_PAGE))
     message(FATAL_ERROR "`USE_MEMORY_REGISTER_ASSISTED` requires both `-DUSE_MEMORY_REGISTER_OVERFLOW_PROTECTION=ON` and `-DUSE_MEMORY_REGISTER_ASSISTED=ON`")
 endif()
-
-# XKRT version
-add_custom_command(
-    OUTPUT  always-run
-    COMMAND python3 ${CMAKE_SOURCE_DIR}/utils/version.py ${CMAKE_SOURCE_DIR}/include/xkrt version
-    COMMENT "Always generate version file before building the project"
-)
-add_custom_target(always_generate_files ALL DEPENDS always-run)
 
 ########
 # XKRT #
@@ -113,7 +104,6 @@ endif()
 
 # XKRT Lib
 add_library(${XKRT} SHARED ${SOURCE_FILES})
-add_dependencies(${XKRT} always_generate_files)
 set_target_properties(${XKRT} PROPERTIES BUILD_RPATH "${CMAKE_SOURCE_DIR}/lib")
 set_target_properties(${XKRT} PROPERTIES INSTALL_RPATH "$ORIGIN/../lib")
 
@@ -140,7 +130,6 @@ target_link_libraries(${XKRT} PRIVATE hwloc::hwloc)
 
 # Host driver
 add_library(${XKRT}_driver_host SHARED src/driver/driver_host.cc)
-add_dependencies(${XKRT}_driver_host always_generate_files)
 target_link_libraries(${XKRT} PRIVATE ${XKRT}_driver_host)
 list(APPEND XKRT_TARGETS ${XKRT}_driver_host)
 
@@ -150,7 +139,6 @@ if (USE_CUDA)
     find_package(CUDAToolkit REQUIRED)
 
     add_library(${XKRT}_driver_cu SHARED src/driver/driver_cu.cc)
-    add_dependencies(${XKRT}_driver_cu always_generate_files)
     target_link_libraries(${XKRT}_driver_cu PRIVATE hwloc::hwloc CUDA::cudart CUDA::cuda_driver CUDA::cublas CUDA::cusparse CUDA::cusolver)
     target_link_libraries(${XKRT} PRIVATE ${XKRT}_driver_cu)
     list(APPEND XKRT_TARGETS ${XKRT}_driver_cu)
@@ -166,16 +154,17 @@ endif()
 # HIP
 if (USE_HIP)
 
-    find_package(HIP REQUIRED)
-    include_directories("${HIP_INCLUDE_DIRS}")
-
-    find_package(HIPBLAS REQUIRED)
-    include_directories("${HIPBLAS_INCLUDE_DIRS}")
-
     add_library(${XKRT}_driver_hip SHARED src/driver/driver_hip.cc)
-    add_dependencies(${XKRT}_driver_hip always_generate_files)
-    target_link_libraries(${XKRT}_driver_hip PRIVATE hwloc::hwloc ${HIP_LIBRARIES} ${HIPBLAS_LIBRARIES})
     target_link_libraries(${XKRT} PRIVATE ${XKRT}_driver_hip)
+
+    find_package(hip     REQUIRED)
+    find_package(hipblas REQUIRED)
+    target_link_libraries(${XKRT}_driver_hip PRIVATE hwloc::hwloc hip::host roc::hipblas)
+
+    find_package(RSMI    REQUIRED)
+    include_directories("${RSMI_INCLUDE_DIRS}")
+    target_link_libraries(${XKRT}_driver_hip PRIVATE ${RSMI_LIBRARIES})
+
     list(APPEND XKRT_TARGETS ${XKRT}_driver_hip)
 
 endif()
@@ -187,7 +176,6 @@ if (USE_ZE)
     include_directories("${ZE_INCLUDE_DIRS}")
 
     add_library(${XKRT}_driver_ze SHARED src/driver/driver_ze.cc)
-    add_dependencies(${XKRT}_driver_ze always_generate_files)
     target_link_libraries(${XKRT}_driver_ze PRIVATE hwloc::hwloc ${ZE_LIBRARIES})
     target_link_libraries(${XKRT} PRIVATE ${XKRT}_driver_ze)
     list(APPEND XKRT_TARGETS ${XKRT}_driver_ze)
@@ -204,7 +192,6 @@ if (USE_SYCL)
     add_library(${XKRT}_driver_sycl SHARED src/driver/driver_sycl.cc)
     target_link_libraries( ${XKRT}_driver_sycl PRIVATE ${SYCL_LIBRARIES} -fsycl)
     target_compile_options(${XKRT}_driver_sycl PRIVATE -fsycl)
-    add_dependencies(      ${XKRT}_driver_sycl always_generate_files)
     target_link_libraries(${XKRT} PRIVATE ${XKRT}_driver_sycl)
     list(APPEND XKRT_TARGETS ${XKRT}_driver_sycl)
 endif()
@@ -220,7 +207,6 @@ if (USE_CL)
     include_directories("${CL_INCLUDE_DIRS}")
 
     add_library(${XKRT}_driver_cl SHARED src/driver/driver_cl.cc)
-    add_dependencies(${XKRT}_driver_cl always_generate_files)
     target_link_libraries(${XKRT} PRIVATE ${XKRT}_driver_cl ${CL_LIBRARIES})
     list(APPEND XKRT_TARGETS ${XKRT}_driver_cl)
 endif()
@@ -235,13 +221,6 @@ endif()
 # ZES (Intel energy)
 if (USE_ZES)
     # nothing to do, but must USE_ZE to have any effects
-endif()
-
-# RSMI
-if (USE_RSMI)
-    find_package(RSMI REQUIRED)
-    include_directories("${RSMI_INCLUDE_DIRS}")
-    target_link_libraries(${XKRT} PRIVATE ${RSMI_LIBRARIES})
 endif()
 
 # Cairo

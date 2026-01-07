@@ -55,11 +55,6 @@
 # include <rocm_smi/rocm_smi.h>
 # include <hipblas/hipblas.h>
 
-# if XKRT_SUPPORT_NVML
-#  include <nvml.h>
-#  include <xkrt/logger/logger-nvml.h>
-# endif /* XKRT_SUPPORT_NVML */
-
 # include <hwloc.h>
 # include <hwloc/rsmi.h>
 # include <hwloc/glibc-sched.h>
@@ -90,7 +85,6 @@ static inline void
 hip_set_context(device_driver_id_t device_driver_id)
 {
     device_hip_t * device = device_hip_get(device_driver_id);
-    HIP_SAFE_CALL(hipCtxSetCurrent(device->hip.context));
     HIP_SAFE_CALL(hipSetDevice(device_driver_id));
 }
 
@@ -231,13 +225,14 @@ XKRT_DRIVER_ENTRYPOINT(init)(
     unsigned int ndevices,
     bool use_p2p
 ) {
+    hipError_t err = hipInit(0);
+    if (err != hipSuccess)
+        return 1;
+
     rsmi_status_t rs = rsmi_init(0);
     if (rs != RSMI_STATUS_SUCCESS)
         return 1;
 
-    hipError_t err = hipInit(0);
-    if (err != hipSuccess)
-        return 1;
     hip_use_p2p = use_p2p;
 
     int ndevices_max;
@@ -253,35 +248,19 @@ XKRT_DRIVER_ENTRYPOINT(init)(
         device_hip_t * device = device_hip_get(i);
         device->inherited.state = XKRT_DEVICE_STATE_DEALLOCATED;
         HIP_SAFE_CALL(hipDeviceGet(&device->hip.device, i));
-        HIP_SAFE_CALL(hipCtxCreate(&device->hip.context, 0, device->hip.device));
     }
 
     get_gpu_topo(ndevices, use_p2p);
-
-    # if XKRT_SUPPORT_NVML
-    NVML_SAFE_CALL(nvmlInit());
-
-    // TODO : that shit may allow to control nvlink power use, could be interesting in the future
-
-    // NVML_GPU_NVLINK_BW_MODE_FULL      = 0x0
-    // NVML_GPU_NVLINK_BW_MODE_OFF       = 0x1
-    // NVML_GPU_NVLINK_BW_MODE_MIN       = 0x2
-    // NVML_GPU_NVLINK_BW_MODE_HALF      = 0x3
-    // NVML_GPU_NVLINK_BW_MODE_3QUARTER  = 0x4
-    // NVML_GPU_NVLINK_BW_MODE_COUNT     = 0x5
-    // TODO NVML_SAFE_CALL(nvmlSystemSetNvlinkBwMode(0x3));
-
-    # endif /* XKRT_SUPPORT_NVML */
-
     return 0;
 }
 
 static void
 XKRT_DRIVER_ENTRYPOINT(finalize)(void)
 {
-    # if XKRT_SUPPORT_NVML
-    NVML_SAFE_CALL(nvmlShutdown());
-    # endif /* XKRT_SUPPORT_NVML */
+    rsmi_status_t  rs = rsmi_shut_down();
+    if (rs != RSMI_STATUS_SUCCESS)
+        LOGGER_FATAL("`rsmi_shut_down` failed");
+
 }
 
 static const char *
@@ -502,7 +481,8 @@ XKRT_DRIVER_ENTRYPOINT(device_commit)(
 
                 if (access)
                 {
-                    hipError_t res = hipCtxEnablePeerAccess(other_device->hip.context, 0);
+                    unsigned int flags = 0;
+                    hipError_t res = hipDeviceEnablePeerAccess(other_device_driver_id, flags);
                     if ((res == hipSuccess) || (res == hipErrorPeerAccessAlreadyEnabled))
                     {
                         int rank = hip_perf_topo[device_driver_id*hip_device_count+other_device_driver_id];
@@ -539,12 +519,6 @@ XKRT_DRIVER_ENTRYPOINT(memory_host_register)(
     void * ptr,
     uint64_t size
 ) {
-    // if no context is set, set context '0'
-    hipCtx_t ctx;
-    HIP_SAFE_CALL(hipCtxGetCurrent(&ctx));
-    if (ctx == NULL)
-        hip_set_context(0);
-
     // even though we are using `hipHostRegisterPortable` - which should
     // pin across all contextes, it seems Cuda Driver requires the current
     // thread to be bound to some context
