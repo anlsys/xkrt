@@ -502,7 +502,8 @@ XKRT_DRIVER_ENTRYPOINT(queue_command_wait)(
     command_t * cmd,
     queue_command_list_counter_t idx
 ) {
-    LOGGER_FATAL("Not supported");
+    queue_sycl_t * queue = (queue_sycl_t *) iqueue;
+    queue->sycl.queue.wait();
     return 0;
 }
 
