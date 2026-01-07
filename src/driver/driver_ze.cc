@@ -292,9 +292,9 @@ XKRT_DRIVER_ENTRYPOINT(init)(
             // sycl interop
             device->sycl.device = sycl::ext::oneapi::level_zero::detail::make_device(platform, (ur_native_handle_t) ze_device);
 
-            std::vector<sycl::device> sycl_devices(1);
-            sycl_devices[0] = device->sycl.device;
-            device->sycl.context = sycl::make_context<sycl::backend::ext_oneapi_level_zero>(sycl_devices, device->ze.context, 1);
+            sycl::ext::oneapi::level_zero::ownership ownership = sycl::ext::oneapi::level_zero::ownership::keep;
+            sycl::backend_input_t<sycl::backend::ext_oneapi_level_zero, sycl::context> InteropContextInput{device->ze.context, std::vector<sycl::device>(1, device->sycl.device), ownership};
+            device->sycl.context = sycl::make_context<sycl::backend::ext_oneapi_level_zero>(InteropContextInput);
             # endif /* XKRT_SUPPORT_ZE_SYCL_INTEROP */
 
             if (n_devices == ndevices_requested)
@@ -877,16 +877,14 @@ XKRT_DRIVER_ENTRYPOINT(queue_create)(
     );
 
     # if XKRT_SUPPORT_ZE_SYCL_INTEROP
-    sycl::property_list props = {}; /* how to convert `ze_command_queue_desc` to `sycl::property_list` ? */
-    sycl::queue queue = sycl::make_queue<sycl::backend::ext_oneapi_level_zero>(
-        device->sycl.context,
-        device->sycl.device,
-        (ur_native_handle_t) queue->ze.command.list,
-        true,   /* immediate */
-        true,   /* keep ownership */
-        props
+    sycl::ext::oneapi::level_zero::ownership ownership = sycl::ext::oneapi::level_zero::ownership::keep;
+    sycl::backend_input_t<sycl::backend::ext_oneapi_level_zero, sycl::queue> InteropQueueInput{queue->ze.command.list, device->sycl.device, ownership};
+    sycl::queue sycl_queue = sycl::make_queue<sycl::backend::ext_oneapi_level_zero>(
+        InteropQueueInput,
+        device->sycl.context
     );
-    new (&queue->sycl.queue) sycl::queue(queue);
+
+    new (&queue->sycl.queue) sycl::queue(sycl_queue);
     # endif /* XKRT_SUPPORT_ZE_SYCL_INTEROP */
 
     # endif
