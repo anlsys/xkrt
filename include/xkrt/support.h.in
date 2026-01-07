@@ -68,9 +68,6 @@
 /* If the runtime was compiled with Intel's zes support */
 # define XKRT_SUPPORT_ZES               @USE_ZES@
 
-/* If the runtime was compiled with AMD's rsmi support */
-# define XKRT_SUPPORT_RSMI              @USE_RSMI@
-
 /* If the runtime should use heavy debug tests, that may significantly slowdown the execution */
 # define XKRT_SUPPORT_HEAVY_DEBUG       @ENABLE_HEAVY_DEBUG@
 # if XKRT_SUPPORT_HEAVY_DEBUG
