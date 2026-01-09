@@ -260,6 +260,9 @@ if (STRICT)
         -Wno-shadow
         -Wno-nested-anon-types
         -Wno-sign-conversion
+        -Wno-int-to-void-pointer-cast
+        -Wno-unused-function
+        -Wno-unused-parameter
     )
     if (${CUDA_DRIVER_FOUND})
         target_compile_options(${XKRT}_driver_cu PRIVATE -Wall -Wextra -Wundef)

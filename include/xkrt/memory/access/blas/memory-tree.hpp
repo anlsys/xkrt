@@ -760,7 +760,7 @@ class KBLASMemoryTree : public KHPTree<K, KBLASMemoryTreeNodeSearch<K>>, public 
             task_wait_counter_type_t capacity;
 
             /* number of 'fetches' set */
-            task_wait_counter_t n;
+            task_wait_counter_type_t n;
 
             /* number of pending fetches */
             volatile task_wait_counter_t pending;
@@ -778,16 +778,16 @@ class KBLASMemoryTree : public KHPTree<K, KBLASMemoryTreeNodeSearch<K>>, public 
             }
 
             /* the list can be deleted if this returns '0' */
-            size_t
-            fetched(task_wait_counter_t decr = 1)
+            task_wait_counter_type_t
+            fetched(task_wait_counter_type_t decr = 1)
             {
-                const size_t p = this->pending.fetch_sub(decr, std::memory_order_relaxed);
+                const task_wait_counter_type_t p = this->pending.fetch_sub(decr, std::memory_order_relaxed);
                 assert(p >= 0);
                 return p;
             }
 
             void
-            fetching(task_wait_counter_t inc = 1)
+            fetching(task_wait_counter_type_t inc = 1)
             {
                 this->pending.fetch_add(inc, std::memory_order_relaxed);
             }
@@ -969,7 +969,7 @@ class KBLASMemoryTree : public KHPTree<K, KBLASMemoryTreeNodeSearch<K>>, public 
             KBLASMemoryTree * tree = list->tree;
             assert(tree);
 
-            size_t fetch_idx = (size_t) args[3];
+            task_wait_counter_type_t fetch_idx = static_cast<task_wait_counter_type_t>(reinterpret_cast<uintptr_t>(args[3]));
             assert(fetch_idx >= 0 && fetch_idx < list->n);
 
             fetch_t * fetch = list->fetches + fetch_idx;
@@ -1007,7 +1007,7 @@ class KBLASMemoryTree : public KHPTree<K, KBLASMemoryTreeNodeSearch<K>>, public 
                         fetch_list_t * forward_list = fetch_list_new(tree, nforwards);
 
                         # pragma message(TODO "Forwards consecutive in memory should be merged")
-                        for (size_t i = 0 ; i < nforwards ; ++i)
+                        for (task_wait_counter_type_t i = 0 ; i < nforwards ; ++i)
                         {
                             MemoryForward & forward = search.awaiting.forwards[i];
 
@@ -1102,7 +1102,7 @@ class KBLASMemoryTree : public KHPTree<K, KBLASMemoryTreeNodeSearch<K>>, public 
                 fetch->dst_device_global_id = partite.dst_device_global_id;
                 fetch->dst_view             = dst_view;
             }
-            list->fetching(list->n.load());
+            list->fetching(list->n);
 
             return list;
         }
@@ -1671,7 +1671,7 @@ next_view:
         fetch_list_launch_ith(
             access_t * access,
             fetch_list_t * list,
-            size_t i
+            task_wait_counter_type_t i
         ) {
             assert(access);
             assert(access->task);
@@ -1731,7 +1731,7 @@ next_view:
             access_t * access,
             fetch_list_t * list
         ) {
-            for (size_t i = 0 ; i < list->n ; ++i)
+            for (task_wait_counter_type_t i = 0 ; i < list->n ; ++i)
                 fetch_list_launch_ith(access, list, i);
         }
 
