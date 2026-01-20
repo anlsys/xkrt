@@ -59,9 +59,10 @@ distribute1D_submit(
     # define AC 1
     constexpr task_flag_bitfield_t flags = TASK_FLAG_DEPENDENT | TASK_FLAG_DEVICE;
     constexpr size_t task_size = task_compute_size(flags, AC);
+    constexpr size_t args_size = 0;
+    constexpr task_format_id_t fmtid = XKRT_TASK_FORMAT_NULL;
 
-    task_t * task = thread->allocate_task(task_size);
-    new (task) task_t(XKRT_TASK_FORMAT_NULL, flags);
+    task_t * task = runtime->task_new(fmtid, flags, task_size + args_size);
 
     task_dep_info_t * dep = TASK_DEP_INFO(task);
     new (dep) task_dep_info_t(AC);
@@ -100,9 +101,10 @@ distribute2D_submit(
     # define AC 1
     constexpr task_flag_bitfield_t flags = TASK_FLAG_DEPENDENT | TASK_FLAG_DEVICE;
     constexpr size_t task_size = task_compute_size(flags, AC);
+    constexpr size_t args_size = 0;
+    constexpr task_format_id_t fmtid = XKRT_TASK_FORMAT_NULL;
 
-    task_t * task = thread->allocate_task(task_size);
-    new(task) task_t(XKRT_TASK_FORMAT_NULL, flags);
+    task_t * task = runtime->task_new(fmtid, flags, task_size + args_size);
 
     task_dep_info_t * dep = TASK_DEP_INFO(task);
     new (dep) task_dep_info_t(AC);

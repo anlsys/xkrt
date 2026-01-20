@@ -101,31 +101,62 @@ thread_t::warmup(void)
         *ptr = 0;
 }
 
+template <bool use_thread_stack>
 task_t *
-thread_t::allocate_task(const size_t size)
+runtime_t::task_allocate(const size_t size)
 {
-    assert(thread_t::get_tls() == this);
+    thread_t * thread = thread_t::get_tls();
+    assert(thread);
 
-    # if 1
-    if (this->memory_stack_ptr >= this->memory_stack_bottom + THREAD_MAX_MEMORY)
-        LOGGER_FATAL("Stack overflow ! Increase `THREAD_MAX_MEMORY` and recompile");
-    task_t * task = (task_t *) this->memory_stack_ptr;
-    this->memory_stack_ptr += size;
+    task_t * task;
+
+    if (use_thread_stack)
+    {
+        // if the task stack is full
+        if (thread->memory_stack_ptr + size > thread->memory_stack_bottom + THREAD_MAX_MEMORY)
+        {
+            LOGGER_INFO("Task stack full! Increase `THREAD_MAX_MEMORY` and recompile to avoid this");
+
+            // wait for all tasks completion
+            this->task_wait();
+
+            // clear all tasks references
+            # if XKRT_SUPPORT_DEBUG
+            thread->tasks.clear();
+            # endif /* XKRT_SUPPORT_DEBUG */
+            this->reset_dependence_controllers();
+
+            // reset the stack
+            this->task_deallocate_all();
+        }
+
+        // else, get a new task
+        task = (task_t *) thread->memory_stack_ptr;
+        thread->memory_stack_ptr += size;
+    }
+    else
+    {
+        // TODO: this task is leaking atm
+        task = (task_t *) malloc(size);
+    }
 
     # if XKRT_SUPPORT_DEBUG
-    this->tasks.push_back(task);
+    thread->tasks.push_back(task);
     # endif /* XKRT_SUPPORT_DEBUG */
 
     return task;
-    # else
-    return (uint8_t *) malloc(size);
-    # endif
 }
 
+template task_t * runtime_t::task_allocate<true>(const size_t size);
+template task_t * runtime_t::task_allocate<false>(const size_t size);
+
 void
-thread_t::deallocate_all_tasks(void)
+runtime_t::task_deallocate_all(void)
 {
-    this->memory_stack_ptr = this->memory_stack_bottom;
+    thread_t * thread = thread_t::get_tls();
+    assert(thread);
+
+    thread->memory_stack_ptr = thread->memory_stack_bottom;
 }
 
 /* get a thread */
@@ -551,19 +582,16 @@ get_ith_victim(int tid, int i, int n)
 }
 
 task_t *
-runtime_t::worksteal(void)
+thread_t::worksteal(void)
 {
-    thread_t * thread = thread_t::get_tls();
-    assert(thread);
-
-    team_t * team = thread->team;
+    team_t * team = this->team;
     task_t * task = NULL;
 
     // if the thread is executing within a team, do hierarchical workstealing
     if (team)
     {
         const int n = team->priv.nthreads;
-        const int tid = thread->tid;
+        const int tid = this->tid;
 
         for (int i = 0 ; i < n ; ++i)
         {
@@ -576,14 +604,14 @@ runtime_t::worksteal(void)
             if (task)
             {
                 if (victim_tid != tid)
-                    LOGGER_DEBUG("Thread %u stole from %u", thread->tid, victim_tid);
+                    LOGGER_DEBUG("Thread %u stole from %u", this->tid, victim_tid);
                 return task;
             }
         }
     }
 
     // else, schedule that thread tasks
-    return thread->deque.pop();
+    return this->deque.pop();
 }
 
 void
@@ -593,18 +621,6 @@ runtime_t::task_wait(void)
     assert(thread);
 
     # define WAIT do { if (thread->current_task->cc.load(std::memory_order_relaxed) == 0) return ; } while (0)
-
-    /* active polling */
-    # if 0
-
-    while (1)
-    {
-        if (tls->team && schedule(this, tls->team, tls->thread))
-            continue ;
-        WAIT ;
-    }
-
-    # else
 
     /* exponential backoff sleep */
     # define WAIT2   do { WAIT   ; WAIT   ; } while (0)
@@ -628,7 +644,7 @@ runtime_t::task_wait(void)
     while (1)
     {
         // work steal
-        task_t * task = this->worksteal();
+        task_t * task = thread->worksteal();
         if (task)
         {
             task_execute(this, NULL, task);
@@ -647,8 +663,6 @@ runtime_t::task_wait(void)
     }
 
     # undef WAIT
-
-    # endif
 }
 
 // TODO : reimplement this using team's topology
@@ -670,7 +684,7 @@ runtime_t::team_barrier(
         {
             if (ws)
             {
-                task_t * task = this->worksteal();
+                task_t * task = thread->worksteal();
                 if (task)
                 {
                     task_execute(this, NULL, task);

@@ -276,7 +276,7 @@ device_thread_main_loop(
 
         // find a new task
         if (task == NULL)
-            task = runtime->worksteal();
+            task = thread->worksteal();
 
         /// find commands pending or ready
         device->offloader_queues_are_empty(thread->tid, XKRT_QUEUE_TYPE_ALL, &ready, &pending);

@@ -175,8 +175,7 @@ runtime_t::memory_copy_async(
         assert(src_device_addr <= a);
         assert(b <= src_device_addr + size);
 
-        task_t * task = thread->allocate_task(task_size + args_size);
-        new (task) task_t(fmtid, flags);
+        task_t * task = this->task_new(fmtid, flags, task_size + args_size);
 
         const size_t offset = a - src_device_addr;
         const size_t size   = b - a;

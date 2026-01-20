@@ -494,9 +494,9 @@ void xkrt_task_spawn_generic(
     assert(tls);
 
     // create the task
+    runtime_t * rt = (runtime_t *) runtime;
     const size_t task_size = task_compute_size(flags, naccesses);
-    task_t * task = tls->allocate_task(task_size + args_size);
-    new (task) task_t(fmtid, flags);
+    task_t * task = rt->task_new(fmtid, flags, task_size + args_size);
 
     if (flags & TASK_FLAG_DEPENDENT)
     {
@@ -527,8 +527,6 @@ void xkrt_task_spawn_generic(
     # if XKRT_SUPPORT_DEBUG
     snprintf(task->label, sizeof(task->label), "c-task-generic");
     # endif
-
-    runtime_t * rt = (runtime_t *) runtime;
 
     device_t * device = rt->device_get(device_global_id);
     assert(device);

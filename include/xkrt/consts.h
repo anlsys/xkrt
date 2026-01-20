@@ -37,8 +37,8 @@
 
 // this file should remain C-compliant for generating bindings
 
-#ifndef __CONSTS_H__
-# define __CONSTS_H__
+#ifndef __XKRT_CONSTS_H__
+# define __XKRT_CONSTS_H__
 
 #  include <stdint.h>
 #  include <stdlib.h>
@@ -67,7 +67,7 @@
 /* maximum number of threads per device */
 # define XKRT_MAX_THREADS_PER_DEVICE (16)
 
-/* maximum number of memory per thread */
+/* maximum memory per thread for task stack */
 # define THREAD_MAX_MEMORY ((size_t)4*1024*1024*1024)
 
 # define TASK_MAX_ACCESSES (1024)
@@ -109,4 +109,4 @@ xkstatic_assert(TASK_MAX_ACCESSES < (1 << 8*sizeof(task_access_counter_t)));
 typedef uint8_t xkrt_command_callback_index_t;
 xkstatic_assert(XKRT_COMMAND_CALLBACKS_MAX < (1 << 8*sizeof(xkrt_command_callback_index_t)));
 
-#endif /* __CONSTS_H__ */
+#endif /* __XKRT_CONSTS_H__ */

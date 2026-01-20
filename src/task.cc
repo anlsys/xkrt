@@ -222,8 +222,7 @@ __task_complete(
                             if (device_global_id != UNSPECIFIED_DEVICE_GLOBAL_ID)
                             {
                                 // then we can prefetch memory
-                                MemoryCoherencyController * mcc = task_get_memory_controller(
-                                        runtime, succ->parent, succ_access);
+                                MemoryCoherencyController * mcc = task_get_memory_controller(runtime, succ->parent, succ_access);
                                 if (mcc)
                                     mcc->fetch(succ_access, device_global_id);
                             }
@@ -263,10 +262,8 @@ __task_detachable_decr(
 template <int N>
 static inline void
 __task_detachable_incr(
-    runtime_t * runtime,
     task_t * task
 ) {
-    (void) runtime;
     assert(task->flags & TASK_FLAG_DETACHABLE);
     task_det_info_t * det = TASK_DET_INFO(task);
     det->wc.fetch_add(N, std::memory_order_relaxed);
@@ -301,7 +298,7 @@ task_execute(runtime_t * runtime, device_t * device, task_t * task)
 
     // if detachable, increase counter to avoid early completion (before routine executed)
     if (task->flags & TASK_FLAG_DETACHABLE)
-        __task_detachable_incr<1>(runtime, task);
+        __task_detachable_incr<1>(task);
 
     task_format_t * format;
 
@@ -399,7 +396,7 @@ runtime_t::task_detachable_incr(task_t * task)
     assert(task);
     assert(task->flags & TASK_FLAG_DETACHABLE);
     assert(task->state.value != TASK_STATE_COMPLETED);
-    __task_detachable_incr<1>(this, task);
+    __task_detachable_incr<1>(task);
 }
 
 void
@@ -424,9 +421,7 @@ runtime_t::task_dup(
     const size_t args_size = mol->args_size;
     const size_t task_size = TASK_SIZE(task);
 
-    thread_t * tls = thread_t::get_tls();
-    task_t * dup = tls->allocate_task(task_size + args_size);
-    assert(dup);
+    task_t * dup = this->task_allocate<false>(task_size + args_size);
 
     // TODO: probably not C++ standard, but should work ?
     memcpy(dup, task, task_size + args_size);

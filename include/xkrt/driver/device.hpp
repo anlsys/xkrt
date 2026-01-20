@@ -457,7 +457,7 @@ typedef struct  device_t
             case (COMMAND_TYPE_COPY_D2D_1D):
             case (COMMAND_TYPE_COPY_D2D_2D):
             {
-                qtype = XKRT_QUEUE_TYPE_D2D;
+                qtype = (src_device_global_id == dst_device_global_id) ? XKRT_QUEUE_TYPE_D2D : XKRT_QUEUE_TYPE_P2P;
                 break ;
             }
 

@@ -53,6 +53,7 @@ queue_type_to_str(xkrt_queue_type_t type)
         case (XKRT_QUEUE_TYPE_H2D):        return "H2D";
         case (XKRT_QUEUE_TYPE_D2H):        return "D2H";
         case (XKRT_QUEUE_TYPE_D2D):        return "D2D";
+        case (XKRT_QUEUE_TYPE_P2P):        return "P2P";
         case (XKRT_QUEUE_TYPE_KERN):       return "KERN";
         case (XKRT_QUEUE_TYPE_FD_READ):    return "FD_READ";
         case (XKRT_QUEUE_TYPE_FD_WRITE):   return "FD_WRITE";

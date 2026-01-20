@@ -44,10 +44,11 @@ typedef enum    xkrt_queue_type_t
 {
     XKRT_QUEUE_TYPE_H2D        = 0,    /* from CPU to GPU */
     XKRT_QUEUE_TYPE_D2H        = 1,    /* from GPU to CPU */
-    XKRT_QUEUE_TYPE_D2D        = 2,    /* from GPU to GPU */
-    XKRT_QUEUE_TYPE_KERN       = 3,
-    XKRT_QUEUE_TYPE_FD_READ    = 4,
-    XKRT_QUEUE_TYPE_FD_WRITE   = 5,
+    XKRT_QUEUE_TYPE_D2D        = 2,    /* from (same) GPU to GPU */
+    XKRT_QUEUE_TYPE_P2P        = 3,    /* from (different) GPU to GPU */
+    XKRT_QUEUE_TYPE_KERN       = 4,
+    XKRT_QUEUE_TYPE_FD_READ    = 5,
+    XKRT_QUEUE_TYPE_FD_WRITE   = 6,
     XKRT_QUEUE_TYPE_ALL                /* internal purpose */
 
 }               xkrt_queue_type_t;

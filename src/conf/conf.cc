@@ -89,6 +89,13 @@ __parse_d2d_per_queue(conf_t * conf, char const * value)
 }
 
 static void
+__parse_p2p_per_queue(conf_t * conf, char const * value)
+{
+    if (value)
+        conf->device.offloader.queues[XKRT_QUEUE_TYPE_P2P].concurrency = (uint32_t) MAX(atoi(value), 1);
+}
+
+static void
 __parse_nqueues_fr(conf_t * conf, char const * value)
 {
     if (value)
@@ -121,6 +128,13 @@ __parse_nqueues_d2d(conf_t * conf, char const * value)
 {
     if (value)
         conf->device.offloader.queues[XKRT_QUEUE_TYPE_D2D].n = (int8_t) MAX(atoi(value), 0);
+}
+
+static void
+__parse_nqueues_p2p(conf_t * conf, char const * value)
+{
+    if (value)
+        conf->device.offloader.queues[XKRT_QUEUE_TYPE_P2P].n = (int8_t) MAX(atoi(value), 0);
 }
 
 static void
@@ -259,8 +273,9 @@ typedef struct  conf_parse_t
 // variables are parsed in-order
 static conf_parse_t CONF_PARSE[] = {
     {"CACHE_LIMIT",                      NULL,                       NULL},
-    {"D2D_PER_QUEUE",                   __parse_d2d_per_queue,     "Number of concurrent copies per D2D queue before throttling device-thread"},
-    {"D2H_PER_QUEUE",                   __parse_d2h_per_queue,     "Number of concurrent copies per D2H queue before throttling device-thread"},
+    {"D2H_PER_QUEUE",                   __parse_d2h_per_queue,       "Number of concurrent copies per D2H queue before throttling device-thread"},
+    {"D2D_PER_QUEUE",                   __parse_d2d_per_queue,       "Number of concurrent copies per D2D queue before throttling device-thread"},
+    {"P2P_PER_QUEUE",                   __parse_p2p_per_queue,       "Number of concurrent copies per P2P queue before throttling device-thread"},
     {"DEFAULT_MATH",                     NULL,                       NULL},
     {"DRIVERS",                          __parse_drivers,            "Exemple: 'cuda,4;hip,2;host,3' - will enable drivers cuda, hip and host respectively with 4, 2, and 3 threads per device."},
     {"GPU_MEM_PERCENT",                  __parse_gpu_mem_percent,    "%% of total memory to allocate initially per GPU (in ]0..100["},
@@ -273,9 +288,10 @@ static conf_parse_t CONF_PARSE[] = {
     {"PAUSE_PROGRESSION_THREADS",        __parse_pause_progress_th,  "When progression threads have nothing else to do but poll pending commands, put it to sleep until the completion of a random command of a random steam."},
     {"BUSY_POLLING",                     __parse_busy_polling,       "Whether progression threads should pause when there is no tasks and no ready/pending commands"},
     {"TASK_PREFETCH",                    __parse_task_prefetch,      "If enabled, after completing a task, initiate data transfers for all its WaR successors that place of execution is already known (else, transfers only starts once the successor is ready)."},
-    {"NQUEUES_D2D",                     __parse_nqueues_d2d,       "Number of D2D queues per device"},
     {"NQUEUES_D2H",                     __parse_nqueues_d2h,       "Number of D2H queues per device"},
     {"NQUEUES_H2D",                     __parse_nqueues_h2d,       "Number of H2D queues per device"},
+    {"NQUEUES_D2D",                     __parse_nqueues_d2d,       "Number of D2D queues per device"},
+    {"NQUEUES_P2P",                     __parse_nqueues_p2p,       "Number of P2P queues per device"},
     {"NQUEUES_KERN",                    __parse_nqueues_kern,      "Number of KERN queues per device"},
     {"NQUEUES_FR",                      __parse_nqueues_fr,        "Number of FR queues per device"},
     {"NQUEUES_FW",                      __parse_nqueues_fw,        "Number of FW queues per device"},
@@ -358,7 +374,7 @@ conf_t::init(void)
     this->enable_progress_thread_pause          = true;
     this->enable_busy_polling                   = false;
     this->enable_prefetching                    = false;
-    this->warmup                                = false;
+    this->warmup                                = true;
 
     //////////////////
     // drivers conf //

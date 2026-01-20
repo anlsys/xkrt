@@ -134,8 +134,7 @@ file_async(
         assert(p <  b);
         assert(a <  b);
 
-        task_t * task = thread->allocate_task(task_size + args_size);
-        new (task) task_t(fmtid, flags);
+        task_t * task = runtime->task_new(fmtid, flags, task_size + args_size);
 
         // copy arguments
         file_args_t * args = (file_args_t *) TASK_ARGS(task, task_size);
