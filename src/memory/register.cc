@@ -380,8 +380,7 @@ memory_op_async(
     for (size_t i = 0 ; i < ntasks ; ++i)
     {
         // create a task that will register/pin/unpin the memory
-        task_t * task = tls->allocate_task(task_size + args_size);
-        new (task) task_t(fmtid, flags);
+        task_t * task = runtime->task_new(fmtid, flags, task_size + args_size);
 
         task_dep_info_t * dep = TASK_DEP_INFO(task);
         new (dep) task_dep_info_t(AC);

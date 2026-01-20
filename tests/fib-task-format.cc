@@ -56,15 +56,16 @@ static const int fib_values[] = {
 static runtime_t runtime;
 static task_format_id_t fmtid;
 
-constexpr task_flag_bitfield_t flags = TASK_FLAG_ZERO;
-constexpr size_t task_size = task_compute_size(flags, 0);
-
 typedef struct  task_args_t
 {
     int * fibn;
     int n;
     int depth;
 }               task_args_t;
+
+constexpr task_flag_bitfield_t flags = TASK_FLAG_ZERO;
+constexpr size_t task_size = task_compute_size(flags, 0);
+constexpr size_t args_size = sizeof(task_args_t);
 
 static inline int
 fib(int n, int depth = 0)
@@ -85,10 +86,7 @@ fib(int n, int depth = 0)
 
         // shared(fn1) firstprivate(n, depth)
         {
-            task_t * task = thread->allocate_task(task_size + sizeof(task_args_t));
-            assert(task);
-            new (task) task_t(fmtid, flags);
-
+            task_t * task = runtime.task_new(fmtid, flags, task_size + args_size);
             task_args_t * args = (task_args_t *) TASK_ARGS(task, task_size);
             args->fibn  = &fn1;
             args->n     = n - 1;
@@ -99,10 +97,7 @@ fib(int n, int depth = 0)
 
         // shared(fn2) firstprivate(n, depth)
         {
-            task_t * task = thread->allocate_task(task_size + sizeof(task_args_t));
-            assert(task);
-            new (task) task_t(fmtid, flags);
-
+            task_t * task = runtime.task_new(fmtid, flags, task_size + args_size);
             task_args_t * args = (task_args_t *) TASK_ARGS(task, task_size);
             args->fibn  = &fn2;
             args->n     = n - 2;

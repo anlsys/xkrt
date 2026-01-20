@@ -99,11 +99,13 @@ class DependencyMap : public DependencyDomain
 
             constexpr int AC = 1;
             constexpr task_flag_bitfield_t flags = TASK_FLAG_DEPENDENT;
+            constexpr task_format_id_t fmtid = XKRT_TASK_FORMAT_NULL;
             constexpr size_t task_size = task_compute_size(flags, AC);
+            constexpr size_t args_size = 0;
 
-            task_t * extra = thread->allocate_task(task_size);
-            assert(extra);
-            new (extra) task_t(XKRT_TASK_FORMAT_NULL, flags);
+            // TODO: this is leaking
+            task_t * extra = (task_t *) malloc(task_size + args_size);
+            new (extra) task_t(fmtid, flags);
 
             task_dep_info_t * dep = TASK_DEP_INFO(extra);
             assert(dep);

@@ -108,9 +108,10 @@ runtime_t::memory_coherent_async(
     # define AC 1
     constexpr task_flag_bitfield_t flags = TASK_FLAG_DEPENDENT | TASK_FLAG_DEVICE;
     constexpr size_t task_size = task_compute_size(flags, AC);
+    constexpr size_t args_size = 0;
+    constexpr task_format_id_t fmtid = XKRT_TASK_FORMAT_NULL;
 
-    task_t * task = thread->allocate_task(task_size);
-    new (task) task_t(XKRT_TASK_FORMAT_NULL, flags);
+    task_t * task = this->task_new(fmtid, flags, task_size + args_size);
 
     task_dep_info_t * dep = TASK_DEP_INFO(task);
     new (dep) task_dep_info_t(AC);
@@ -141,6 +142,41 @@ runtime_t::memory_coherent_async(
     size_t m, size_t n,
     size_t sizeof_type
 ) {
+    /* relying on prefetching */
+    # if 1
+    thread_t * thread = thread_t::get_tls();
+    assert(thread);
+
+    # define AC 1
+
+    constexpr task_flag_bitfield_t flags = TASK_FLAG_DEPENDENT | TASK_FLAG_DEVICE;
+    constexpr size_t task_size = task_compute_size(flags, AC);
+    constexpr size_t args_size = 0;
+    constexpr task_format_id_t fmtid = XKRT_TASK_FORMAT_NULL;
+
+    task_t * task = this->task_new(fmtid, flags, task_size + args_size);
+
+    task_dep_info_t * dep = TASK_DEP_INFO(task);
+    new (dep) task_dep_info_t(AC);
+
+    task_dev_info_t * dev = TASK_DEV_INFO(task);
+    new (dev) task_dev_info_t(device_global_id, UNSPECIFIED_TASK_ACCESS);
+
+    # if XKRT_SUPPORT_DEBUG
+    snprintf(task->label, sizeof(task->label), "coherent1D_async");
+    # endif /* XKRT_SUPPORT_DEBUG */
+
+    static_assert(AC <= TASK_MAX_ACCESSES);
+    access_t * accesses = TASK_ACCESSES(task, flags);
+    new (accesses + 0) access_t(task, storage, ptr, ld, m, n, sizeof_type, ACCESS_MODE_R);
+    thread->resolve(accesses, AC);
+    # undef AC
+
+    this->task_commit(task);
+
+    # else
+
+    /* parsing dependence tree (unsafe now that it may be cleared dynamically by task_new) */
     // LOGGER_IMPL("in `memory_coherent_async` - uplo and memflag parameters not supported");
 
     // against memory-tree, dep-tree does not know where the data will be once the predecessor task executed.
@@ -167,6 +203,7 @@ runtime_t::memory_coherent_async(
     constexpr task_flag_bitfield_t flags = TASK_FLAG_DEPENDENT | TASK_FLAG_DEVICE;
     constexpr size_t args_size = sizeof(args_t);
     constexpr size_t task_size = task_compute_size(flags, AC);
+    constexpr task_format_id_t fmtid = XKRT_TASK_FORMAT_NULL;
 
     /* for each node of the dep tree conflicting */
     for (void * & conflict : conflicts)
@@ -181,8 +218,7 @@ runtime_t::memory_coherent_async(
         // assert(access.host_view.sizeof_type == write->host_view.sizeof_type);
 
         /* allocate a task with 1 access */
-        task_t * task = thread->allocate_task(task_size + args_size);
-        new (task) task_t(XKRT_TASK_FORMAT_NULL, flags);
+        task_t * task = this->task_new<false>(fmtid, flags, task_size + args_size);
 
         task_dev_info_t * dev = TASK_DEV_INFO(task);
         new (dev) task_dev_info_t(device_global_id, UNSPECIFIED_TASK_ACCESS);
@@ -227,6 +263,7 @@ runtime_t::memory_coherent_async(
     }
 
     # undef AC
+    # endif
 }
 
 void

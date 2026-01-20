@@ -60,14 +60,14 @@ main(void)
     assert(runtime.init() == 0);
 
     // create an empty task format
-    task_format_id_t FORMAT;
+    task_format_id_t fmtid;
     {
         task_format_t format;
         memset(&format, 0, sizeof(task_format_t));
         format.f[XKRT_TASK_FORMAT_TARGET_HOST] = (task_format_func_t) func;
-        FORMAT = runtime.task_format_create(&format);
+        fmtid = runtime.task_format_create(&format);
     }
-    assert(FORMAT);
+    assert(fmtid);
 
     thread_t * thread = thread_t::get_tls();
     assert(thread);
@@ -76,9 +76,9 @@ main(void)
     # define AC 1
     constexpr task_flag_bitfield_t flags = TASK_FLAG_DEPENDENT;
     constexpr size_t task_size = task_compute_size(flags, AC);
+    constexpr size_t args_size = 0;
 
-    task_t * task = thread->allocate_task(task_size);
-    new (task) task_t(FORMAT, flags);
+    task_t * task = runtime.task_new(fmtid, flags, task_size + args_size);
 
     task_dep_info_t * dep = TASK_DEP_INFO(task);
     new (dep) task_dep_info_t(AC);

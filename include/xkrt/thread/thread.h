@@ -251,14 +251,19 @@ struct alignas(xkrt_pagesize) thread_t
         }
 
         void warmup(void);
-        task_t * allocate_task(const size_t size);
-        void deallocate_all_tasks(void);
 
     /////////////////
     // TASK HELPER //
     /////////////////
 
     public:
+
+        /**
+         * @brief Attempt to steal and execute a task from another thread's queue
+         * @return Pointer to the stolen task, or nullptr if no task available
+         */
+        task_t * worksteal(void);
+
 
         /** Find conflicts and insert accesses in the dependency tree */
         inline void

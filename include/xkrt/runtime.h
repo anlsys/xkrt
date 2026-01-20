@@ -140,6 +140,9 @@ struct  runtime_t
      */
     void reset(void);
 
+    void reset_coherence_controllers(void);
+    void reset_dependence_controllers(void);
+
     ////////////////////
     // DATA MOVEMENTS //
     ////////////////////
@@ -732,6 +735,22 @@ struct  runtime_t
     // TASK INSTANCIATION HELPERS //
     ////////////////////////////////
 
+    /* Allocate a new task and call its constructor */
+    template <bool use_thread_stack = true>
+    inline task_t * task_new(const task_format_id_t fmtid, const task_flag_bitfield_t flags, const size_t size)
+    {
+        task_t * task = this->task_allocate<use_thread_stack>(size);
+        new (task) task_t(fmtid, flags);
+        return task;
+    }
+
+    /* Allocate a new task */
+    template <bool use_thread_stack>
+    task_t * task_allocate(const size_t size);
+
+    /* Deallocate all tasks previously allocated by the calling thread */
+    void task_deallocate_all(void);
+
     template <task_flag_bitfield_t flags>
     inline task_t *
     task_instanciate(
@@ -750,8 +769,7 @@ struct  runtime_t
 
         // create the task
         const size_t task_size = task_compute_size(flags, naccesses);
-        task_t * task = tls->allocate_task(task_size + args_size);
-        new (task) task_t(fmtid, flags);
+        task_t * task = this->task_new(fmtid, flags, task_size + args_size);
 
         task_dep_info_t * dep = TASK_DEP_INFO(task);
         new (dep) task_dep_info_t(naccesses);
@@ -805,8 +823,7 @@ struct  runtime_t
         constexpr size_t task_size = task_compute_size(flags, ac);
         constexpr size_t args_size = sizeof(f);
 
-        task_t * task = tls->allocate_task(task_size + args_size);
-        new (task) task_t(this->formats.host_capture, flags);
+        task_t * task = this->task_new(this->formats.host_capture, flags, task_size + args_size);
 
         std::function<void(runtime_t *, device_t *, task_t *)> * fcpy = (std::function<void(runtime_t *, device_t *, task_t *)> *) TASK_ARGS(task, task_size);
         new (fcpy) std::function<void(runtime_t *, device_t *, task_t *)>(f);
@@ -1140,12 +1157,6 @@ struct  runtime_t
     ) {
         this->team_task_spawn<0, false, false>(team, nullptr, nullptr, f);
     }
-
-    /**
-     * @brief Attempt to steal and execute a task from another thread's queue
-     * @return Pointer to the stolen task, or nullptr if no task available
-     */
-    task_t * worksteal(void);
 
     //////////////////
     // TEAM - UTILS //

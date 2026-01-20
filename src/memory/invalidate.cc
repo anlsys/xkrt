@@ -44,9 +44,7 @@ static inline void
 memory_deallocate_all(
     runtime_t * runtime
 ) {
-    for (device_global_id_t device_global_id = 0 ;
-            device_global_id < runtime->drivers.devices.n ;
-            ++device_global_id)
+    for (device_global_id_t device_global_id = 0 ; device_global_id < runtime->drivers.devices.n ;  ++device_global_id)
     {
         device_t * device = runtime->device_get(device_global_id);
         assert(device);
@@ -55,31 +53,21 @@ memory_deallocate_all(
         device->memory_reset();
 
         // thread thread memory
-        int nthreads = device->team->get_nthreads();
-        for (int i = 0 ; i < nthreads ; ++i)
-        {
-            thread_t * thread = device->team->get_thread(i);
-            thread->deallocate_all_tasks();
-        }
+        runtime->task_deallocate_all();
     }
 }
 
-# pragma message(TODO "This interface definition is fucked: deallocating all device memory is not safe here if there is multiple threads submitting tasks to the device. It also releases both memory controllers and dependency trees: are we sure about this ?")
-static void
-coherence_reset(runtime_t * runtime)
+void
+runtime_t::reset_coherence_controllers(void)
 {
     LOGGER_DEBUG("Invalidate XKBlas devices memory");
 
-    // remove all memory controllers of the current task
+    // remove all coherence controllers of the current task
     thread_t * thread = thread_t::get_tls();
     assert(thread);
 
     task_dom_info_t * dom = TASK_DOM_INFO(thread->current_task);
     assert(dom);
-
-    ///////////////////////////////
-    // delete memory controllers //
-    ///////////////////////////////
 
     // not deleting, instead using unref, as some threads may still be
     // accessing objects
@@ -99,10 +87,17 @@ coherence_reset(runtime_t * runtime)
     for (auto mcc : dom->mccs.blas)
         mcc->unref();
     dom->mccs.blas.clear();
+}
 
-    ///////////////////////////////
-    // delete deps domain        //
-    ///////////////////////////////
+void
+runtime_t::reset_dependence_controllers(void)
+{
+    // remove all dependence controllers of the current task
+    thread_t * thread = thread_t::get_tls();
+    assert(thread);
+
+    task_dom_info_t * dom = TASK_DOM_INFO(thread->current_task);
+    assert(dom);
 
     if (dom->deps.handle)
     {
@@ -119,15 +114,21 @@ coherence_reset(runtime_t * runtime)
     for (auto dep : dom->deps.blas)
         delete dep;
     dom->deps.blas.clear();
-
-    // deallocate all device memory
-    memory_deallocate_all(runtime);
 }
+
+# pragma message(TODO "This interface definition is fucked: deallocating all device memory is not safe here if there is multiple threads submitting tasks to the device. It also releases both memory controllers and dependence trees: are we sure about this ?")
 
 void
 runtime_t::reset(void)
 {
-    coherence_reset(this);
+    // reset coherence controllers
+    this->reset_coherence_controllers();
+
+    // reset dependence domains
+    this->reset_dependence_controllers();
+
+    // deallocate all device memory
+    memory_deallocate_all(this);
 }
 
 XKRT_NAMESPACE_END
