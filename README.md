@@ -14,6 +14,8 @@ Other repository hosts specialization layers built on top of the runtime:
 - [XKBM](https://github.com/anlsys/xkbm) is a suite of benchmark for measuring multi-gpu architectures performances, to assist in the design of runtime systems.
 - [XKOMP](https://github.com/anlsys/xkomp) is an experimental OpenMP runtime built on top of XKRT.
 
+![XKRT software stack](docs/software-stack.svg)
+
 # Getting started
 
 ## Installation
