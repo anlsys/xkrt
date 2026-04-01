@@ -47,13 +47,32 @@ access_t::intersects(
     assert(x->type == y->type);
     switch (x->type)
     {
-        # if 0
+        case (ACCESS_TYPE_HANDLE):
+            return x->region.point.handle == y->region.point.handle;
+
         case (ACCESS_TYPE_SEGMENT):
-            return x->segment.intersects(y->segment);
-        # endif
+            return x->region.interval.segment.intersects(y->region.interval.segment);
+
+        case (ACCESS_TYPE_BLAS_MATRIX):
+        {
+            if (x->host_view.ld * x->host_view.sizeof_type == x->host_view.ld * x->host_view.sizeof_type)
+            {
+                for (Rect & rx : x->region.matrix.rects)
+                    for (Rect & ry : y->region.matrix.rects)
+                        if (rx.intersects(ry))
+                            return true;
+                return false;
+            }
+            else
+            {
+                LOGGER_FATAL("Not supported");
+            }
+            break ;
+        }
 
         default:
             LOGGER_FATAL("Not implemented");
+            return false;
     }
 }
 

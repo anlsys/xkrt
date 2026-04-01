@@ -36,46 +36,46 @@
 
 //  Usage recommendation
 //
-//  Implement a new structure on top of a khp-tree, lets say `toto-tree.hpp`
-//  In `toto-tree.hpp` , before including `khp-tree.hpp`, explicitely define
+//  Implement a new structure on top of a lp-tree, lets say `toto-tree.hpp`
+//  In `toto-tree.hpp` , before including `lp-tree.hpp`, explicitely define
 //  all of these depending on your need:
-//      - KHP_TREE_REBALANCE
-//      - KHP_TREE_CUT_ON_INSERT
-//      - KHP_TREE_MAINTAIN_SIZE
-//      - KHP_TREE_MAINTAIN_HEIGHT
+//      - LP_TREE_REBALANCE
+//      - LP_TREE_CUT_ON_INSERT
+//      - LP_TREE_MAINTAIN_SIZE
+//      - LP_TREE_MAINTAIN_HEIGHT
 //
 //  See each variable definition in this file for details.
 //
 //  If you are scare to break the data structure, or suspect a bug, you should
-//  set `KHP_TREE_ENABLE_COHERENCY_CHECKS`.  It adds several coherency checks
+//  set `LP_TREE_ENABLE_COHERENCY_CHECKS`.  It adds several coherency checks
 //  on each operations, but severely slowdowns the execution making most operations O(n^2).
 
 
 // TODO PERFORMANCES IDEA
 //  - remove the use of 'virtual' to replace with template 'node' type and inlined functions
 
-#ifndef __KHP_TREE_H__
-# define __KHP_TREE_H__
+#ifndef __LP_TREE_H__
+# define __LP_TREE_H__
 
 // tree assert, must be called within a member function
-# ifndef KHP_TREE_ENABLE_COHERENCY_CHECKS
-#  define KHP_TREE_ENABLE_COHERENCY_CHECKS 0
+# ifndef LP_TREE_ENABLE_COHERENCY_CHECKS
+#  define LP_TREE_ENABLE_COHERENCY_CHECKS 0
 # endif
-# if KHP_TREE_ENABLE_COHERENCY_CHECKS
-#  pragma message("Unset `KHP_TREE_ENABLE_COHERENCY_CHECKS` for max performance")
+# if LP_TREE_ENABLE_COHERENCY_CHECKS
+#  pragma message("Unset `LP_TREE_ENABLE_COHERENCY_CHECKS` for max performance")
 #  define tassert(expr)                                                         \
     do {                                                                        \
         if (!(expr))                                                            \
         {                                                                       \
-            this->export_pdf("khp-tree");                                       \
+            this->export_pdf("lp-tree");                                       \
             fprintf(stdout, "%s:%d: assertion `" #expr "` failed in `%s`\n",    \
                    __FILE__,__LINE__,__func__);                                 \
             abort();                                                            \
         }                                                                       \
     } while (0)
-# else /* KHP_TREE_ENABLE_COHERENCY_CHECKS */
+# else /* LP_TREE_ENABLE_COHERENCY_CHECKS */
 #  define tassert(ignore) ((void)0)
-# endif /* KHP_TREE_ENABLE_COHERENCY_CHECKS */
+# endif /* LP_TREE_ENABLE_COHERENCY_CHECKS */
 
 # include <cassert>
 # include <cstdio>
@@ -154,7 +154,7 @@ template<
     bool MAINTAIN_SIZE   = false,
     bool MAINTAIN_HEIGHT = false
 >
-class KHPTree {
+class LPTree {
 
     // REBALANCE - Whether to automatically rebalance the tree.  This only
     // makes sense if cutting the tree.  If this is set, you should also set
@@ -247,11 +247,11 @@ class KHPTree {
 
                 includes_t <MAINTAIN_SIZE, MAINTAIN_HEIGHT> includes;
 
-                #if KHP_TREE_ENABLE_COHERENCY_CHECKS
+                #if LP_TREE_ENABLE_COHERENCY_CHECKS
                 struct {
                     int id;
                 } checks;
-                #endif /* KHP_TREE_ENABLE_COHERENCY_CHECKS */
+                #endif /* LP_TREE_ENABLE_COHERENCY_CHECKS */
 
             public:
 
@@ -272,7 +272,7 @@ class KHPTree {
                 {
                     memset(this->st, 0, sizeof(this->st));
 
-                    this->includes.hyperrect.copy(h);
+                    memcpy(&this->includes.hyperrect, &h, sizeof(Hyperrect));
 
                     if constexpr (MAINTAIN_SIZE)
                     {
@@ -583,7 +583,7 @@ class KHPTree {
         std::vector<Node *> limbs;
 
     public:
-        KHPTree() :
+        LPTree() :
             root(nullptr),
             limbs()
         {}
@@ -624,7 +624,7 @@ class KHPTree {
             this->limbs.clear();
         }
 
-        virtual ~KHPTree()
+        virtual ~LPTree()
         {
             subtree_delete(this->root);
             this->garbage_collector_run();
@@ -1089,9 +1089,9 @@ class KHPTree {
 
             rebalance_fixup(nullptr, new_root, k, 0, height);
 
-# if KHP_TREE_ENABLE_COHERENCY_CHECKS
+# if LP_TREE_ENABLE_COHERENCY_CHECKS
             this->coherency(root->includes.hyperrect);
-# endif /* KHP_TREE_ENABLE_COHERENCY_CHECKS */
+# endif /* LP_TREE_ENABLE_COHERENCY_CHECKS */
         }
 
         inline void
@@ -1153,11 +1153,11 @@ class KHPTree {
                 if (this->requires_rebalance())
                     this->rebalance();
 
-# if KHP_TREE_ENABLE_COHERENCY_CHECKS
+# if LP_TREE_ENABLE_COHERENCY_CHECKS
             this->coherency(h);
 # else
             (void) h;
-# endif /* KHP_TREE_ENABLE_COHERENCY_CHECKS */
+# endif /* LP_TREE_ENABLE_COHERENCY_CHECKS */
         }
 
         inline void
@@ -1172,7 +1172,7 @@ class KHPTree {
             }
             FOREACH_CHILD_END(parent, child, k, dir);
 
-            parent->hyperrect.copy(h);
+            memcpy(&parent->hyperrect, &h, sizeof(Hyperrect));
             this->insert_finalize(parent, t);
         }
 
@@ -1409,7 +1409,7 @@ class KHPTree {
             fprintf(f, "\\end{document}\n");
         }
 
-#if KHP_TREE_ENABLE_COHERENCY_CHECKS
+#if LP_TREE_ENABLE_COHERENCY_CHECKS
 
     public:
         //////////////////////
@@ -1470,14 +1470,14 @@ class KHPTree {
         coherency_hyperrect_includes_foreach(Node * node, void * args) const
         {
             (void) args;
-            auto f = std::bind(&KHPTree<K, T>::coherency_hyperrect_includes_check, this, _1, _2);
+            auto f = std::bind(&LPTree<K, T>::coherency_hyperrect_includes_check, this, _1, _2);
             foreach_node(node, f, node);
         }
 
         void
         coherency_hyperrect_includes(Node * root) const
         {
-            auto f = std::bind(&KHPTree<K, T>::coherency_hyperrect_includes_foreach, this, _1, _2);
+            auto f = std::bind(&LPTree<K, T>::coherency_hyperrect_includes_foreach, this, _1, _2);
             foreach_node(root, f, root);
         }
 
@@ -1492,14 +1492,14 @@ class KHPTree {
         coherency_hyperrect_disjoint_for(Node * node, void * args) const
         {
             Node * root = (Node *) args;
-            auto f = std::bind(&KHPTree<K, T>::coherency_hyperrect_disjoint_compare, this, _1, _2);
+            auto f = std::bind(&LPTree<K, T>::coherency_hyperrect_disjoint_compare, this, _1, _2);
             foreach_node(root, f, node);
         }
 
         void
         coherency_hyperrect_disjoint(Node * root) const
         {
-            auto f = std::bind(&KHPTree<K, T>::coherency_hyperrect_disjoint_for, this, _1, _2);
+            auto f = std::bind(&LPTree<K, T>::coherency_hyperrect_disjoint_for, this, _1, _2);
             foreach_node(root, f, root);
         }
 
@@ -1641,7 +1641,7 @@ class KHPTree {
         void
         coherency_hyperrect_represented(Hyperrect rect)
         {
-            auto f = std::bind(&KHPTree<K, T>::coherency_hyperrect_represented_check, this, _1, _2);
+            auto f = std::bind(&LPTree<K, T>::coherency_hyperrect_represented_check, this, _1, _2);
             foreach_node(this->root, f, &rect);
         }
 
@@ -1667,7 +1667,7 @@ class KHPTree {
             return 1;
         }
 
-#endif /* KHP_TREE_ENABLE_COHERENCY_CHECKS */
+#endif /* LP_TREE_ENABLE_COHERENCY_CHECKS */
 
     public:
 
@@ -1715,4 +1715,4 @@ class KHPTree {
         virtual void on_intersect(Node * node, T & t, const Hyperrect & h) const = 0;
 };
 
-#endif /* __KHP_TREE_H__ */
+#endif /* __LP_TREE_H__ */

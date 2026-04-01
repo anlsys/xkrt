@@ -48,7 +48,7 @@ XKRT_NAMESPACE_USE;
 static int x = 0;
 
 # define AC 1
-constexpr task_flag_bitfield_t flags = TASK_FLAG_DEPENDENT;
+constexpr task_flag_bitfield_t flags = TASK_FLAG_ACCESSES;
 constexpr size_t task_size = task_compute_size(flags, AC);
 constexpr size_t args_size = sizeof(int);
 
@@ -102,13 +102,10 @@ main(void)
     for (int t = 0 ; t < ntasks ; ++t)
     {
         // Create a task
-        task_t * task = runtime.task_new(fmtid, flags, task_size + args_size);
+        task_t * task = runtime.task_new(fmtid, flags, &t, sizeof(int), AC);
 
-        task_dep_info_t * dep = TASK_DEP_INFO(task);
-        new (dep) task_dep_info_t(AC);
-
-        int * args = (int *) TASK_ARGS(task, task_size);
-        *args = t;
+        task_acs_info_t * acs = TASK_ACS_INFO(task);
+        new (acs) task_acs_info_t(AC);
 
         # if XKRT_SUPPORT_DEBUG
         snprintf(task->label, sizeof(task->label), "dependent-task-test-%d", t);
@@ -116,9 +113,9 @@ main(void)
 
         // set accesses
         access_t * accesses = TASK_ACCESSES(task);
-        static_assert(AC <= TASK_MAX_ACCESSES);
+        static_assert(AC <= XKRT_TASK_MAX_ACCESSES);
         new (accesses + 0) access_t(task, point[t], modes[t]);
-        thread->resolve(accesses, AC);
+        runtime.task_accesses_resolve(accesses, AC);
 
         // submit it to the runtime
         runtime.task_commit(task);

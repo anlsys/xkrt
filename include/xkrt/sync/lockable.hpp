@@ -46,17 +46,8 @@ class Lockable {
     public:
         spinlock_t spinlock;
 
-        # if XKRT_SUPPORT_DEBUG
-        volatile bool locked;
-        # endif /* XKRT_SUPPORT_DEBUG */
-
     public:
-        # if XKRT_SUPPORT_DEBUG
-        Lockable() : spinlock(), locked(false) {}
-        # else
         Lockable() : spinlock() {}
-        # endif /* XKRT_SUPPORT_DEBUG */
-
         ~Lockable() {}
 
     public:
@@ -65,27 +56,19 @@ class Lockable {
         lock(void)
         {
             SPINLOCK_LOCK(this->spinlock);
-            # if XKRT_SUPPORT_DEBUG
-            this->locked = true;
-            # endif /* XKRT_SUPPORT_DEBUG */
         }
 
         inline void
         unlock(void)
         {
-            # if XKRT_SUPPORT_DEBUG
-            this->locked = false;
-            # endif /* XKRT_SUPPORT_DEBUG */
             SPINLOCK_UNLOCK(this->spinlock);
         }
 
-        #if XKRT_SUPPORT_DEBUG
         bool
         is_locked(void) const
         {
-            return this->locked;
+            return (bool) this->spinlock;
         }
-        # endif /* XKRT_SUPPORT_DEBUG */
 };
 
 #endif /* __LOCKABLE_HPP__ */

@@ -43,12 +43,12 @@ XKRT_NAMESPACE_BEGIN;
 
 void
 runtime_t::power_start(
-    const device_global_id_t device_global_id,
+    const device_unique_id_t device_unique_id,
     power_t * power
 ) {
     assert(power);
 
-    device_t * device = this->device_get(device_global_id);
+    device_t * device = this->device_get(device_unique_id);
     driver_t * driver = this->driver_get(device->driver_type);
     if (driver->f_power_start)
         driver->f_power_start(device->driver_id, power);
@@ -56,12 +56,12 @@ runtime_t::power_start(
 
 void
 runtime_t::power_stop(
-    const device_global_id_t device_global_id,
+    const device_unique_id_t device_unique_id,
     power_t * power
 ) {
     assert(power);
 
-    device_t * device = this->device_get(device_global_id);
+    device_t * device = this->device_get(device_unique_id);
     driver_t * driver = this->driver_get(device->driver_type);
     if (driver->f_power_stop)
         driver->f_power_stop(device->driver_id, power);

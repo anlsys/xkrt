@@ -37,7 +37,7 @@
 #ifndef __INTERVAL_DEPENDENCY_TREE_HPP__
 # define __INTERVAL_DEPENDENCY_TREE_HPP__
 
-# include <xkrt/memory/access/common/khp-tree.hpp>
+# include <xkrt/memory/access/common/lp-tree.hpp>
 # include <xkrt/memory/access/dependency-domain.hpp>
 # include <xkrt/task/task.hpp>
 
@@ -91,9 +91,9 @@ class IntervalDependencyTreeSearch
 
 } /* class IntervalDependencyTreeSearch */;
 
-class IntervalDependencyTreeNode : public KHPTree<K, IntervalDependencyTreeSearch>::Node {
+class IntervalDependencyTreeNode : public LPTree<K, IntervalDependencyTreeSearch>::Node {
 
-    using Base      = typename KHPTree<K, IntervalDependencyTreeSearch>::Node;
+    using Base      = typename LPTree<K, IntervalDependencyTreeSearch>::Node;
     using Node      = IntervalDependencyTreeNode;
     using Hyperrect = KHyperrect<K>;
     using Search    = IntervalDependencyTreeSearch;
@@ -184,10 +184,10 @@ class IntervalDependencyTreeNode : public KHPTree<K, IntervalDependencyTreeSearc
         }
 };
 
-class IntervalDependencyTree : public KHPTree<K, IntervalDependencyTreeSearch>, public DependencyDomain
+class IntervalDependencyTree : public LPTree<K, IntervalDependencyTreeSearch>, public DependencyDomain
 {
     public:
-        using Base      = KHPTree<K, IntervalDependencyTreeSearch>;
+        using Base      = LPTree<K, IntervalDependencyTreeSearch>;
         using Hyperrect = KHyperrect<K>;
         using Node      = IntervalDependencyTreeNode;
         using NodeBase  = typename Base::Node;

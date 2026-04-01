@@ -61,14 +61,10 @@ XKRT_NAMESPACE_BEGIN
 // THREADS //
 /////////////
 
-/* thread states */
-typedef enum    thread_state_t
-{
-    XKRT_THREAD_UNINITIALIZED   = 0,
-    XKRT_THREAD_INITIALIZED     = 1
-}               thread_state_t;
-
 struct team_t;
+
+constexpr task_flag_bitfield_t  XKRT_IMPLICIT_TASK_FLAGS = TASK_FLAG_DOMAIN | TASK_FLAG_GRAPH;
+constexpr size_t                XKRT_IMPLICIT_TASK_SIZE  = task_compute_size(XKRT_IMPLICIT_TASK_FLAGS, 0);
 
 /* a thread */
 struct alignas(xkrt_pagesize) thread_t
@@ -95,18 +91,18 @@ struct alignas(xkrt_pagesize) thread_t
         /* the thread implicit task */
         union {
             task_t implicit_task;
-            char _implicit_task_buffer[task_compute_size(TASK_FLAG_DOMAIN, 0)];
+            char _implicit_task_buffer[XKRT_IMPLICIT_TASK_SIZE];
         };
 
         /* the current task */
         task_t * current_task;
 
+        /* the current task record */
+        task_t * current_task_record;
+
         # if XKRT_SUPPORT_DEBUG
         std::vector<task_t *> tasks;
         # endif /* XKRT_SUPPORT_DEBUG */
-
-        /* the thread state, use for synchronizing */
-        thread_state_t state;
 
         /* the pthread */
         pthread_t pthread;
@@ -118,10 +114,10 @@ struct alignas(xkrt_pagesize) thread_t
         int tid;
 
         /* the device global id attached to that thread */
-        device_global_id_t device_global_id;
+        device_unique_id_t device_unique_id;
 
         /* the thread deque */
-        // deque_t<task_t *, 4096> deque;
+        //deque_t<task_t *, 4096> deque;
         NaiveQueue<task_t *> deque;
 
         /* tasks stack */
@@ -154,32 +150,32 @@ struct alignas(xkrt_pagesize) thread_t
 
     public:
 
-        // thread_t(int tid) : thread_t(tid, 0, UNSPECIFIED_DEVICE_GLOBAL_ID) {}
+        // thread_t(int tid) : thread_t(tid, 0, XKRT_UNSPECIFIED_DEVICE_UNIQUE_ID) {}
 
         thread_t(
             team_t * team,
             int tid,
             pthread_t pthread,
-            device_global_id_t device_global_id,
+            device_unique_id_t device_unique_id,
             team_thread_place_t place
         ) :
             team(team),
             place(place),
-            implicit_task(XKRT_TASK_FORMAT_NULL, TASK_FLAG_DOMAIN),
-            state(XKRT_THREAD_INITIALIZED),
+            implicit_task(XKRT_TASK_FORMAT_NULL, XKRT_IMPLICIT_TASK_FLAGS),
             pthread(pthread),
             gtid(gettid()),
             tid(tid),
-            device_global_id(device_global_id),
+            device_unique_id(device_unique_id),
             deque(),
             memory_stack_bottom(NULL),
-            memory_stack_capacity(THREAD_MAX_MEMORY),
+            memory_stack_capacity(XKRT_THREAD_MAX_MEMORY),
             rng(),
             parallel_for{.index = 0},
             prev(NULL)
         {
             // set current task
             this->current_task = &this->implicit_task;
+            this->current_task_record = NULL;
 
             // initialize sync primitives
             pthread_mutex_init(&this->sleep.lock, 0);
@@ -202,7 +198,10 @@ struct alignas(xkrt_pagesize) thread_t
 
                 this->memory_stack_capacity = (size_t) (this->memory_stack_capacity * 2 / 3);
                 if (this->memory_stack_capacity == 0)
+                {
                     this->memory_stack_bottom = NULL;
+                    break ;
+                }
             }
             this->memory_stack_ptr = this->memory_stack_bottom;
             assert(this->memory_stack_bottom);
@@ -210,7 +209,7 @@ struct alignas(xkrt_pagesize) thread_t
 
         ~thread_t()
         {
-            free(this->memory_stack_ptr);
+            free(this->memory_stack_bottom);
         }
 
     public:
@@ -263,79 +262,6 @@ struct alignas(xkrt_pagesize) thread_t
          * @return Pointer to the stolen task, or nullptr if no task available
          */
         task_t * worksteal(void);
-
-
-        /** Find conflicts and insert accesses in the dependency tree */
-        inline void
-        resolve(access_t * accesses, task_access_counter_t AC)
-        {
-            assert(AC > 0);
-            assert(accesses);
-            assert(this->current_task);
-            task_dependency_resolve(this->current_task, accesses, AC);
-        }
-
-        template <typename... Args>
-        inline void
-        commit(
-            task_t * task,
-            void (*F)(Args..., task_t *),
-            Args... args
-        ) {
-            assert(this->current_task);
-            ++this->current_task->cc;
-            task->parent = this->current_task;
-            return __task_commit(task, F, args...);
-        }
-
-        # if XKRT_SUPPORT_DEBUG
-
-        void
-        dump_tasks(FILE * f)
-        {
-            fprintf(f, "digraph G {\n");
-            for (task_t * & task : tasks)
-            {
-                fprintf(f, "    \"%p\" [label=\"%s\"] ;\n", (void *) task, task->label);
-                if (task->flags & TASK_FLAG_DEPENDENT)
-                {
-                    task_dep_info_t * dep = TASK_DEP_INFO(task);
-                    access_t * accesses = TASK_ACCESSES(task);
-                    for (int i = 0 ; i < dep->ac ; ++i)
-                    {
-                        access_t * pred = accesses + i;
-                        for (access_t * succ : pred->successors)
-                            fprintf(f, "    \"%p\" -> \"%p\" ;\n", (void *) pred->task, (void *) succ->task);
-                    }
-                }
-            }
-            fprintf(f, "}\n");
-        }
-
-        void
-        dump_accesses(FILE * f)
-        {
-            fprintf(f, "digraph G {\n");
-            for (task_t * & task : tasks)
-            {
-                if (task->flags & TASK_FLAG_DEPENDENT)
-                {
-                    task_dep_info_t * dep = TASK_DEP_INFO(task);
-                    access_t * accesses = TASK_ACCESSES(task);
-                    for (int i = 0 ; i < dep->ac ; ++i)
-                    {
-                        access_t * pred = accesses + i;
-                        fprintf(f, "    \"%p\" [label=\"%s - ac %d\"] ;\n", (void *) pred, task->label, i);
-                        for (access_t * succ : pred->successors)
-                            fprintf(f, "    \"%p\" -> \"%p\" ;\n", (void *) pred, (void *) succ);
-                    }
-                }
-            }
-            fprintf(f, "}\n");
-        }
-
-        # endif /* XKRT_SUPPORT_DEBUG */
-
 };
 
 XKRT_NAMESPACE_END

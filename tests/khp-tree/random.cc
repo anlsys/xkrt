@@ -1,4 +1,4 @@
-# include "noop-khp-tree.hpp"
+# include "noop-lp-tree.hpp"
 
 # include <math.h>
 # include <stdlib.h>
@@ -20,7 +20,7 @@ static int ninsert = 0;
 template<int K>
 void
 insert(
-    NoopKHPTree<K> & tree,
+    NoopLPTree<K> & tree,
     Interval intervals[K]
 ) {
     KHyperrect<K> h(intervals);
@@ -40,7 +40,7 @@ insert(
 //Generate 'n' disjoint hyperplans
 template<int K, int PLAN_DIM>
 void
-disjoint_hyperplans(NoopKHPTree<K> & tree, int n)
+disjoint_hyperplans(NoopLPTree<K> & tree, int n)
 {
     static_assert(0 <= PLAN_DIM && PLAN_DIM < K);
 
@@ -67,7 +67,7 @@ disjoint_hyperplans(NoopKHPTree<K> & tree, int n)
 //Generate 'n' hyperhs that includes all dimensions but one
 template<int K>
 void
-pyramid(NoopKHPTree<K> & tree, int n)
+pyramid(NoopLPTree<K> & tree, int n)
 {
     for (int i = 0 ; i < n ; ++i)
     {
@@ -92,7 +92,7 @@ pyramid(NoopKHPTree<K> & tree, int n)
 //Generate 'n' hyperhs that are included on all dimensions but one
 template<int K>
 void
-pyramid_inverted(NoopKHPTree<K> & tree, int n)
+pyramid_inverted(NoopLPTree<K> & tree, int n)
 {
     for (int i = 0 ; i < n ; ++i)
     {
@@ -117,7 +117,7 @@ pyramid_inverted(NoopKHPTree<K> & tree, int n)
 // Generate 'n' hyperhs that are successively included into previous ones
 template<int K>
 static void
-squares_included(NoopKHPTree<K> & tree, int n)
+squares_included(NoopLPTree<K> & tree, int n)
 {
     for (int i = 0 ; i < n ; ++i)
     {
@@ -132,7 +132,7 @@ squares_included(NoopKHPTree<K> & tree, int n)
 }
 
 template<int Dimensions, int K, class Callable>
-constexpr void meta_for_loop(NoopKHPTree<K> & tree, std::array<int, K> & array, int end, Callable & c)
+constexpr void meta_for_loop(NoopLPTree<K> & tree, std::array<int, K> & array, int end, Callable & c)
 {
     static_assert(Dimensions > 0);
     for(int i = 0; i != end; ++i)
@@ -147,7 +147,7 @@ constexpr void meta_for_loop(NoopKHPTree<K> & tree, std::array<int, K> & array, 
 
 template<int K, int P>
 static void
-matrix_tiles_insert(NoopKHPTree<K> & tree, std::array<int, K> indices)
+matrix_tiles_insert(NoopLPTree<K> & tree, std::array<int, K> indices)
 {
     Interval intervals[K];
     for (int k = 0 ; k < K ; ++k)
@@ -161,7 +161,7 @@ matrix_tiles_insert(NoopKHPTree<K> & tree, std::array<int, K> indices)
 // Generate n^K tiles of size P
 template<int K, int P>
 static void
-matrix_tiles(NoopKHPTree<K> & tree, int n)
+matrix_tiles(NoopLPTree<K> & tree, int n)
 {
     std::array<int, K> array;
     meta_for_loop<K, K>(tree, array, n, matrix_tiles_insert<K, P>);
@@ -172,7 +172,7 @@ static int N = 10;
 
 // Launch tests for a tree of dimension 'K'
 template<int K>
-static void launch_tests(NoopKHPTree<K> & tree)
+static void launch_tests(NoopLPTree<K> & tree)
 {
     printf("Running for K=%d\n", K);
     ninsert = 0;
@@ -255,7 +255,7 @@ static void launch_tests(NoopKHPTree<K> & tree)
 template<int K>
 static void run(void)
 {
-    NoopKHPTree<K> tree;
+    NoopLPTree<K> tree;
     launch_tests(tree);
 
     # if 1

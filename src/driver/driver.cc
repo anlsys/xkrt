@@ -79,7 +79,7 @@ driver_thread_main(
     assert(device_driver_id < driver->devices.n);
 
     // device global id
-    device_global_id_t device_global_id = driver->devices.global_ids[device_driver_id];
+    device_unique_id_t device_unique_id = driver->devices.unique_ids[device_driver_id];
 
     ///////////////////////
     // create the device //
@@ -97,10 +97,10 @@ driver_thread_main(
     device->driver_type = driver->type;
     device->driver_id   = device_driver_id;
     device->conf        = &(runtime->conf.device);
-    device->global_id   = device_global_id;
+    device->unique_id   = device_unique_id;
 
     // register device to the global list
-    runtime->drivers.devices.list[device_global_id] = device;
+    runtime->drivers.devices.list[device_unique_id] = device;
 
     // register device to the driver list
     driver->devices.list[device_driver_id] = device;
@@ -110,7 +110,7 @@ driver_thread_main(
 
     char buffer[512];
     driver->f_device_info(device_driver_id, buffer, sizeof(buffer));
-    LOGGER_INFO("  global id = %2u | %s", device_global_id, buffer);
+    LOGGER_INFO("  global id = %2u | %s", device_unique_id, buffer);
 
     /* get total memory and allocate chunk0 */
     if (driver->f_memory_device_info)
@@ -133,8 +133,8 @@ driver_thread_main(
 
     // commit
     assert(driver->f_device_commit);
-    device_global_id_bitfield_t * affinity = &(runtime->router.affinity[device->global_id][0]);
-    memset(affinity, 0, sizeof(runtime->router.affinity[device->global_id]));
+    device_unique_id_bitfield_t * affinity = &(runtime->router.affinity[device->unique_id][0]);
+    memset(affinity, 0, sizeof(runtime->router.affinity[device->unique_id]));
     int err = driver->f_device_commit(device->driver_id, affinity);
     if (err)
         LOGGER_FATAL("Commit fail device %d of driver %s", device->driver_id, driver->f_get_name());
@@ -147,15 +147,15 @@ driver_thread_main(
     // print affinity
     for (int i = 0 ; i < XKRT_DEVICES_PERF_RANK_MAX ; ++i)
     {
-        device_global_id_bitfield_t bf = affinity[i];
-        constexpr int nbytes = sizeof(device_global_id_bitfield_t);
+        device_unique_id_bitfield_t bf = affinity[i];
+        constexpr int nbytes = sizeof(device_unique_id_bitfield_t);
         char buffer[8*nbytes + 1];
         bits_to_str(buffer, (unsigned char *) &bf, nbytes);
-        LOGGER_DEBUG("Device `%2u` affinity mask for perf `%2u` is `%s`", device->global_id, i, buffer);
+        LOGGER_DEBUG("Device `%2u` affinity mask for perf `%2u` is `%s`", device->unique_id, i, buffer);
     }
 
     // init offloader
-    device->offloader_init(driver->f_queue_suggest);
+    driver->device_offloader_init(device);
 
     // wait for all devices to be in the 'commit' state with the offloader init
     pthread_barrier_wait(&driver->barrier);
@@ -172,7 +172,7 @@ driver_thread_main(
     // the device team args
     device_team_args_t args = {
         .driver = driver,
-        .device_global_id = device_global_id,
+        .device_unique_id = device_unique_id,
         .device_driver_id = device_driver_id,
         .barrier = {}
     };
@@ -232,7 +232,7 @@ drivers_init(runtime_t * runtime)
     # pragma message(TODO "Dynamic driver loading not implemented (with dlopen). Only supporting built-in drivers")
 
     // PARAMETERS
-    device_global_id_t ndevices_requested  = runtime->conf.device.ngpus + 1; // host device + ngpus
+    device_unique_id_t ndevices_requested  = runtime->conf.device.ngpus + 1; // host device + ngpus
     bool use_p2p = runtime->conf.device.use_p2p;
     assert(ndevices_requested < XKRT_DEVICES_MAX);
 
@@ -248,7 +248,7 @@ drivers_init(runtime_t * runtime)
     extern driver_t * XKRT_DRIVER_TYPE_HOST_create_driver(void);
     creators[XKRT_DRIVER_TYPE_HOST] = XKRT_DRIVER_TYPE_HOST_create_driver;
     static_assert(XKRT_DRIVER_TYPE_HOST == 0);
-    static_assert(HOST_DEVICE_GLOBAL_ID == 0);
+    static_assert(XKRT_HOST_DEVICE_UNIQUE_ID == 0);
 
     char support[512];
     strcpy(support, "host");
@@ -359,10 +359,10 @@ drivers_init(runtime_t * runtime)
 
                 // set the device global id
                 static_assert(XKRT_DRIVER_TYPE_HOST == 0);
-                static_assert(HOST_DEVICE_GLOBAL_ID == 0);
-                const device_global_id_t device_global_id = runtime->drivers.devices.n++;
-                driver->devices.global_ids[device_driver_id] = device_global_id;
-                driver->devices.bitfield |= (1 << device_global_id);
+                static_assert(XKRT_HOST_DEVICE_UNIQUE_ID == 0);
+                const device_unique_id_t device_unique_id = runtime->drivers.devices.n++;
+                driver->devices.unique_ids[device_driver_id] = device_unique_id;
+                driver->devices.bitfield |= (1 << device_unique_id);
             }
 
             // create the driver team
@@ -418,9 +418,9 @@ void
 drivers_deinit(runtime_t * runtime)
 {
     // notify each thread to stop
-    for (device_global_id_t device_global_id = 0 ; device_global_id < runtime->drivers.devices.n ; ++device_global_id)
+    for (device_unique_id_t device_unique_id = 0 ; device_unique_id < runtime->drivers.devices.n ; ++device_unique_id)
     {
-        device_t * device = runtime->drivers.devices.list[device_global_id];
+        device_t * device = runtime->drivers.devices.list[device_unique_id];
         assert(device);
         device->state = XKRT_DEVICE_STATE_STOP;
         device->team->wakeup();
@@ -455,5 +455,371 @@ driver_device_get(driver_t * driver, device_driver_id_t device_driver_id)
     assert(device_driver_id < driver->devices.n);
     return driver->devices.list[device_driver_id];
 }
+
+/////////////////////////////////
+// DEVICE AND QUEUE MANAGEMENT //
+/////////////////////////////////
+
+void
+driver_t::device_offloader_init(device_t * device)
+{
+    assert(device->driver_type == this->type);
+
+    /* next queue to use (round robin) */
+    device->next_thread = 0;
+    memset(device->next_queue, 0, sizeof(device->next_queue));
+
+    /* count total number of queue */
+    device->nqueues_per_thread = 0;
+
+    for (int qtype = 0 ; qtype < XKRT_QUEUE_TYPE_ALL ; ++qtype)
+    {
+        device->count[qtype] = (device->conf->offloader.queues[qtype].n >= 0) ? device->conf->offloader.queues[qtype].n : this->f_command_queue_suggest ? this->f_command_queue_suggest(device->driver_id, (command_queue_type_t) qtype) : 4;
+        device->nqueues_per_thread += device->count[qtype];
+    }
+}
+
+void
+driver_t::device_offloader_init_thread(
+    device_t * device,
+    int tid
+) {
+    assert(device->driver_type == this->type);
+    if (device->nqueues_per_thread == 0)
+        return ;
+
+    /* allocate queues array */
+    assert(device->nqueues_per_thread);
+    command_queue_t ** all_queues = (command_queue_t **) malloc(sizeof(command_queue_t *) * device->nqueues_per_thread);
+    assert(all_queues);
+
+    /* retrieve queue offset per type */
+    uint16_t i = 0;
+    for (int qtype = 0 ; qtype < XKRT_QUEUE_TYPE_ALL ; ++qtype)
+    {
+        device->queues[tid][qtype] = all_queues + i;
+        for (int j = 0 ; j < device->count[qtype] ; ++j, ++i)
+        {
+            // create a new queue
+            all_queues[i] = this->f_command_queue_create(device, static_cast<command_queue_type_t>(qtype), device->conf->offloader.capacity);
+            if (all_queues[i] == NULL)
+            {
+                device->count[qtype] = j;
+                break ;
+            }
+        }
+    }
+    assert(i <= device->nqueues_per_thread);
+}
+
+static inline int
+driver_device_command_queue_launch_ready(
+    driver_t * driver,
+    device_t * device,
+    command_queue_t * queue
+) {
+    assert(driver->type == device->driver_type);
+
+    if (queue->ready.is_empty())
+        return 0;
+
+    int r = 0;
+
+    /* for each ready command */
+    SPINLOCK_LOCK(queue->spinlock);
+    const xkrt_command_queue_list_counter_t p = queue->ready.iterate([&] (xkrt_command_queue_list_counter_t p) {
+
+        /* if the pending queue is full, we cannot start more commands */
+        if (queue->pending.is_full())
+            return false;
+
+        /* retrieve it */
+        command_t * cmd = queue->ready.cmd + p;
+        assert(cmd);
+
+        LOGGER_DEBUG(
+            "Decoding command `%s` on queue %p of type `%s` - p=%u, r=%u, w=%u",
+            ocg::command_type_to_str(cmd->type),
+            queue,
+            command_queue_type_to_str(queue->type),
+            p,
+            queue->ready.pos.r,
+            queue->ready.pos.w
+        );
+
+        /* launch command */
+        switch (cmd->type)
+        {
+            /* Empty commands need not to execute anything */
+            case (ocg::COMMAND_TYPE_EMPTY):
+            {
+                break ;
+            }
+
+            /* custom kernel launcher commands are launched by the command
+             * itself, not the driver */
+            case (ocg::COMMAND_TYPE_PROG_LAUNCHER):
+            {
+                ((prog_launcher_t) cmd->prog_launcher.launch)(
+                    cmd->prog_launcher.runtime,
+                    cmd->prog_launcher.device,
+                    cmd->prog_launcher.task,
+                    queue,
+                    cmd,
+                    p
+                );
+                break ;
+            }
+
+            case (ocg::COMMAND_TYPE_COPY_H2H_1D):
+            case (ocg::COMMAND_TYPE_COPY_H2H_2D):
+            {
+                LOGGER_FATAL("Not implemented");
+                break ;
+            }
+
+            /******************************/
+            /* launch commands via driver */
+            /******************************/
+
+            case (ocg::COMMAND_TYPE_BATCH):
+            case (ocg::COMMAND_TYPE_PROG):
+            case (ocg::COMMAND_TYPE_COPY_H2D_1D):
+            case (ocg::COMMAND_TYPE_COPY_D2H_1D):
+            case (ocg::COMMAND_TYPE_COPY_D2D_1D):
+            case (ocg::COMMAND_TYPE_COPY_H2D_2D):
+            case (ocg::COMMAND_TYPE_COPY_D2H_2D):
+            case (ocg::COMMAND_TYPE_COPY_D2D_2D):
+            case (ocg::COMMAND_TYPE_FD_READ):
+            case (ocg::COMMAND_TYPE_FD_WRITE):
+            default:
+            {
+                int err = driver->f_command_queue_launch(device->driver_id, queue, cmd, p);
+                switch (err)
+                {
+                    case (0):
+                    case (EINPROGRESS):
+                    {
+                        break ;
+                    }
+
+                    case (ENOSYS):
+                    {
+                        LOGGER_FATAL("Command `%s` not implemented", ocg::command_type_to_str(cmd->type));
+                        break ;
+                    }
+
+                    default:
+                    {
+                        LOGGER_FATAL("Unknown error after decoding command");
+                        break ;
+                    }
+                }
+            }
+        }
+
+        /* if the command is synchronous, it is completed now */
+        if (cmd->flags & COMMAND_FLAG_SYNCHRONOUS)
+        {
+            // TODO: may lead to deadlock if reentrant
+            queue->complete_command(p);
+        }
+        /* else, save to pending list */
+        else
+        {
+            /* the pending queue must not be full at that point */
+            assert(!queue->pending.is_full());
+            const xkrt_command_queue_list_counter_t wp = queue->pending.pos.w;
+            queue->pending.pos.w = (queue->pending.pos.w + 1) % queue->pending.capacity;
+
+            memcpy(
+                (void *) (queue->pending.cmd + wp),
+                (void *) (queue->ready.cmd   + p),
+                sizeof(command_t)
+            );
+
+            ++r;
+        }
+
+        /* continue */
+        LOGGER_DEBUG("(loop) ready.is_empty() = %d, pending.is_empty() = %d", queue->ready.is_empty(), queue->pending.is_empty());
+        return true;
+
+    }); /* RING_ITERATE */
+    SPINLOCK_UNLOCK(queue->spinlock);
+
+    // this barrier ensures that the threads that owns the queue correctly
+    // sees the 'ready' queue empty but not the 'pending' - else it would go
+    // to sleep even though there is pending commands
+    writemem_barrier();
+    queue->ready.pos.r = p;
+
+    LOGGER_DEBUG("ready.is_empty() = %d, pending.is_empty() = %d",
+            queue->ready.is_empty(), queue->pending.is_empty());
+
+    return r;
+}
+
+int
+driver_t::device_offloader_launch(
+    device_t * device,
+    int tid,
+    const command_queue_type_t qtype
+) {
+    int r = 0;
+
+    unsigned int bgn = (qtype == XKRT_QUEUE_TYPE_ALL) ?                    0 : qtype;
+    unsigned int end = (qtype == XKRT_QUEUE_TYPE_ALL) ? XKRT_QUEUE_TYPE_ALL : qtype + 1;
+    for (unsigned int s = bgn ; s < end ; ++s)
+    {
+        for (int i = 0 ; i < device->count[s] ; ++i)
+        {
+            command_queue_t * queue = device->queues[tid][s][i];
+            assert(queue);
+
+            r += driver_device_command_queue_launch_ready(this, device, queue);
+        }
+    }
+
+    return r;
+}
+
+template <bool blocking>
+int
+driver_t::device_offloader_progress(
+    device_t * device,
+    int tid,
+    const command_queue_type_t qtype
+) {
+    int err = 0;
+    unsigned int bgn = (qtype == XKRT_QUEUE_TYPE_ALL) ?                   0 : qtype;
+    unsigned int end = (qtype == XKRT_QUEUE_TYPE_ALL) ? XKRT_QUEUE_TYPE_ALL : qtype + 1;
+    for (unsigned int s = bgn ; s < end ; ++s)
+    {
+        for (int i = 0 ; i < device->count[s] ; ++i)
+        {
+            command_queue_t * queue = device->queues[tid][s][i];
+            assert(queue);
+
+            if (queue->pending.is_empty())
+                continue ;
+
+            xkrt_command_queue_list_counter_t n;
+            do {
+                if (blocking)
+                {
+                    this->device_command_queue_pending_wait(device, queue);
+                    err = 0;
+                }
+                else
+                    err = this->device_command_queue_pending_progress(device, queue);
+                n = queue->pending.size();
+                assert(n < queue->pending.capacity);
+            } while (n > device->conf->offloader.queues[s].concurrency);
+            assert(err == 0 || err == EINPROGRESS);
+        }
+    }
+    return 0;
+}
+
+template int driver_t::device_offloader_progress<false>(device_t * device, int tid, const command_queue_type_t qtype);
+template int driver_t::device_offloader_progress<true> (device_t * device, int tid, const command_queue_type_t qtype);
+
+int
+driver_t::device_offloader_wait_random_command(
+    device_t * device,
+    int tid
+) {
+    static thread_local unsigned int seed = 0x42;
+
+    // randomly pick a type and a queue
+    static_assert(XKRT_QUEUE_TYPE_ALL > 0);
+    unsigned int rtype  = rand_r(&seed);
+    unsigned int rqueue = rand_r(&seed);
+    for (unsigned int ctype = 0 ; ctype < XKRT_QUEUE_TYPE_ALL ; ++ctype)
+    {
+        unsigned int s = (rtype + ctype) % XKRT_QUEUE_TYPE_ALL;
+
+        command_queue_t * queue = NULL;
+        for (int iqueue = 0 ; iqueue < device->count[s] ; ++iqueue)
+        {
+            unsigned int i = (rqueue + iqueue) % device->count[s];
+
+            queue = device->queues[tid][s][i];
+            assert(queue);
+
+            // if the queue has pending commands
+            if (!queue->pending.is_empty())
+            {
+                const xkrt_command_queue_list_counter_t i = queue->pending.pos.r;
+                assert(i >= 0);
+                assert(i < queue->pending.capacity);
+
+                command_t * cmd = queue->pending.cmd + i;
+                assert(cmd);
+
+                assert(this->f_command_queue_wait);
+
+                // waiting on the first event of the randomly elected queue
+                int err = this->f_command_queue_wait(queue, cmd, i);
+
+                // calling this to complete events and move queues pointers
+                // but also detect out-of-order completions
+                this->device_offloader_progress(device, tid);
+
+                return err;
+            }
+        }
+    }
+    return 0;
+}
+
+//////////////////////
+// QUEUE MANAGEMENT //
+//////////////////////
+
+int
+driver_t::device_command_queue_pending_wait(
+    device_t * device,
+    command_queue_t * queue
+) {
+    assert(device->driver_type == this->type);
+    if (!queue->pending.is_empty())
+    {
+        assert(this->f_command_queue_wait_all);
+        this->f_command_queue_wait_all(queue);
+        queue->complete_commands(queue->pending.pos.w);
+    }
+    return 0;
+}
+
+int
+driver_t::device_command_queue_pending_progress(
+    device_t * device,
+    command_queue_t * queue
+) {
+    assert(device->driver_type == this->type);
+    if (queue->pending.is_empty())
+        return 0;
+
+    LOGGER_DEBUG("Progressing pending commands of queue %p of type `%s` (%d pending) - ptr at r=%u, w=%u",
+            queue, command_queue_type_to_str(queue->type), queue->pending.size(), queue->pending.pos.r, queue->pending.pos.w);
+    // ask for progression of the given commands
+    assert(this->f_command_queue_progress);
+    const int r = this->f_command_queue_progress(queue);
+
+    // move reading position to first uncompleted cmd
+    const xkrt_command_queue_list_counter_t p = queue->pending.iterate([&] (xkrt_command_queue_list_counter_t p) {
+        return queue->completed[p];
+    });
+    queue->pending.pos.r = p;
+
+    LOGGER_DEBUG("Progressed pending commands of queue %p of type `%s` (%d pending)",
+            queue, command_queue_type_to_str(queue->type), queue->pending.size());
+
+    // return err code
+    return r;
+}
+
 
 XKRT_NAMESPACE_END;

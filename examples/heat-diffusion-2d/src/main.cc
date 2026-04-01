@@ -42,6 +42,8 @@
 
 # include <heat/consts.h>
 
+# define USE_COMMAND_GRAPH 0
+
 XKRT_NAMESPACE_USE;
 
 /* Making a global xkrt context of simplicity purposes */
@@ -126,15 +128,15 @@ maybe_export(int step, TYPE * grid)
             assert(thread);
 
             # define AC 1
-            constexpr task_flag_bitfield_t flags = TASK_FLAG_DEPENDENT;
+            constexpr task_flag_bitfield_t flags = TASK_FLAG_ACCESSES;
             constexpr size_t task_size = task_compute_size(flags, AC);
             constexpr size_t args_size = sizeof(args_export_t);
+            constexpr size_t size      = task_size + args_size;
 
-            task_t * task = thread->allocate_task(task_size + args_size);
-            new (task) task_t(export_vtk_format_id, flags);
+            task_t * task = runtime.task_new(export_vtk_format_id, flags, size);
 
-            task_dep_info_t * dep = TASK_DEP_INFO(task);
-            new (dep) task_dep_info_t(AC);
+            task_acs_info_t * dep = TASK_DEP_INFO(task);
+            new (dep) task_acs_info_t(AC);
 
             args_export_t * args = (args_export_t *) TASK_ARGS(task, task_size);
             new (args) args_export_t(grid, frame);
@@ -198,7 +200,7 @@ cuda(
     task_t * task,
     queue_cu_t * queue,
     command_t * cmd,
-    queue_command_list_counter_t idx
+    command_queue_list_counter_t idx
 ) {
     args_t * args = (args_t *) TASK_ARGS(task);
 
@@ -269,7 +271,7 @@ ze(
     task_t * task,
     queue_ze_t * queue,
     command_t * cmd,
-    queue_command_list_counter_t idx
+    command_queue_list_counter_t idx
 ) {
     args_t * args = (args_t *) TASK_ARGS(task);
 
@@ -372,7 +374,7 @@ hip(
     task_t * task,
     queue_cu_t * queue,
     command_t * cmd,
-    queue_command_list_counter_t idx
+    command_queue_list_counter_t idx
 ) {
     args_t * args = (args_t *) TASK_ARGS(task);
 
@@ -431,7 +433,8 @@ routine_task(
     device_t * device,
     task_t * task
 ) {
-    return runtime->task_detachable_kernel_launch(device, task, (kernel_launcher_t) F);
+    constexpr bool synchronous = false;
+    return runtime->task_kernel_launch<synchronous>(device, task, (kernel_launcher_t) F);
 }
 
 static void
@@ -512,15 +515,15 @@ update_tile(TYPE * src, TYPE * dst, int tile_x, int tile_y, int step, unsigned i
     assert(thread);
 
     # define AC 2
-    constexpr task_flag_bitfield_t flags = TASK_FLAG_DEVICE | TASK_FLAG_DEPENDENT | TASK_FLAG_DETACHABLE;
+    constexpr task_flag_bitfield_t flags = TASK_FLAG_DEVICE | TASK_FLAG_ACCESSES | TASK_FLAG_DETACHABLE;
     constexpr size_t task_size = task_compute_size(flags, AC);
     constexpr size_t args_size = sizeof(args_t);
+    constexpr size_t size      = task_size + args_size;
 
-    task_t * task = thread->allocate_task(task_size + args_size);
-    new (task) task_t(diffusion_format_id, flags);
+    task_t * task = runtime.task_new(diffusion_format_id, flags, size);
 
-    task_dep_info_t * dep = TASK_DEP_INFO(task);
-    new (dep) task_dep_info_t(AC);
+    task_acs_info_t * dep = TASK_DEP_INFO(task);
+    new (dep) task_acs_info_t(AC);
 
     task_dev_info_t * dev = TASK_DEV_INFO(task);
     constexpr uint8_t ocr_access = 0;

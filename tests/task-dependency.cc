@@ -74,14 +74,15 @@ main(void)
 
     // Create a task
     # define AC 1
-    constexpr task_flag_bitfield_t flags = TASK_FLAG_DEPENDENT;
+    constexpr task_flag_bitfield_t flags = TASK_FLAG_ACCESSES;
     constexpr size_t task_size = task_compute_size(flags, AC);
+    constexpr void * args = NULL;
     constexpr size_t args_size = 0;
 
-    task_t * task = runtime.task_new(fmtid, flags, task_size + args_size);
+    task_t * task = runtime.task_new(fmtid, flags, args, args_size, AC);
 
-    task_dep_info_t * dep = TASK_DEP_INFO(task);
-    new (dep) task_dep_info_t(AC);
+    task_acs_info_t * acs = TASK_ACS_INFO(task);
+    new (acs) task_acs_info_t(AC);
 
     # if XKRT_SUPPORT_DEBUG
     snprintf(task->label, sizeof(task->label), "dependent-task-test");
@@ -90,7 +91,7 @@ main(void)
     // set accesses
     access_t * accesses = TASK_ACCESSES(task);
     {
-        static_assert(AC <= TASK_MAX_ACCESSES);
+        static_assert(AC <= XKRT_TASK_MAX_ACCESSES);
 
         const int ld = 1;
         int * mem = (int *) malloc(ld * ld * sizeof(int));
@@ -102,7 +103,7 @@ main(void)
 
         new (accesses + 0) access_t(task, MATRIX_COLMAJOR, mem, ld, 0, 0, m, n, sizeof(int), ACCESS_MODE_R);
 
-        thread->resolve(accesses, AC);
+        runtime.task_accesses_resolve(accesses, AC);
 
         # undef AC
     }

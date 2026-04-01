@@ -43,6 +43,14 @@
 #  include <stdint.h>
 #  include <stdlib.h>
 
+#  include <opencg/c/api.h>
+
+# ifdef __cplusplus
+#  define xkstatic_assert(X) static_assert(X)
+# else
+#  define xkstatic_assert(X) _Static_assert(X, "")
+#endif
+
 /* maximum number of devices in total */
 # define XKRT_DEVICES_MAX (16)
 
@@ -52,59 +60,51 @@
 /* maximum number of callback per command */
 # define XKRT_COMMAND_CALLBACKS_MAX (2)
 
+/* device ids */
+# define XKRT_HOST_DEVICE_UNIQUE_ID         ((ocg_device_unique_id_t)0)
+# define XKRT_UNSPECIFIED_DEVICE_UNIQUE_ID  OCG_UNSPECIFIED_DEVICE_UNIQUE_ID
+xkstatic_assert(XKRT_HOST_DEVICE_UNIQUE_ID != XKRT_UNSPECIFIED_DEVICE_UNIQUE_ID);
+
 /* maximum number of performance ranks between devices. */
 # define XKRT_DEVICES_PERF_RANK_MAX (4)
 
-/* an ID representing the host device */
-# define HOST_DEVICE_GLOBAL_ID ((xkrt_device_global_id_t)0)
-
-/* an ID representing an unspecified device */
-# define UNSPECIFIED_DEVICE_GLOBAL_ID (XKRT_DEVICES_MAX)
-
 /* a bitmask that represents all devices */
-# define XKRT_DEVICES_MASK_ALL (~((xkrt_device_global_id_bitfield_t)0))
+# define XKRT_DEVICES_MASK_ALL (~((xkrt_device_unique_id_bitfield_t)0))
 
 /* maximum number of threads per device */
 # define XKRT_MAX_THREADS_PER_DEVICE (16)
 
 /* maximum memory per thread for task stack */
-# define THREAD_MAX_MEMORY ((size_t)4*1024*1024*1024)
+# define XKRT_THREAD_MAX_MEMORY ((size_t)4*1024*1024*1024)
 
-# define TASK_MAX_ACCESSES (1024)
-# define UNSPECIFIED_TASK_ACCESS ((xkrt_task_access_counter_type_t) TASK_MAX_ACCESSES)
+# define XKRT_TASK_MAX_ACCESSES (1024)
+# define XKRT_UNSPECIFIED_TASK_ACCESS ((xkrt_task_access_counter_t) XKRT_TASK_MAX_ACCESSES)
+
+/* When recording tasks and their commands: the number of empty commands reallocated in each chunk */
+# define XKRT_TASK_RECORD_COMMAND_POOL_CHUNK_CAPACITY (16)
 
 /* Maximum number of thread per team */
 # define XKRT_TEAM_MAX_THREADS          (2048)
 # define XKRT_TEAM_HIERARCHY_GROUP_SIZE (8)
 
-# ifdef __cplusplus
-#  define xkstatic_assert(X) static_assert(X)
-# else
-#  define xkstatic_assert(X) _Static_assert(X, "")
-#endif
-
 /* depth of io uring queues */
-# define XKRT_IO_URING_DEPTH (1024)
+# define XKRT_IO_URING_DEPTH (2048)
 
 // TODO: using smaller type here can improve perf
 
 typedef uint8_t xkrt_device_driver_id_t;
 xkstatic_assert(XKRT_DEVICES_MAX <= (1UL << (sizeof(xkrt_device_driver_id_t)*8)));
 
-typedef uint8_t xkrt_device_global_id_t;
-xkstatic_assert(XKRT_DEVICES_MAX <= (1UL << (sizeof(xkrt_device_global_id_t)*8)));
+typedef ocg_device_unique_id_t xkrt_device_unique_id_t;
+xkstatic_assert(XKRT_DEVICES_MAX <= (1UL << (sizeof(xkrt_device_unique_id_t)*8)));
 
-typedef uint16_t xkrt_device_global_id_bitfield_t;
-xkstatic_assert(XKRT_DEVICES_MAX <= sizeof(xkrt_device_global_id_bitfield_t)*8);
+typedef uint16_t xkrt_device_unique_id_bitfield_t;
+xkstatic_assert(XKRT_DEVICES_MAX <= sizeof(xkrt_device_unique_id_bitfield_t)*8);
+
+typedef uint16_t xkrt_task_access_counter_t;
+xkstatic_assert(XKRT_TASK_MAX_ACCESSES < (1 << 8*sizeof(xkrt_task_access_counter_t)));
 
 typedef uint16_t xkrt_task_wait_counter_type_t;
-typedef uint16_t xkrt_task_access_counter_type_t;
-xkstatic_assert(TASK_MAX_ACCESSES < (1 << 8*sizeof(xkrt_task_access_counter_type_t)));
-
-typedef uint16_t task_wait_counter_type_t;
-
-typedef uint16_t task_access_counter_t;
-xkstatic_assert(TASK_MAX_ACCESSES < (1 << 8*sizeof(task_access_counter_t)));
 
 typedef uint8_t xkrt_command_callback_index_t;
 xkstatic_assert(XKRT_COMMAND_CALLBACKS_MAX < (1 << 8*sizeof(xkrt_command_callback_index_t)));

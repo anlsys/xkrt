@@ -48,41 +48,47 @@
 
 XKRT_NAMESPACE_BEGIN
 
-    typedef std::atomic<uint8_t> queue_host_event_t;
+typedef std::atomic<uint8_t> queue_host_event_t;
 
-    typedef struct  queue_host_t
-    {
-        queue_t super;
+typedef struct  queue_host_t
+{
+    command_queue_t super;
 
-        /* async i/o */
-        struct {
+    /* async i/o */
+    struct {
 
-            /* io_uring file desc */
-            int fd;
+        /* io_uring file desc */
+        int fd;
 
-            /* submission queue */
-            void * sq_ptr;
-            unsigned * sq_tail;
-            unsigned * sq_mask;
-            unsigned * sq_array;
+        /* submission queue */
+        void * sq_ptr;
+        unsigned * sq_tail;
+        unsigned * sq_mask;
+        unsigned * sq_array;
 
-            struct io_uring_sqe * sqes;
+        struct io_uring_sqe * sqes;
 
-            /* completion queue */
-            void * cq_ptr;
-            unsigned * cq_head;
-            unsigned * cq_tail;
-            unsigned * cq_mask;
+        /* completion queue */
+        void * cq_ptr;
+        unsigned * cq_head;
+        unsigned * cq_tail;
+        unsigned * cq_mask;
 
-            struct io_uring_cqe * cqes;
+        struct io_uring_cqe * cqes;
 
-        } io_uring;
-    }               queue_host_t;
+        /* count of SQEs queued but not submitted */
+        unsigned  pending_submits;
 
-    typedef struct  driver_host_t
-    {
-        driver_t super;
-    }               driver_host_t;
+        /* pointer to SQ flags word in shared ring */
+        unsigned * sq_flags;
+
+    } io_uring;
+}               queue_host_t;
+
+typedef struct  driver_host_t
+{
+    driver_t super;
+}               driver_host_t;
 
 XKRT_NAMESPACE_END
 

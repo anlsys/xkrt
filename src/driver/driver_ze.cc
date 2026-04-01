@@ -428,20 +428,20 @@ XKRT_DRIVER_ENTRYPOINT(device_destroy)(device_driver_id_t device_driver_id)
 static int
 XKRT_DRIVER_ENTRYPOINT(device_commit)(
     device_driver_id_t device_driver_id,
-    device_global_id_bitfield_t * affinity
+    device_unique_id_bitfield_t * affinity
 ) {
     // TODO: Intel API `zeDeviceGetP2PProperties` currently does not have a property about P2P performances
     // so instead, simply hard-code affinity for now
 
     device_ze_t * device = device_ze_get(device_driver_id);
-    device_global_id_t device_global_id = device->inherited.global_id;
+    device_unique_id_t device_unique_id = device->inherited.unique_id;
 
     int rank = 0;
-    affinity[rank++] = (1 << device_global_id);
+    affinity[rank++] = (1 << device_unique_id);
 
 # if 1
-    device_global_id_t subdevice_global_id = (device_global_id % 2 == 0) ? (device_global_id + 1) : (device_global_id - 1);
-    affinity[rank++] =  (1 << subdevice_global_id);
+    device_unique_id_t subdevice_unique_id = (device_unique_id % 2 == 0) ? (device_unique_id + 1) : (device_unique_id - 1);
+    affinity[rank++] =  (1 << subdevice_unique_id);
     affinity[rank++] = (~affinity[0]) & (~affinity[1]);
 # else
     LOGGER_IMPL("Set affinity, right now inter-stack link has the same affinity as xe link :-(");
@@ -457,7 +457,7 @@ XKRT_DRIVER_ENTRYPOINT(transfer_async)(
     void * dst,
     void * src,
     const size_t size,
-    queue_t * iqueue,
+    command_queue_t * iqueue,
     ze_event_handle_t ze_event_handle = nullptr
 ) {
     queue_ze_t * queue = (queue_ze_t *) iqueue;
@@ -485,8 +485,8 @@ XKRT_DRIVER_ENTRYPOINT(transfer_async)(
 ////////////
 
 static int
-XKRT_DRIVER_ENTRYPOINT(queue_commands_wait)(
-    queue_t * iqueue
+XKRT_DRIVER_ENTRYPOINT(command_queue_wait_all)(
+    command_queue_t * iqueue
 ) {
     queue_ze_t * queue = (queue_ze_t *) iqueue;
     assert(queue);
@@ -501,10 +501,10 @@ XKRT_DRIVER_ENTRYPOINT(queue_commands_wait)(
 }
 
 static int
-XKRT_DRIVER_ENTRYPOINT(queue_command_launch)(
-    queue_t * iqueue,
+XKRT_DRIVER_ENTRYPOINT(command_queue_launch)(
+    command_queue_t * iqueue,
     command_t * cmd,
-    queue_command_list_counter_t idx
+    xkrt_command_queue_list_counter_t idx
 ) {
     queue_ze_t * queue = (queue_ze_t *) iqueue;
     assert(queue);
@@ -521,9 +521,15 @@ XKRT_DRIVER_ENTRYPOINT(queue_command_launch)(
 
     switch (cmd->type)
     {
-        case (COMMAND_TYPE_COPY_H2D_1D):
-        case (COMMAND_TYPE_COPY_D2H_1D):
-        case (COMMAND_TYPE_COPY_D2D_1D):
+        case (ocg::COMMAND_TYPE_PROG):
+        {
+            LOGGER_FATAL("IMPL ME");
+            break ;
+        }
+
+        case (ocg::COMMAND_TYPE_COPY_H2D_1D):
+        case (ocg::COMMAND_TYPE_COPY_D2H_1D):
+        case (ocg::COMMAND_TYPE_COPY_D2D_1D):
         {
                   void * dst    = (      void *) cmd->copy_1D.dst_device_addr;
             const void * src    = (const void *) cmd->copy_1D.src_device_addr;
@@ -542,9 +548,9 @@ XKRT_DRIVER_ENTRYPOINT(queue_command_launch)(
             break ;
         }
 
-        case (COMMAND_TYPE_COPY_H2D_2D):
-        case (COMMAND_TYPE_COPY_D2H_2D):
-        case (COMMAND_TYPE_COPY_D2D_2D):
+        case (ocg::COMMAND_TYPE_COPY_H2D_2D):
+        case (ocg::COMMAND_TYPE_COPY_D2H_2D):
+        case (ocg::COMMAND_TYPE_COPY_D2D_2D):
         {
                   void * dst    = (      void *) cmd->copy_2D.dst_device_view.addr;
             const void * src    = (const void *) cmd->copy_2D.src_device_view.addr;
@@ -589,7 +595,7 @@ XKRT_DRIVER_ENTRYPOINT(queue_command_launch)(
                     const ze_event_handle_t l_ze_event_handle = (i == src_region.height - 1) ? ze_event_handle : nullptr;
                     XKRT_DRIVER_ENTRYPOINT(transfer_async)(l_dst, l_src, l_size, iqueue, l_ze_event_handle);
                 }
-                XKRT_DRIVER_ENTRYPOINT(queue_commands_wait)(iqueue);
+                XKRT_DRIVER_ENTRYPOINT(command_queue_wait_all)(iqueue);
             }
             else
             {
@@ -621,10 +627,10 @@ XKRT_DRIVER_ENTRYPOINT(queue_command_launch)(
 }
 
 static inline int
-XKRT_DRIVER_ENTRYPOINT(queue_command_wait)(
-    queue_t * iqueue,
+XKRT_DRIVER_ENTRYPOINT(command_queue_wait)(
+    command_queue_t * iqueue,
     command_t * cmd,
-    queue_command_list_counter_t idx
+    xkrt_command_queue_list_counter_t idx
 ) {
     queue_ze_t * queue = (queue_ze_t *) iqueue;
     assert(queue);
@@ -638,9 +644,9 @@ XKRT_DRIVER_ENTRYPOINT(queue_command_wait)(
 }
 
 static int
-XKRT_DRIVER_ENTRYPOINT(queue_suggest)(
+XKRT_DRIVER_ENTRYPOINT(command_queue_suggest)(
     device_driver_id_t device_driver_id,
-    queue_type_t qtype
+    command_queue_type_t qtype
 ) {
     (void) device_driver_id;
 
@@ -664,27 +670,28 @@ XKRT_DRIVER_ENTRYPOINT(queue_suggest)(
 }
 
 static int
-XKRT_DRIVER_ENTRYPOINT(queue_commands_progress)(
-    queue_t * iqueue
+XKRT_DRIVER_ENTRYPOINT(command_queue_progress)(
+    command_queue_t * iqueue
 ) {
     assert(iqueue);
 
     queue_ze_t * queue = (queue_ze_t *) iqueue;
     int r = 0;
 
-    iqueue->pending.progress([&] (command_t * cmd, queue_command_list_counter_t p) {
+    iqueue->progress([&] (command_t * cmd, xkrt_command_queue_list_counter_t p) {
 
         switch (cmd->type)
         {
-            case (COMMAND_TYPE_KERN):
-            case (COMMAND_TYPE_COPY_H2H_1D):
-            case (COMMAND_TYPE_COPY_H2D_1D):
-            case (COMMAND_TYPE_COPY_D2H_1D):
-            case (COMMAND_TYPE_COPY_D2D_1D):
-            case (COMMAND_TYPE_COPY_H2H_2D):
-            case (COMMAND_TYPE_COPY_H2D_2D):
-            case (COMMAND_TYPE_COPY_D2H_2D):
-            case (COMMAND_TYPE_COPY_D2D_2D):
+            case (ocg::COMMAND_TYPE_PROG):
+            case (ocg::COMMAND_TYPE_PROG_LAUNCHER):
+            case (ocg::COMMAND_TYPE_COPY_H2H_1D):
+            case (ocg::COMMAND_TYPE_COPY_H2D_1D):
+            case (ocg::COMMAND_TYPE_COPY_D2H_1D):
+            case (ocg::COMMAND_TYPE_COPY_D2D_1D):
+            case (ocg::COMMAND_TYPE_COPY_H2H_2D):
+            case (ocg::COMMAND_TYPE_COPY_H2D_2D):
+            case (ocg::COMMAND_TYPE_COPY_D2H_2D):
+            case (ocg::COMMAND_TYPE_COPY_D2D_2D):
             {
                 ze_event_handle_t event = queue->ze.events.list[p];
                 ze_result_t res = zeEventQueryStatus(event);
@@ -753,25 +760,25 @@ device_command_queue_group_next(
     return ordinal_with_least_queues;
 }
 
-static queue_t *
-XKRT_DRIVER_ENTRYPOINT(queue_create)(
+static command_queue_t *
+XKRT_DRIVER_ENTRYPOINT(command_queue_create)(
     device_t * idevice,
-    queue_type_t type,
-    queue_command_list_counter_t capacity
+    command_queue_type_t type,
+    xkrt_command_queue_list_counter_t capacity
 ) {
     assert(idevice);
 
     queue_ze_t * queue = (queue_ze_t *) malloc(sizeof(queue_ze_t));
     assert(queue);
 
-    queue_init(
-        (queue_t *) queue,
+    command_queue_init(
+        (command_queue_t *) queue,
         type,
         capacity,
-        XKRT_DRIVER_ENTRYPOINT(queue_command_launch),
-        XKRT_DRIVER_ENTRYPOINT(queue_commands_progress),
-        XKRT_DRIVER_ENTRYPOINT(queue_commands_wait),
-        XKRT_DRIVER_ENTRYPOINT(queue_command_wait)
+        XKRT_DRIVER_ENTRYPOINT(command_queue_launch),
+        XKRT_DRIVER_ENTRYPOINT(command_queue_progress),
+        XKRT_DRIVER_ENTRYPOINT(command_queue_wait_all),
+        XKRT_DRIVER_ENTRYPOINT(command_queue_wait)
     );
 
     device_ze_t * device = (device_ze_t *) idevice;
@@ -847,7 +854,7 @@ XKRT_DRIVER_ENTRYPOINT(queue_create)(
         .mode       = ZE_COMMAND_QUEUE_MODE_ASYNCHRONOUS,
         .priority   = ZE_COMMAND_QUEUE_PRIORITY_NORMAL // ZE_COMMAND_QUEUE_PRIORITY_PRIORITY_LOW
     };
-    LOGGER_DEBUG("Creating queue of type `%4s` with (ordinal, index) = (%d, %d)", command_type_to_str((command_type_t)type), ordinal, index);
+    LOGGER_DEBUG("Creating queue of type `%4s` with (ordinal, index) = (%d, %d)", ocg::command_type_to_str((ocg::command_type_t)type), ordinal, index);
 
     # if 0 /* use a command list and command queue */
     ZE_SAFE_CALL(
@@ -901,7 +908,7 @@ XKRT_DRIVER_ENTRYPOINT(queue_create)(
 
     queue->ze.events.list = (ze_event_handle_t *) malloc(sizeof(ze_event_handle_t) * capacity);
     assert(queue->ze.events.list);
-    for (queue_command_list_counter_t i = 0 ; i < capacity ; ++i)
+    for (xkrt_command_queue_list_counter_t i = 0 ; i < capacity ; ++i)
     {
         ze_event_desc_t event_desc = {
             .stype  = ZE_STRUCTURE_TYPE_EVENT_DESC,
@@ -913,12 +920,12 @@ XKRT_DRIVER_ENTRYPOINT(queue_create)(
         ZE_SAFE_CALL(zeEventCreate(queue->ze.events.pool, &event_desc, queue->ze.events.list + i));
     }
 
-    return (queue_t *) queue;
+    return (command_queue_t *) queue;
 }
 
 static void
-XKRT_DRIVER_ENTRYPOINT(queue_delete)(
-    queue_t * iqueue
+XKRT_DRIVER_ENTRYPOINT(command_queue_delete)(
+    command_queue_t * iqueue
 ) {
     queue_ze_t * queue = (queue_ze_t *) iqueue;
     ZE_SAFE_CALL(zeEventPoolDestroy(queue->ze.events.pool));
@@ -1244,19 +1251,19 @@ XKRT_DRIVER_ENTRYPOINT(module_get_fn)(
 }
 
 int
-XKRT_DRIVER_ENTRYPOINT(transfer_h2d_async)(void * dst, void * src, const size_t size, queue_t * iqueue)
+XKRT_DRIVER_ENTRYPOINT(transfer_h2d_async)(void * dst, void * src, const size_t size, command_queue_t * iqueue)
 {
     return XKRT_DRIVER_ENTRYPOINT(transfer_async)(dst, src, size, iqueue);
 }
 
 int
-XKRT_DRIVER_ENTRYPOINT(transfer_d2h_async)(void * dst, void * src, const size_t size, queue_t * iqueue)
+XKRT_DRIVER_ENTRYPOINT(transfer_d2h_async)(void * dst, void * src, const size_t size, command_queue_t * iqueue)
 {
     return XKRT_DRIVER_ENTRYPOINT(transfer_async)(dst, src, size, iqueue);
 }
 
 int
-XKRT_DRIVER_ENTRYPOINT(transfer_d2d_async)(void * dst, void * src, const size_t size, queue_t * iqueue)
+XKRT_DRIVER_ENTRYPOINT(transfer_d2d_async)(void * dst, void * src, const size_t size, command_queue_t * iqueue)
 {
     return XKRT_DRIVER_ENTRYPOINT(transfer_async)(dst, src, size, iqueue);
 }
@@ -1330,9 +1337,9 @@ XKRT_DRIVER_ENTRYPOINT(create_driver)(void)
     // REGISTER(memory_unified_allocate);
     // REGISTER(memory_unified_deallocate);
 
-    REGISTER(queue_suggest);
-    REGISTER(queue_create);
-    REGISTER(queue_delete);
+    REGISTER(command_queue_suggest);
+    REGISTER(command_queue_create);
+    REGISTER(command_queue_delete);
 
     REGISTER(module_load);
     REGISTER(module_unload);

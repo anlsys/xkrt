@@ -62,9 +62,9 @@ class RouterCFS : public Router
 
             xkrt_router_cfs_map_t(const uint8_t weights[XKRT_DEVICES_MAX][XKRT_DEVICES_MAX])
             {
-                for (xkrt_device_global_id_t i = 0 ; i < XKRT_DEVICES_MAX ; ++i)
+                for (xkrt_device_unique_id_t i = 0 ; i < XKRT_DEVICES_MAX ; ++i)
                 {
-                    for (xkrt_device_global_id_t j = 0 ; j < XKRT_DEVICES_MAX ; ++j)
+                    for (xkrt_device_unique_id_t j = 0 ; j < XKRT_DEVICES_MAX ; ++j)
                     {
                         values[i][j].weight = weights[i][j];
                         values[i][j].used = false;
@@ -90,10 +90,10 @@ class RouterCFS : public Router
         ~RouterCFS() {}
 
         /* @override */
-        xkrt_device_global_id_t
+        xkrt_device_unique_id_t
         get_source(
-            const xkrt_device_global_id_t dst,
-            const xkrt_device_global_id_bitfield_t valid
+            const xkrt_device_unique_id_t dst,
+            const xkrt_device_unique_id_bitfield_t valid
         ) const {
 
             /* fast way out: valid on that device already */
@@ -103,7 +103,7 @@ class RouterCFS : public Router
             // TODO
 
             /* get any random device */
-            return (xkrt_device_global_id_t) (__random_set_bit(valid) - 1);
+            return (xkrt_device_unique_id_t) (__random_set_bit(valid) - 1);
         }
 
 };

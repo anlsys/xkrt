@@ -62,7 +62,7 @@ typedef struct alignas(CACHE_LINE_SIZE) args_t
 
 void
 runtime_t::memory_noncoherent_alloc(
-    device_global_id_t device_global_id,
+    device_unique_id_t device_unique_id,
     void * ptr,
     size_t size
 ) {
@@ -75,12 +75,12 @@ runtime_t::memory_noncoherent_alloc(
     const uintptr_t b = a + size;
     access_t access(NULL, a, b, ACCESS_MODE_V);
     BLASMemoryTree * memtree = (BLASMemoryTree *) task_get_memory_controller(this, thread->current_task, &access);
-    memtree->allocate_to_device(&access, device_global_id);
+    memtree->allocate_to_device(&access, device_unique_id);
 }
 
 void
 runtime_t::memory_noncoherent_alloc(
-    device_global_id_t device_global_id,
+    device_unique_id_t device_unique_id,
     matrix_storage_t storage,
     void * ptr, size_t ld,
     size_t m, size_t n,
@@ -93,198 +93,114 @@ runtime_t::memory_noncoherent_alloc(
     /* create an access to insert in the memory tree */
     access_t access(NULL, storage, ptr, ld, m, n, sizeof_type, ACCESS_MODE_V);
     BLASMemoryTree * memtree = (BLASMemoryTree *) task_get_memory_controller(this, thread->current_task, &access);
-    memtree->allocate_to_device(&access, device_global_id);
+    memtree->allocate_to_device(&access, device_unique_id);
 }
 
-void
-runtime_t::memory_coherent_async(
-    device_global_id_t device_global_id,
-    void * ptr,
-    size_t size
+constexpr task_flag_bitfield_t  flags       = TASK_FLAG_ACCESSES | TASK_FLAG_DEVICE;
+constexpr void                * args        = NULL;
+constexpr size_t                args_size   = 0;
+constexpr task_format_id_t      fmtid       = XKRT_TASK_FORMAT_NULL;
+constexpr task_access_counter_t AC          = 1;
+static_assert(AC <= XKRT_TASK_MAX_ACCESSES);
+
+static inline void
+xkrt_memory_coherent_async(
+    runtime_t * runtime,
+    device_unique_id_t device_unique_id,
+    const uintptr_t a,
+    const uintptr_t b
 ) {
     thread_t * thread = thread_t::get_tls();
     assert(thread);
 
-    # define AC 1
-    constexpr task_flag_bitfield_t flags = TASK_FLAG_DEPENDENT | TASK_FLAG_DEVICE;
-    constexpr size_t task_size = task_compute_size(flags, AC);
-    constexpr size_t args_size = 0;
-    constexpr task_format_id_t fmtid = XKRT_TASK_FORMAT_NULL;
+    task_t * task           = runtime->task_new(fmtid, flags, args, args_size, AC);
+    task_acs_info_t * acs   = TASK_ACS_INFO(task);
+    task_dev_info_t * dev   = TASK_DEV_INFO(task);
+    access_t * access       = TASK_ACCESSES(task);
 
-    task_t * task = this->task_new(fmtid, flags, task_size + args_size);
-
-    task_dep_info_t * dep = TASK_DEP_INFO(task);
-    new (dep) task_dep_info_t(AC);
-
-    task_dev_info_t * dev = TASK_DEV_INFO(task);
-    new (dev) task_dev_info_t(device_global_id, UNSPECIFIED_TASK_ACCESS);
+    new (acs)       task_acs_info_t(AC);
+    new (dev)       task_dev_info_t(device_unique_id, XKRT_UNSPECIFIED_TASK_ACCESS);
+    new (access)    access_t(task, a, b, ACCESS_MODE_R);
 
     # if XKRT_SUPPORT_DEBUG
     snprintf(task->label, sizeof(task->label), "coherent1D_async");
     # endif /* XKRT_SUPPORT_DEBUG */
 
-    static_assert(AC <= TASK_MAX_ACCESSES);
-    access_t * accesses = TASK_ACCESSES(task, flags);
-    const uintptr_t a = (const uintptr_t) ptr;
-    const uintptr_t b = a + size;
-    new (accesses + 0) access_t(task, a, b, ACCESS_MODE_R);
-    thread->resolve(accesses, AC);
-    # undef AC
-
-    this->task_commit(task);
+    runtime->task_accesses_resolve(access, AC);
+    runtime->task_commit(task);
 }
 
 void
 runtime_t::memory_coherent_async(
-    device_global_id_t device_global_id,
+    device_unique_id_t device_unique_id,
+    void * ptr,
+    size_t size
+) {
+    const uintptr_t a = (uintptr_t) ptr;
+    const uintptr_t b = (uintptr_t) (a + size);
+    return xkrt_memory_coherent_async(this, device_unique_id, a, b);
+}
+
+void
+runtime_t::memory_coherent_async(
+    device_unique_id_t device_unique_id,
+    void * ptr,
+    size_t size,
+    int n
+) {
+    this->foreach((uintptr_t) ptr, size, n, [&] (const int i, const uintptr_t a, const uintptr_t b)
+    {
+        xkrt_memory_coherent_async(this, device_unique_id, a, b);
+    });
+}
+
+void
+runtime_t::memory_coherent_async(
+    device_unique_id_t device_unique_id,
     matrix_storage_t storage,
     void * ptr, size_t ld,
     size_t m, size_t n,
     size_t sizeof_type
 ) {
-    /* relying on prefetching */
-    # if 1
     thread_t * thread = thread_t::get_tls();
     assert(thread);
 
-    # define AC 1
+    task_t          * task    = this->task_new(fmtid, flags, args, args_size, AC);
+    task_acs_info_t * acs     = TASK_ACS_INFO(task);
+    task_dev_info_t * dev     = TASK_DEV_INFO(task);
+    access_t        * access  = TASK_ACCESSES(task);
 
-    constexpr task_flag_bitfield_t flags = TASK_FLAG_DEPENDENT | TASK_FLAG_DEVICE;
-    constexpr size_t task_size = task_compute_size(flags, AC);
-    constexpr size_t args_size = 0;
-    constexpr task_format_id_t fmtid = XKRT_TASK_FORMAT_NULL;
-
-    task_t * task = this->task_new(fmtid, flags, task_size + args_size);
-
-    task_dep_info_t * dep = TASK_DEP_INFO(task);
-    new (dep) task_dep_info_t(AC);
-
-    task_dev_info_t * dev = TASK_DEV_INFO(task);
-    new (dev) task_dev_info_t(device_global_id, UNSPECIFIED_TASK_ACCESS);
+    new (acs)       task_acs_info_t(AC);
+    new (dev)       task_dev_info_t(device_unique_id, XKRT_UNSPECIFIED_TASK_ACCESS);
+    new (access)    access_t(task, storage, ptr, ld, m, n, sizeof_type, ACCESS_MODE_R);
 
     # if XKRT_SUPPORT_DEBUG
-    snprintf(task->label, sizeof(task->label), "coherent1D_async");
+    snprintf(task->label, sizeof(task->label), "coherent2D_async");
     # endif /* XKRT_SUPPORT_DEBUG */
 
-    static_assert(AC <= TASK_MAX_ACCESSES);
-    access_t * accesses = TASK_ACCESSES(task, flags);
-    new (accesses + 0) access_t(task, storage, ptr, ld, m, n, sizeof_type, ACCESS_MODE_R);
-    thread->resolve(accesses, AC);
-    # undef AC
-
+    this->task_accesses_resolve(access, AC);
     this->task_commit(task);
-
-    # else
-
-    /* parsing dependence tree (unsafe now that it may be cleared dynamically by task_new) */
-    // LOGGER_IMPL("in `memory_coherent_async` - uplo and memflag parameters not supported");
-
-    // against memory-tree, dep-tree does not know where the data will be once the predecessor task executed.
-    // For instance, two continuous partites may end-up being coherent on two different devices, thus cannot be merged
-    // Therefore, this impl creates 1 copy per partite (it is not even obvious that merging can improve perf.)
-
-    thread_t * thread = thread_t::get_tls();
-    assert(thread);
-    assert(thread->current_task);
-
-    /* create an access, and retrieve all dependency tree nodes that are in conflict */
-    DependencyDomain * domain = task_get_dependency_domain_blas_matrix(thread->current_task, ld, sizeof_type);
-    assert(domain);
-
-    access_t access(NULL, storage, ptr, ld, m, n, sizeof_type, ACCESS_MODE_R);
-
-    std::vector<void *> conflicts;
-    ((BLASDependencyTree *) domain)->conflicting(&conflicts, &access);
-
-    LOGGER_DEBUG("`memory_coherent_async` found %zu conflicts", conflicts.size());
-
-    /* create one task per conflict responsible to fetch the node */
-    # define AC 1
-    constexpr task_flag_bitfield_t flags = TASK_FLAG_DEPENDENT | TASK_FLAG_DEVICE;
-    constexpr size_t args_size = sizeof(args_t);
-    constexpr size_t task_size = task_compute_size(flags, AC);
-    constexpr task_format_id_t fmtid = XKRT_TASK_FORMAT_NULL;
-
-    /* for each node of the dep tree conflicting */
-    for (void * & conflict : conflicts)
-    {
-        /* retrieve the node */
-        BLASDependencyTree::Node * node = (BLASDependencyTree::Node *) conflict;
-        access_t * write = node->last_write;
-        assert(write);
-
-        // this may no longer be true due to dependencies between segments and matrices
-        // assert(access.host_view.ld          == write->host_view.ld);
-        // assert(access.host_view.sizeof_type == write->host_view.sizeof_type);
-
-        /* allocate a task with 1 access */
-        task_t * task = this->task_new<false>(fmtid, flags, task_size + args_size);
-
-        task_dev_info_t * dev = TASK_DEV_INFO(task);
-        new (dev) task_dev_info_t(device_global_id, UNSPECIFIED_TASK_ACCESS);
-
-        args_t * args = (args_t *) TASK_ARGS(task, task_size);
-        new (args) args_t(this);
-
-        task_dep_info_t * dep = TASK_DEP_INFO(task);
-        new (dep) task_dep_info_t(AC);
-
-        #if XKRT_SUPPORT_DEBUG
-        strncpy(task->label, "memory_coherent_async", sizeof(task->label));
-        #endif /* XKRT_SUPPORT_DEBUG */
-
-        access_t * accesses = TASK_ACCESSES(task, flags);
-        assert(accesses);
-
-        /* as 'conflicts' are forming a partition of 'access', it must only
-         * intersects with a single cube of 'access' : find which of the two */
-        bool found = false;
-        for (const Rect & rect : access.rects())
-        {
-            Rect h;
-            Rect::intersection(&h, rect, node->hyperrect);
-
-            if (!h.is_empty())
-            {
-                new (accesses + 0) access_t(task, MATRIX_COLMAJOR, h, access.host_view.ld, access.host_view.sizeof_type, ACCESS_MODE_R);
-                __access_precedes(write, accesses + 0);
-                found = true;
-                break ;
-            }
-        }
-        /* assert to check that we did find a cube from 'access' that intersects with the node */
-        assert(found);
-
-        // insert for future tasks dependencies
-        domain->put<AC>(accesses);
-
-        // commit the task
-        this->task_commit(task);
-    }
-
-    # undef AC
-    # endif
 }
 
 void
 runtime_t::memory_coherent_sync(
-    device_global_id_t device_global_id,
+    device_unique_id_t device_unique_id,
     void * ptr,
     size_t size
 ) {
-    this->memory_coherent_async(device_global_id, ptr, size);
+    this->memory_coherent_async(device_unique_id, ptr, size);
     this->task_wait();
 }
 
 void
 runtime_t::memory_coherent_sync(
-    device_global_id_t device_global_id,
+    device_unique_id_t device_unique_id,
     matrix_storage_t storage,
     void * ptr, size_t ld,
     size_t m, size_t n,
     size_t sizeof_type
 ) {
-    this->memory_coherent_async(device_global_id, storage, ptr, ld, m, n, sizeof_type);
+    this->memory_coherent_async(device_unique_id, storage, ptr, ld, m, n, sizeof_type);
     this->task_wait();
 }
 

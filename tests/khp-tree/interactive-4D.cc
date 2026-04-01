@@ -1,12 +1,12 @@
 # include <iostream>
-# include "noop-khp-tree.hpp"
+# include "noop-lp-tree.hpp"
 
 # define K 4
 
 int
 main(void)
 {
-    NoopKHPTree<K> tree;
+    NoopLPTree<K> tree;
 
     int x0, x1, y0, y1, z0, z1, w0, w1;
     std::cout << "Enter rectangles in format `x0 x1 y0 y1 z0 z1 w0 w1` or press CTRL+D to stop:" << std::endl;

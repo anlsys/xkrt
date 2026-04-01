@@ -51,7 +51,7 @@ XKRT_NAMESPACE_BEGIN
 
 typedef struct  queue_hip_t
 {
-    queue_t super;
+    command_queue_t super;
 
     struct {
 
@@ -62,7 +62,7 @@ typedef struct  queue_hip_t
 
         struct {
             hipEvent_t * buffer;
-            queue_command_list_counter_t capacity;
+            xkrt_command_queue_list_counter_t capacity;
         } events;
 
         struct {

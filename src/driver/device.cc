@@ -279,59 +279,9 @@ device_t::memory_allocate(const size_t user_size)
 ///////////////////////
 
 void
-device_t::offloader_init(
-    int (*f_queue_suggest)(device_driver_id_t device_driver_id, queue_type_t type)
-) {
-    /* next queue to use (round robin) */
-    this->next_thread = 0;
-    memset(this->next_queue, 0, sizeof(this->next_queue));
-
-    /* count total number of queue */
-    this->nqueues_per_thread = 0;
-
-    for (int qtype = 0 ; qtype < XKRT_QUEUE_TYPE_ALL ; ++qtype)
-    {
-        this->count[qtype] = (this->conf->offloader.queues[qtype].n >= 0) ? this->conf->offloader.queues[qtype].n : f_queue_suggest ? f_queue_suggest(this->driver_id, (queue_type_t) qtype) : 4;
-        this->nqueues_per_thread += this->count[qtype];
-    }
-}
-
-void
-device_t::offloader_init_thread(
-    int tid,
-    queue_t * (*f_queue_create)(device_t * device, queue_type_t type, queue_command_list_counter_t capacity)
-) {
-    if (this->nqueues_per_thread == 0)
-        return ;
-
-    /* allocate queues array */
-    assert(this->nqueues_per_thread);
-    queue_t ** all_queues = (queue_t **) malloc(sizeof(queue_t *) * this->nqueues_per_thread);
-    assert(all_queues);
-
-    /* retrieve queue offset per type */
-    uint16_t i = 0;
-    for (int qtype = 0 ; qtype < XKRT_QUEUE_TYPE_ALL ; ++qtype)
-    {
-        this->queues[tid][qtype] = all_queues + i;
-        for (int j = 0 ; j < this->count[qtype] ; ++j, ++i)
-        {
-            // create a new queue
-            all_queues[i] = f_queue_create(this, static_cast<queue_type_t>(qtype), this->conf->offloader.capacity);
-            if (all_queues[i] == NULL)
-            {
-                this->count[qtype] = j;
-                break ;
-            }
-        }
-    }
-    assert(i <= this->nqueues_per_thread);
-}
-
-void
 device_t::offloader_queues_are_empty(
     int tid,
-    const queue_type_t qtype,
+    const command_queue_type_t qtype,
     bool * ready,
     bool * pending
 ) const {
@@ -346,7 +296,7 @@ device_t::offloader_queues_are_empty(
     {
         for (int i = 0 ; i < this->count[s] ; ++i)
         {
-            const queue_t * queue = this->queues[tid][s][i];
+            const command_queue_t * queue = this->queues[tid][s][i];
             if (*ready == false && !queue->ready.is_empty())
                 *ready = true;
             if (*pending == false && !queue->pending.is_empty())
@@ -357,36 +307,11 @@ device_t::offloader_queues_are_empty(
     }
 }
 
-int
-device_t::offloader_queue_commands_launch(
-    int tid,
-    const queue_type_t qtype
-) {
-    int r = 0;
-
-    unsigned int bgn = (qtype == XKRT_QUEUE_TYPE_ALL) ?                    0 : qtype;
-    unsigned int end = (qtype == XKRT_QUEUE_TYPE_ALL) ? XKRT_QUEUE_TYPE_ALL : qtype + 1;
-    for (unsigned int s = bgn ; s < end ; ++s)
-    {
-        for (int i = 0 ; i < this->count[s] ; ++i)
-        {
-            queue_t * queue = this->queues[tid][s][i];
-            assert(queue);
-
-            queue->lock();
-            r += queue->launch_ready_commands();
-            queue->unlock();
-        }
-    }
-
-    return r;
-}
-
 void
 device_t::offloader_queue_next(
-    queue_type_t qtype,
+    command_queue_type_t qtype,
     thread_t ** pthread,    /* OUT */
-    queue_t ** pqueue       /* OUT */
+    command_queue_t ** pqueue       /* OUT */
 ) {
     // round robin on the thread for this queue type
     int next_thread = this->next_thread.fetch_add(1, std::memory_order_relaxed) % this->team->get_nthreads();
@@ -401,83 +326,165 @@ device_t::offloader_queue_next(
     *pqueue  = this->queues[next_thread][qtype][snext];
 }
 
-int
-device_t::offloader_launch(int tid)
-{
-    return this->offloader_queue_commands_launch(tid, XKRT_QUEUE_TYPE_ALL);
-}
-
-int
-device_t::offloader_progress(int tid)
-{
-    int err = this->offloader_queue_commands_progress<false>(tid, XKRT_QUEUE_TYPE_ALL);
-    assert((err == 0) || (err == EINPROGRESS));
-
-    return err;
-}
-
-int
-device_t::offloader_wait_random_command(int tid)
-{
-    static unsigned int seed = 0x42;
-
-    // randomly pick a type and a queue
-    static_assert(XKRT_QUEUE_TYPE_ALL > 0);
-    unsigned int rtype  = rand_r(&seed);
-    unsigned int rqueue = rand_r(&seed);
-    for (unsigned int ctype = 0 ; ctype < XKRT_QUEUE_TYPE_ALL ; ++ctype)
-    {
-        unsigned int s = (rtype + ctype) % XKRT_QUEUE_TYPE_ALL;
-
-        queue_t * queue = NULL;
-        for (int iqueue = 0 ; iqueue < this->count[s] ; ++iqueue)
-        {
-            unsigned int i = (rqueue + iqueue) % this->count[s];
-
-            queue = this->queues[tid][s][i];
-            assert(queue);
-
-            // if the queue has pending commands
-            if (!queue->pending.is_empty())
-            {
-                const queue_command_list_counter_t i = queue->pending.pos.r;
-                assert(i >= 0);
-                assert(i < queue->pending.capacity);
-
-                command_t * cmd = queue->pending.cmd + i;
-                assert(cmd);
-                assert(!cmd->completed);
-
-                assert(queue->f_command_wait);
-
-                // waiting on the first event of the randomly elected queue
-                int err = queue->f_command_wait(queue, cmd, i);
-
-                // calling this to complete events and move queues pointers
-                // but also detect out-of-order completions
-                this->offloader_progress(tid);
-
-                return err;
-            }
-        }
-    }
-    return 0;
-}
-
-////////////////////////////
+////////////////////////
 // COMMAND SUBMISSION //
-////////////////////////////
+////////////////////////
+
+void
+device_t::offloader_queue_command_new(
+    const command_queue_type_t qtype,   /* IN  */
+    const ocg::command_type_t ctype,         /* IN  */
+    const command_flag_t flags,         /* IN  */
+    thread_t ** pthread,                /* OUT */
+    command_queue_t ** pqueue,          /* OUT */
+    command_t ** pcmd                   /* OUT */
+) {
+    assert(pqueue);
+    assert(pcmd);
+
+    /* retrieve native queue */
+    this->offloader_queue_next(qtype, pthread, pqueue);
+    assert(*pthread);
+    assert(*pqueue);
+    assert((*pqueue)->type == qtype);
+
+    /* allocate the command */
+    do {
+        SPINLOCK_LOCK((*pqueue)->spinlock);
+        (*pcmd) = (*pqueue)->command_new(ctype, flags);
+        if (*pcmd)
+            break ; /* will be unlock during 'commit' */
+        SPINLOCK_UNLOCK((*pqueue)->spinlock);
+        LOGGER_FATAL("Stream is full, increase 'XKRT_OFFLOADER_CAPACITY' or implement support for full-queue management yourself :-) (sorry)");
+    } while (1);
+}
 
 /* commit a queue command and wakeup thread */
 void
 device_t::offloader_queue_command_commit(
-    thread_t * thread,
-    queue_t * queue,
-    command_t * cmd
+    thread_t * thread,          /* thread that will execute the command */
+    command_queue_t * queue,    /* queue of that thread */
+    command_t * cmd             /* the command */
 ) {
+    /* If the current task is recording */
+    thread_t * tls = thread_t::get_tls();
+    assert(tls);
+
+    /* If recording */
+    if (cmd->type != ocg::COMMAND_TYPE_PROG_LAUNCHER)
+    {
+        task_t * task = tls->current_task_record;
+        if (task)
+        {
+            assert(task->flags & TASK_FLAG_RECORD);
+            assert(
+                task->state.value == TASK_STATE_DATA_FETCHING ||  // emitted for fetching data before making the task ready
+                task->state.value == TASK_STATE_EXECUTING     ||  // emitted alongside execution
+                task->state.value == TASK_STATE_COMPLETED         // prefetching
+            );
+            assert(task->parent);
+            assert(task->parent->flags & TASK_FLAG_GRAPH);
+
+            command_t * cmdrec = task_put_command_record(task);
+            memcpy(cmdrec, cmd, sizeof(command_t));
+            cmdrec->completion_callback_clear();
+
+            // if skipping command execution
+            if (!(task->parent->flags & TASK_FLAG_GRAPH_EXECUTE_COMMAND))
+            {
+                // complete it now and return
+                cmd->completion_callback_raise();
+                SPINLOCK_UNLOCK(queue->spinlock);
+                return ;
+            }
+        }
+    }
+
     /* commit command to the queue */
     queue->commit(cmd);
+    SPINLOCK_UNLOCK(queue->spinlock);
 
     /* wakeup device worker thread */
     thread->wakeup();
+}
+
+static inline command_queue_type_t
+command_type_to_queue_type(
+    ocg::command_type_t ctype
+) {
+    switch (ctype)
+    {
+        case (ocg::COMMAND_TYPE_PROG):
+        case (ocg::COMMAND_TYPE_PROG_LAUNCHER):
+        case (ocg::COMMAND_TYPE_BATCH):
+            return XKRT_QUEUE_TYPE_KERN;
+
+        case (ocg::COMMAND_TYPE_COPY_H2H_1D):
+        case (ocg::COMMAND_TYPE_COPY_H2H_2D):
+            return XKRT_QUEUE_TYPE_H2D;
+
+        case (ocg::COMMAND_TYPE_COPY_H2D_1D):
+        case (ocg::COMMAND_TYPE_COPY_H2D_2D):
+            return XKRT_QUEUE_TYPE_H2D;
+
+        case (ocg::COMMAND_TYPE_COPY_D2H_1D):
+        case (ocg::COMMAND_TYPE_COPY_D2H_2D):
+            return XKRT_QUEUE_TYPE_D2H;
+
+        case (ocg::COMMAND_TYPE_COPY_D2D_1D):
+        case (ocg::COMMAND_TYPE_COPY_D2D_2D):
+            return XKRT_QUEUE_TYPE_D2D;
+
+        case (ocg::COMMAND_TYPE_FD_READ):
+            return XKRT_QUEUE_TYPE_FD_READ;
+
+        case (ocg::COMMAND_TYPE_FD_WRITE):
+            return XKRT_QUEUE_TYPE_FD_WRITE;
+
+        case (ocg::COMMAND_TYPE_EMPTY):
+        default:
+            LOGGER_FATAL("I don't know what queue I should use for that command!");
+            return XKRT_QUEUE_TYPE_ALL;
+    }
+}
+
+int
+device_t::command_submit(command_t * cmd)
+{
+    // command is serialized: it must be launched serially on the calling
+    // thread, which returns on the command completion
+    if (cmd->flags & COMMAND_FLAG_SERIALIZED)
+    {
+        assert(cmd->type == ocg::COMMAND_TYPE_EMPTY || cmd->type == ocg::COMMAND_TYPE_PROG);
+        assert(cmd->flags & COMMAND_FLAG_SYNCHRONOUS);
+        if (cmd->type == ocg::COMMAND_TYPE_EMPTY)
+            cmd->completion_callback_raise();
+        else if (cmd->type == ocg::COMMAND_TYPE_PROG)
+        {
+            if (this->unique_id == XKRT_HOST_DEVICE_UNIQUE_ID)
+                cmd->prog.launcher.fixed.fn(cmd->prog.launcher.fixed.args);
+            else
+                LOGGER_FATAL("Unsupported command");
+        }
+    }
+    // else, push to a queue
+    else
+    {
+        command_queue_type_t qtype = command_type_to_queue_type(cmd->type);
+
+        thread_t * thread;
+        command_queue_t * queue;
+        this->offloader_queue_next(qtype, &thread, &queue);
+        assert(thread);
+        assert(queue);
+
+        SPINLOCK_LOCK(queue->spinlock);
+        queue->emplace(cmd);
+        queue->commit(cmd);
+        SPINLOCK_UNLOCK(queue->spinlock);
+
+        thread->wakeup();
+    }
+
+    return 0;
 }

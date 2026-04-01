@@ -137,7 +137,7 @@ typedef struct  device_ze_t
 
 typedef struct  queue_ze_t
 {
-    queue_t super;
+    command_queue_t super;
 
     struct {
         struct {

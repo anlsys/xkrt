@@ -177,6 +177,13 @@ struct  team_desc_t
     bool master_is_member;
 };
 
+/* thread states */
+typedef enum    thread_state_t
+{
+    XKRT_THREAD_UNINITIALIZED   = 0,
+    XKRT_THREAD_INITIALIZED     = 1
+}               thread_state_t;
+
 /* a team, currently is made of 1 thread max per device, bound onto its closest physical cpu */
 struct team_t
 {

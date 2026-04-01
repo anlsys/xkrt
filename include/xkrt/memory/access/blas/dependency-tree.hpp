@@ -37,7 +37,7 @@
 #ifndef __DEPENDENCY_TREE_HPP__
 # define __DEPENDENCY_TREE_HPP__
 
-# include <xkrt/memory/access/common/khp-tree.hpp>
+# include <xkrt/memory/access/common/lp-tree.hpp>
 # include <xkrt/memory/access/dependency-domain.hpp>
 # include <xkrt/task/task.hpp>
 
@@ -91,9 +91,9 @@ class KBLASDependencyTreeSearch
 } /* class KBLASDependencyTreeSearch */;
 
 template <int K>
-class KBLASDependencyTreeNode : public KHPTree<K, KBLASDependencyTreeSearch<K>>::Node {
+class KBLASDependencyTreeNode : public LPTree<K, KBLASDependencyTreeSearch<K>>::Node {
 
-    using Base      = typename KHPTree<K, KBLASDependencyTreeSearch<K>>::Node;
+    using Base      = typename LPTree<K, KBLASDependencyTreeSearch<K>>::Node;
     using Node      = KBLASDependencyTreeNode<K>;
     using Hyperrect = KHyperrect<K>;
     using Search    = KBLASDependencyTreeSearch<K>;
@@ -186,10 +186,10 @@ class KBLASDependencyTreeNode : public KHPTree<K, KBLASDependencyTreeSearch<K>>:
 };
 
 template<int K>
-class KBLASDependencyTree : public KHPTree<K, KBLASDependencyTreeSearch<K>>, public DependencyDomain
+class KBLASDependencyTree : public LPTree<K, KBLASDependencyTreeSearch<K>>, public DependencyDomain
 {
     public:
-        using Base      = KHPTree<K, KBLASDependencyTreeSearch<K>>;
+        using Base      = LPTree<K, KBLASDependencyTreeSearch<K>>;
         using Hyperrect = KHyperrect<K>;
         using Node      = KBLASDependencyTreeNode<K>;
         using NodeBase  = typename Base::Node;

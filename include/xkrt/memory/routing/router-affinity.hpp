@@ -53,7 +53,7 @@ class RouterAffinity : public Router
          *  bitmask of with '1' on the source devices of affinity 'j'.  The
          *  lowest the affinity, the higher the performance.
          */
-        device_global_id_bitfield_t affinity[XKRT_DEVICES_MAX][XKRT_DEVICES_PERF_RANK_MAX];
+        device_unique_id_bitfield_t affinity[XKRT_DEVICES_MAX][XKRT_DEVICES_PERF_RANK_MAX];
 
     public:
 
@@ -61,10 +61,10 @@ class RouterAffinity : public Router
         ~RouterAffinity() {}
 
         /* @override */
-        device_global_id_t
+        device_unique_id_t
         get_source(
-            const device_global_id_t dst,
-            const device_global_id_bitfield_t valid
+            const device_unique_id_t dst,
+            const device_unique_id_bitfield_t valid
         ) const override {
 
             /* fast way out: valid on that device already */
@@ -75,7 +75,7 @@ class RouterAffinity : public Router
             for (int rank = 0 ; rank < XKRT_DEVICES_PERF_RANK_MAX - 1 ; ++rank)
             {
                 /* get valid devices for this perf */
-                const device_global_id_bitfield_t mask = valid & this->affinity[dst][rank];
+                const device_unique_id_bitfield_t mask = valid & this->affinity[dst][rank];
                 if (mask == 0)
                     continue ;
 
@@ -84,7 +84,7 @@ class RouterAffinity : public Router
             }
 
             /* get any random device */
-            return (device_global_id_t) (__random_set_bit(valid) - 1);
+            return (device_unique_id_t) (__random_set_bit(valid) - 1);
         }
 
 };

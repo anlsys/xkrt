@@ -40,7 +40,7 @@
 # define __XKRT_QUEUE_TYPE_HPP__
 
 /* DONT CHANGE ORDER HERE !! Can have side effects (in the Offloader class for instance) */
-typedef enum    xkrt_queue_type_t
+typedef enum    xkrt_command_queue_type_t
 {
     XKRT_QUEUE_TYPE_H2D        = 0,    /* from CPU to GPU */
     XKRT_QUEUE_TYPE_D2H        = 1,    /* from GPU to CPU */
@@ -51,6 +51,6 @@ typedef enum    xkrt_queue_type_t
     XKRT_QUEUE_TYPE_FD_WRITE   = 6,
     XKRT_QUEUE_TYPE_ALL                /* internal purpose */
 
-}               xkrt_queue_type_t;
+}               xkrt_command_queue_type_t;
 
 # endif /* __XKRT_QUEUE_TYPE_HPP__ */

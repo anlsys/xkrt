@@ -78,7 +78,7 @@ typedef struct  device_stats_t
     struct {
         stats_int_t commited;
         stats_int_t completed;
-    } commands[COMMAND_TYPE_MAX];
+    } commands[ocg::COMMAND_TYPE_MAX];
 
 }               device_stats_t;
 
@@ -108,7 +108,7 @@ stats_device_agg(device_stats_t * src, device_stats_t * agg)
         agg->queues[stype].transfered += src->queues[stype].transfered;
     }
 
-    for (int cmd_type = 0 ; cmd_type < COMMAND_TYPE_MAX ; ++cmd_type)
+    for (int cmd_type = 0 ; cmd_type < ocg::COMMAND_TYPE_MAX ; ++cmd_type)
     {
         agg->commands[cmd_type].commited += src->commands[cmd_type].commited;
         agg->commands[cmd_type].completed += src->commands[cmd_type].completed;
@@ -164,23 +164,23 @@ stats_device_report(device_stats_t * stats)
         LOGGER_WARN("    Unified Prefetched Host: %s", buffer);
     }
 
-    LOGGER_WARN("  Streams");
+    LOGGER_WARN("  Queues");
     for (int stype = 0 ; stype < XKRT_QUEUE_TYPE_ALL ; ++stype)
     {
         # if 0
         metric_byte(buffer, sizeof(buffer), stats->queues[stype].transfered.load());
-        LOGGER_WARN("    `%4s` - with %2lu queues - transfered %s", command_type_to_str((queue_type_t) stype), stats->queues[stype].n.load(), buffer);
+        LOGGER_WARN("    `%4s` - with %2lu queues - transfered %s", ocg::command_type_to_str((queue_type_t) stype), stats->queues[stype].n.load(), buffer);
         # else
-        LOGGER_WARN("    `%4s` - with %2lu queues - transfered %zuB", queue_type_to_str((queue_type_t) stype), stats->queues[stype].n.load(), stats->queues[stype].transfered.load());
+        LOGGER_WARN("    `%8s` - with %2lu queues - transfered %zuB", command_queue_type_to_str((command_queue_type_t) stype), stats->queues[stype].n.load(), stats->queues[stype].transfered.load());
         # endif
     }
 
-    LOGGER_WARN("  Instructions");
-    for (int cmd_type = 0 ; cmd_type < COMMAND_TYPE_MAX ; ++cmd_type)
+    LOGGER_WARN("  Commands");
+    for (int cmd_type = 0 ; cmd_type < ocg::COMMAND_TYPE_MAX ; ++cmd_type)
     {
         LOGGER_WARN(
-            "    `%12s` - commited %6zu - completed %6zu",
-            command_type_to_str((command_type_t) cmd_type),
+            "    `%13s` - commited %6zu - completed %6zu",
+            ocg::command_type_to_str((ocg::command_type_t) cmd_type),
             stats->commands[cmd_type].commited.load(),
             stats->commands[cmd_type].completed.load()
         );
@@ -205,8 +205,8 @@ stats_device_gather(
         {
             for (int queue_id = 0 ; queue_id < device->count[stype] ; ++queue_id)
             {
-                queue_t * queue = device->queues[device_tid][stype][queue_id];
-                for (int cmd_type = 0 ; cmd_type < COMMAND_TYPE_MAX ; ++cmd_type)
+                command_queue_t * queue = device->queues[device_tid][stype][queue_id];
+                for (int cmd_type = 0 ; cmd_type < ocg::COMMAND_TYPE_MAX ; ++cmd_type)
                 {
                     stats->commands[cmd_type].commited += queue->stats.commands[cmd_type].commited.load();
                     stats->commands[cmd_type].completed += queue->stats.commands[cmd_type].completed.load();
@@ -269,12 +269,12 @@ runtime_t::stats_report(void)
     device_stats_t agg;
     memset(&agg, 0, sizeof(agg));
 
-    for (device_global_id_t device_global_id = 0 ; device_global_id < this->drivers.devices.n ; ++device_global_id)
+    for (device_unique_id_t device_unique_id = 0 ; device_unique_id < this->drivers.devices.n ; ++device_unique_id)
     {
-        device_t * device = this->drivers.devices.list[device_global_id];
+        device_t * device = this->drivers.devices.list[device_unique_id];
 
         driver_t * driver = this->driver_get(device->driver_type);
-        LOGGER_WARN("Device %u", device->global_id);
+        LOGGER_WARN("Device %u", device->unique_id);
 
         char info[512];
         driver->f_device_info(device->driver_id, info, sizeof(info));

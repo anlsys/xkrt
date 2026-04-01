@@ -2,8 +2,6 @@
 ** Copyright 2024,2025 INRIA
 **
 ** Contributors :
-** Thierry Gautier, thierry.gautier@inrialpes.fr
-** Joao Lima joao.lima@inf.ufsm.br
 ** Romain PEREIRA, romain.pereira@inria.fr + rpereira@anl.gov
 **
 ** This software is a computer program whose purpose is to execute
@@ -36,34 +34,36 @@
 ** knowledge of the CeCILL-C license and that you accept its terms.
 **/
 
-#ifndef __QUEUE_COMMAND_TYPE_H__
-# define __QUEUE_COMMAND_TYPE_H__
+#ifndef __XKRT_ATOMIC_H__
+# define __XKRT_ATOMIC_H__
 
-XKRT_NAMESPACE_BEGIN
+# include <atomic>
 
-    typedef enum    command_type_t
+/**
+ *  Atomically:
+ *      If ref != desired
+ *          ref := desired
+ *          return true
+ *      return false
+ */
+template<typename T>
+static inline bool
+xkrt_compare_and_swap(std::atomic<T> & ref, T desired)
+{
+    T current = ref.load(std::memory_order_relaxed);
+    while (current != desired)
     {
-        COMMAND_TYPE_KERN         = 0,
+        if (ref.compare_exchange_weak(
+                current,
+                desired,
+                std::memory_order_acq_rel,
+                std::memory_order_relaxed
+           )
+        ) {
+            return true;
+        }
+    }
+    return false;
+}
 
-        COMMAND_TYPE_COPY_H2H_1D  = 1,
-        COMMAND_TYPE_COPY_H2D_1D  = 2,
-        COMMAND_TYPE_COPY_D2H_1D  = 3,
-        COMMAND_TYPE_COPY_D2D_1D  = 4,
-
-        COMMAND_TYPE_COPY_H2H_2D  = 5,
-        COMMAND_TYPE_COPY_H2D_2D  = 6,
-        COMMAND_TYPE_COPY_D2H_2D  = 7,
-        COMMAND_TYPE_COPY_D2D_2D  = 8,
-
-        COMMAND_TYPE_FD_READ      = 9,
-        COMMAND_TYPE_FD_WRITE     = 10,
-
-        COMMAND_TYPE_MAX          = 11
-
-    }               command_type_t;
-
-    const char * command_type_to_str(command_type_t type);
-
-XKRT_NAMESPACE_END
-
-#endif /* __QUEUE_COMMAND_H__ */
+#endif /* __XKRT_ATOMIC_H__ */

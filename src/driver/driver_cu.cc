@@ -72,6 +72,8 @@
 # include <cstdint>
 # include <cerrno>
 
+# include <algorithm>
+
 XKRT_NAMESPACE_BEGIN
 
 /* number of used device for this run */
@@ -110,10 +112,10 @@ XKRT_DRIVER_ENTRYPOINT(get_ndevices_max)(void)
    for which the device d has link with performance i.
 */
 
-static int                                  cu_device_count   = 0;
-static int *                                cu_perf_topo      = NULL;
-static device_global_id_bitfield_t *   cu_perf_device    = NULL;
-static bool                                 cu_use_p2p        = false;
+static int                           cu_device_count   = 0;
+static int *                         cu_perf_topo      = NULL;
+static device_unique_id_bitfield_t * cu_perf_device    = NULL;
+static bool                          cu_use_p2p        = false;
 
 static void
 get_gpu_topo(
@@ -215,8 +217,8 @@ get_gpu_topo(
     }
 
     // get number of ranks
-    size_t size = cu_device_count * XKRT_DEVICES_PERF_RANK_MAX * sizeof(device_global_id_bitfield_t);
-    cu_perf_device = (device_global_id_bitfield_t *) malloc(size);
+    size_t size = cu_device_count * XKRT_DEVICES_PERF_RANK_MAX * sizeof(device_unique_id_bitfield_t);
+    cu_perf_device = (device_unique_id_bitfield_t *) malloc(size);
     assert(cu_perf_device);
     memset(cu_perf_device, 0, size);
 
@@ -480,7 +482,7 @@ XKRT_DRIVER_ENTRYPOINT(device_destroy)(device_driver_id_t device_driver_id)
 static int
 XKRT_DRIVER_ENTRYPOINT(device_commit)(
     device_driver_id_t device_driver_id,
-    device_global_id_bitfield_t * affinity
+    device_unique_id_bitfield_t * affinity
 ) {
     assert(affinity);
 
@@ -501,7 +503,7 @@ XKRT_DRIVER_ENTRYPOINT(device_commit)(
         /* add device with itself */
         if (device_driver_id == other_device_driver_id)
         {
-            affinity[0] |= (device_global_id_bitfield_t) (1UL << device->inherited.global_id);
+            affinity[0] |= (device_unique_id_bitfield_t) (1UL << device->inherited.unique_id);
         }
         else
         {
@@ -519,19 +521,19 @@ XKRT_DRIVER_ENTRYPOINT(device_commit)(
                         assert(rank);
                         if (cu_perf_device[device_driver_id*XKRT_DEVICES_PERF_RANK_MAX+rank] & (1UL << other_device_driver_id))
                         {
-                            affinity[rank] |= (device_global_id_bitfield_t) (1UL << other_device->inherited.global_id);
+                            affinity[rank] |= (device_unique_id_bitfield_t) (1UL << other_device->inherited.unique_id);
                         }
                     }
                     else
                     {
                         LOGGER_WARN("Could not enable peer from %d to %d",
-                                device->inherited.global_id, other_device->inherited.global_id);
+                                device->inherited.unique_id, other_device->inherited.unique_id);
                     }
                 }
                 else
                 {
                     LOGGER_WARN("GPU peer from %d to %d is not possible",
-                            device->inherited.global_id, other_device->inherited.global_id);
+                            device->inherited.unique_id, other_device->inherited.unique_id);
                 }
             }
             else
@@ -598,9 +600,9 @@ XKRT_DRIVER_ENTRYPOINT(memory_host_deallocate)(
 }
 
 static int
-XKRT_DRIVER_ENTRYPOINT(queue_suggest)(
+XKRT_DRIVER_ENTRYPOINT(command_queue_suggest)(
     device_driver_id_t device_driver_id,
-    queue_type_t qtype
+    command_queue_type_t qtype
 ) {
     (void) device_driver_id;
 
@@ -613,23 +615,391 @@ XKRT_DRIVER_ENTRYPOINT(queue_suggest)(
     }
 }
 
+/* Return a handle to the druver's internal representation of the batch */
+void *
+xkrt_cuda_driver_command_batch_init(
+    device_driver_id_t device_driver_id,
+    ocg::command_t * cmd
+) {
+    assert(cmd->type == ocg::COMMAND_TYPE_BATCH);
+    assert(cmd->batch.cg);
+
+    /* set context */
+    cu_set_context(device_driver_id);
+
+    /* retrieve associated device */
+    device_cu_t * device = device_cu_get(device_driver_id);
+    assert(device);
+
+    /* allocate handle */
+    command_batch_cu_handle_t * handle = (command_batch_cu_handle_t *) malloc(sizeof(command_batch_cu_handle_t));
+    assert(handle);
+
+    /* create a CUDA graph */
+    CU_SAFE_CALL(cuGraphCreate(&handle->graph, 0));
+
+    /* walk through the command graph from entry, in a BFS manner, so that when
+     * a node is processed, all its predecessors have already been processed,
+     * so we can set CUDA dependencies */
+    struct pls_t { CUgraphNode cu_node; };
+    using iterator_t = ocg::command_graph_t::node_iterator_t<pls_t>;
+    constexpr ocg::command_graph_walk_direction_t direction          = ocg::COMMAND_GRAPH_WALK_DIRECTION_FORWARD;
+    constexpr ocg::command_graph_walk_search_t    search             = ocg::COMMAND_GRAPH_WALK_SEARCH_BFS;
+    constexpr bool                                include_entry_exit = false;
+
+    std::vector<iterator_t> iterators = cmd->batch.cg->create_node_iterators<pls_t, include_entry_exit, direction, search>();
+
+    /* Iterate once to create all nodes */
+    for (iterator_t & it : iterators)
+    {
+        /* get command graph node */
+        ocg::command_graph_node_t * node = it.node;
+
+        /* get cugraph node */
+        CUgraphNode * cu_node = &it.data.cu_node;
+
+        /* Dependencies are pushed afterward 1 by 1 */
+        const size_t ndeps = 0;
+        const CUgraphNode * deps = NULL;
+
+        /* get command */
+        ocg::command_t * command = node->command;
+
+        if (command == NULL)
+        {
+            assert(node->type == ocg::COMMAND_GRAPH_NODE_TYPE_CTRL);
+            assert(node->type != ocg::COMMAND_GRAPH_NODE_TYPE_COMMAND);
+            cudaGraphAddEmptyNode(cu_node, handle->graph, deps, ndeps);
+        }
+        else
+        {
+            assert(node->type == ocg::COMMAND_GRAPH_NODE_TYPE_COMMAND);
+            switch (command->type)
+            {
+                case (ocg::COMMAND_TYPE_PROG):
+                {
+                    CUDA_KERNEL_NODE_PARAMS params;
+                    memset(&params, 0, sizeof(params));
+                    params.func             = (CUfunction) command->prog.launcher.variadic.fn;
+                    params.gridDimX         = command->prog.grid.x;
+                    params.gridDimY         = command->prog.grid.y;
+                    params.gridDimZ         = command->prog.grid.z;
+                    params.blockDimX        = command->prog.block.x;
+                    params.blockDimY        = command->prog.block.y;
+                    params.blockDimZ        = command->prog.block.z;
+                    params.sharedMemBytes   = 0;
+                    params.kernelParams     = NULL;
+                    params.extra            = NULL;
+
+                    /* CUDA graph kernel nodes require kernel params passed via
+                     * the CUDA_KERNEL_NODE_PARAMS::extra field (same as cuLaunchKernel) */
+                    void * conf[] = {
+                        CU_LAUNCH_PARAM_BUFFER_POINTER,
+                        command->prog.launcher.variadic.args,
+                        CU_LAUNCH_PARAM_BUFFER_SIZE,
+                        (void *) &command->prog.launcher.variadic.args_size,
+                        CU_LAUNCH_PARAM_END
+                    };
+                    params.extra = conf;
+
+                    CU_SAFE_CALL(cuGraphAddKernelNode(cu_node, handle->graph, deps, ndeps, &params));
+                    break ;
+                }
+
+                case (ocg::COMMAND_TYPE_PROG_LAUNCHER):
+                {
+                    LOGGER_FATAL("Kernel launcher is not supported for batching with CUDA. You should provide the kernel explicitly via an `ocg::COMMAND_TYPE_PROG` to batch kernel launch.");
+                    break ;
+                }
+
+                case (ocg::COMMAND_TYPE_COPY_H2D_1D):
+                {
+                    CUDA_MEMCPY3D cpy = {0};
+
+                    cpy.srcMemoryType = CU_MEMORYTYPE_HOST;
+                    cpy.srcHost       = (void *) command->copy_1D.src_device_addr;
+                    cpy.srcPitch      = command->copy_1D.size;
+                    cpy.srcHeight     = 1;
+
+                    cpy.dstMemoryType = CU_MEMORYTYPE_DEVICE;
+                    cpy.dstDevice     = (CUdeviceptr) command->copy_1D.dst_device_addr;
+                    cpy.dstPitch      = command->copy_1D.size;
+                    cpy.dstHeight     = 1;
+
+                    cpy.WidthInBytes  = command->copy_1D.size;
+                    cpy.Height        = 1;
+                    cpy.Depth         = 1;
+
+                    CU_SAFE_CALL(cuGraphAddMemcpyNode(cu_node, handle->graph, deps, ndeps, &cpy, device->cu.context));
+
+                    break;
+                }
+
+                case (ocg::COMMAND_TYPE_COPY_D2H_1D):
+                {
+                    CUDA_MEMCPY3D cpy = {0};
+
+                    cpy.srcMemoryType = CU_MEMORYTYPE_DEVICE;
+                    cpy.srcDevice     = (CUdeviceptr) command->copy_1D.dst_device_addr;
+                    cpy.srcPitch      = command->copy_1D.size;
+                    cpy.srcHeight     = 1;
+
+                    cpy.dstMemoryType = CU_MEMORYTYPE_HOST;
+                    cpy.dstHost       = (void *) command->copy_1D.src_device_addr;
+                    cpy.dstPitch      = command->copy_1D.size;
+                    cpy.dstHeight     = 1;
+
+                    cpy.WidthInBytes  = command->copy_1D.size;
+                    cpy.Height        = 1;
+                    cpy.Depth         = 1;
+
+                    CU_SAFE_CALL(cuGraphAddMemcpyNode(cu_node, handle->graph, deps, ndeps, &cpy, device->cu.context));
+
+                    break ;
+                }
+
+                case (ocg::COMMAND_TYPE_COPY_D2D_1D):
+                {
+                    CUDA_MEMCPY3D cpy;
+                    memset(&cpy, 0, sizeof(cpy));
+                    cpy.srcMemoryType = CU_MEMORYTYPE_DEVICE;
+                    cpy.srcDevice     = (CUdeviceptr) command->copy_1D.src_device_addr;
+                    cpy.dstMemoryType = CU_MEMORYTYPE_DEVICE;
+                    cpy.dstDevice     = (CUdeviceptr) command->copy_1D.dst_device_addr;
+                    cpy.WidthInBytes  = command->copy_1D.size;
+                    cpy.Height        = 1;
+                    cpy.Depth         = 1;
+                    CU_SAFE_CALL(cuGraphAddMemcpyNode(cu_node, handle->graph, deps, ndeps, &cpy, device->cu.context));
+                    break ;
+                }
+
+                case (ocg::COMMAND_TYPE_COPY_H2D_2D):
+                case (ocg::COMMAND_TYPE_COPY_D2H_2D):
+                case (ocg::COMMAND_TYPE_COPY_D2D_2D):
+                {
+                    CUmemorytype src_type, dst_type;
+                    CUdeviceptr src_deviceptr = 0, dst_deviceptr = 0;
+                    void * src_host = NULL, * dst_host = NULL;
+
+                    void * src = (void *) command->copy_2D.src_addr;
+                    void * dst = (void *) command->copy_2D.dst_addr;
+
+                    switch (command->type)
+                    {
+                        case (ocg::COMMAND_TYPE_COPY_H2D_2D):
+                            src_type = CU_MEMORYTYPE_HOST;   src_host = src;
+                            dst_type = CU_MEMORYTYPE_DEVICE; dst_deviceptr = (CUdeviceptr) dst;
+                            break ;
+                        case (ocg::COMMAND_TYPE_COPY_D2H_2D):
+                            src_type = CU_MEMORYTYPE_DEVICE; src_deviceptr = (CUdeviceptr) src;
+                            dst_type = CU_MEMORYTYPE_HOST;   dst_host = dst;
+                            break ;
+                        case (ocg::COMMAND_TYPE_COPY_D2D_2D):
+                            src_type = CU_MEMORYTYPE_DEVICE; src_deviceptr = (CUdeviceptr) src;
+                            dst_type = CU_MEMORYTYPE_DEVICE; dst_deviceptr = (CUdeviceptr) dst;
+                            break ;
+                        default:
+                            LOGGER_FATAL("unreachable");
+                            break ;
+                    }
+
+                    const size_t dpitch = command->copy_2D.dst_ld * command->copy_2D.sizeof_type;
+                    const size_t spitch = command->copy_2D.src_ld * command->copy_2D.sizeof_type;
+                    const size_t width  = command->copy_2D.m * command->copy_2D.sizeof_type;
+                    const size_t height = command->copy_2D.n;
+
+                    CUDA_MEMCPY3D cpy;
+                    memset(&cpy, 0, sizeof(cpy));
+                    cpy.srcMemoryType = src_type;
+                    cpy.srcHost       = src_host;
+                    cpy.srcDevice     = src_deviceptr;
+                    cpy.srcPitch      = spitch;
+                    cpy.dstMemoryType = dst_type;
+                    cpy.dstHost       = dst_host;
+                    cpy.dstDevice     = dst_deviceptr;
+                    cpy.dstPitch      = dpitch;
+                    cpy.WidthInBytes  = width;
+                    cpy.Height        = height;
+                    cpy.Depth         = 1;
+
+                    CU_SAFE_CALL(cuGraphAddMemcpyNode(cu_node, handle->graph, deps, ndeps, &cpy, device->cu.context));
+                    break ;
+                }
+
+                case (ocg::COMMAND_TYPE_BATCH):
+                {
+                    // assert(command->batch.cg == false);
+
+                    if (command->batch.driver_handle == NULL)
+                        command->batch.driver_handle = xkrt_cuda_driver_command_batch_init(device_driver_id, command);
+
+                    if (command->batch.driver_handle == NULL)
+                        LOGGER_FATAL("Failed to initialized a command batch");
+
+                    command_batch_cu_handle_t * command_handle = (command_batch_cu_handle_t *) command->batch.driver_handle;
+                    assert(command_handle);
+
+                    CU_SAFE_CALL(cuGraphAddChildGraphNode(cu_node, handle->graph, deps, ndeps, command_handle->graph));
+                    break ;
+                }
+
+                default:
+                {
+                    /* unsupported command type for CUDA graph batching:
+                     * abort the contraction */
+                    LOGGER_FATAL("Cannot batch command type %s into CUDA graph", ocg::command_type_to_str(command->type));
+                    CU_SAFE_CALL(cuGraphDestroy(handle->graph));
+                    return NULL;
+                }
+            } /* switch command->type */
+        } /* if command != NULL */
+    } /* for each iterator */
+
+    assert(cmd->batch.cg);
+    ocg::command_graph_node_t * entry = cmd->batch.cg->node_get_entry();
+
+    /* iterate a second time to set dependencies */
+    for (iterator_t & it : iterators)
+    {
+        /* get command graph node */
+        ocg::command_graph_node_t * node = it.node;
+
+        /* get cugraph node */
+        CUgraphNode * cu_node = &it.data.cu_node;
+
+        /* Add dependencies */
+        for (ocg::command_graph_node_t * pred : node->predecessors)
+        {
+            /* must skip edges to entry, as it is not included in the cuda graph */
+            if (pred == entry)
+            {
+                assert(pred->command == NULL);
+                continue ;
+            }
+
+            CU_SAFE_CALL(cuGraphAddDependencies(
+                handle->graph,
+                &iterators[pred->iterator_index].data.cu_node,  // from
+                cu_node,                                        // to
+                1                                               // num dependencies
+            ));
+        }
+    } /* for each iterator */
+
+    /* instantiate the CUDA graph into an executable */
+    CU_SAFE_CALL(cuGraphInstantiate(&handle->graph_exec, handle->graph, 0));
+
+    return handle;
+}
+
+void
+xkrt_cuda_driver_command_batch_deinit(
+    device_driver_id_t device_driver_id,
+    const ocg::command_t * cmd
+) {
+    command_batch_cu_handle_t * handle = (command_batch_cu_handle_t *) cmd->batch.driver_handle;
+
+    cu_set_context(device_driver_id);
+
+    if (handle->graph_exec)
+        CU_SAFE_CALL(cuGraphExecDestroy(handle->graph_exec));
+
+    if (handle->graph)
+        CU_SAFE_CALL(cuGraphDestroy(handle->graph));
+
+    free(handle);
+}
+
+// kernel launch
+int XKRT_DRIVER_ENTRYPOINT(prog_launch)(
+    command_queue_t * iqueue,
+    xkrt_command_queue_list_counter_t idx,
+    const driver_module_fn_t * fn,
+    const unsigned int gx,
+    const unsigned int gy,
+    const unsigned int gz,
+    const unsigned int bx,
+    const unsigned int by,
+    const unsigned int bz,
+    const unsigned int shared_memory_bytes,
+    void * args,
+    const size_t args_size
+) {
+    queue_cu_t * queue = (queue_cu_t *) iqueue;
+    assert(queue);
+
+    void * conf[] = {
+        CU_LAUNCH_PARAM_BUFFER_POINTER,
+        args,
+        CU_LAUNCH_PARAM_BUFFER_SIZE,
+        (void *) &args_size,
+        CU_LAUNCH_PARAM_END
+    };
+
+    CUstream handle = queue->cu.handle.high;
+
+    CU_SAFE_CALL(
+        cuLaunchKernel(
+            (CUfunction) fn,
+            gx, gy, gz,
+            bx, by, bz,
+            shared_memory_bytes,
+            handle,
+            nullptr,
+            conf
+        )
+    );
+
+    # if 1
+    CUevent event = queue->cu.events.buffer[idx];
+    CU_SAFE_CALL(cuEventRecord(event, handle));
+    # else
+    // TODO - sync on event, this is temporary to design itnerfaces
+    cuStreamSynchronize(queue->cu.handle.high);
+    LOGGER_ERROR("remove the sync");
+    # endif
+
+    return 0;
+}
+
 static int
-XKRT_DRIVER_ENTRYPOINT(queue_command_launch)(
-    queue_t * iqueue,
+XKRT_DRIVER_ENTRYPOINT(command_queue_launch)(
+    device_driver_id_t device_driver_id,
+    command_queue_t * iqueue,
     command_t * cmd,
-    queue_command_list_counter_t idx
+    xkrt_command_queue_list_counter_t idx
 ) {
     queue_cu_t * queue = (queue_cu_t *) iqueue;
     assert(queue);
 
     CUevent event = queue->cu.events.buffer[idx];
-    CUstream handle = queue->cu.handle.high;
+    CUstream stream = queue->cu.handle.high;
 
     switch (cmd->type)
     {
-        case (COMMAND_TYPE_COPY_H2D_1D):
-        case (COMMAND_TYPE_COPY_D2H_1D):
-        case (COMMAND_TYPE_COPY_D2D_1D):
+        case (ocg::COMMAND_TYPE_PROG):
+        {
+            constexpr size_t sharedmemory = 0;
+            XKRT_DRIVER_ENTRYPOINT(prog_launch)(
+                iqueue,
+                idx,
+                (const driver_module_fn_t *) cmd->prog.launcher.variadic.fn,
+                cmd->prog.grid.x,
+                cmd->prog.grid.y,
+                cmd->prog.grid.z,
+                cmd->prog.block.x,
+                cmd->prog.block.y,
+                cmd->prog.block.z,
+                sharedmemory,
+                cmd->prog.launcher.variadic.args,
+                cmd->prog.launcher.variadic.args_size
+            );
+            return EINPROGRESS;
+        }
+
+        case (ocg::COMMAND_TYPE_COPY_H2D_1D):
+        case (ocg::COMMAND_TYPE_COPY_D2H_1D):
+        case (ocg::COMMAND_TYPE_COPY_D2D_1D):
         {
             const size_t count  = cmd->copy_1D.size;
             assert(count > 0);
@@ -639,21 +1009,21 @@ XKRT_DRIVER_ENTRYPOINT(queue_command_launch)(
 
             switch (cmd->type)
             {
-                case (COMMAND_TYPE_COPY_H2D_1D):
+                case (ocg::COMMAND_TYPE_COPY_H2D_1D):
                 {
-                    CU_SAFE_CALL(cuMemcpyHtoDAsync((CUdeviceptr) dst, src, count, handle));
+                    CU_SAFE_CALL(cuMemcpyHtoDAsync((CUdeviceptr) dst, src, count, stream));
                     break ;
                 }
 
-                case (COMMAND_TYPE_COPY_D2H_1D):
+                case (ocg::COMMAND_TYPE_COPY_D2H_1D):
                 {
-                    CU_SAFE_CALL(cuMemcpyDtoHAsync(dst, (CUdeviceptr) src, count, handle));
+                    CU_SAFE_CALL(cuMemcpyDtoHAsync(dst, (CUdeviceptr) src, count, stream));
                     break ;
                 }
 
-                case (COMMAND_TYPE_COPY_D2D_1D):
+                case (ocg::COMMAND_TYPE_COPY_D2D_1D):
                 {
-                    CU_SAFE_CALL(cuMemcpyDtoDAsync((CUdeviceptr) dst, (CUdeviceptr) src, count, handle));
+                    CU_SAFE_CALL(cuMemcpyDtoDAsync((CUdeviceptr) dst, (CUdeviceptr) src, count, stream));
                     break ;
                 }
 
@@ -664,24 +1034,24 @@ XKRT_DRIVER_ENTRYPOINT(queue_command_launch)(
                 }
 
             }
-            CU_SAFE_CALL(cuEventRecord(event, handle));
+            CU_SAFE_CALL(cuEventRecord(event, stream));
             return EINPROGRESS;
         }
 
-        case (COMMAND_TYPE_COPY_H2D_2D):
-        case (COMMAND_TYPE_COPY_D2H_2D):
-        case (COMMAND_TYPE_COPY_D2D_2D):
+        case (ocg::COMMAND_TYPE_COPY_H2D_2D):
+        case (ocg::COMMAND_TYPE_COPY_D2H_2D):
+        case (ocg::COMMAND_TYPE_COPY_D2D_2D):
         {
             CUdeviceptr src_deviceptr, dst_deviceptr;
             CUmemorytype src_type, dst_type;
             void * src_host, * dst_host;
 
-            void * src = (void *) cmd->copy_2D.src_device_view.addr;
-            void * dst = (void *) cmd->copy_2D.dst_device_view.addr;
+            void * src = (void *) cmd->copy_2D.src_addr;
+            void * dst = (void *) cmd->copy_2D.dst_addr;
 
             switch (cmd->type)
             {
-                case (COMMAND_TYPE_COPY_H2D_2D):
+                case (ocg::COMMAND_TYPE_COPY_H2D_2D):
                 {
                     src_type = CU_MEMORYTYPE_HOST;
                     dst_type = CU_MEMORYTYPE_DEVICE;
@@ -695,7 +1065,7 @@ XKRT_DRIVER_ENTRYPOINT(queue_command_launch)(
                     break ;
                 }
 
-                case (COMMAND_TYPE_COPY_D2H_2D):
+                case (ocg::COMMAND_TYPE_COPY_D2H_2D):
                 {
                     src_type = CU_MEMORYTYPE_DEVICE;
                     dst_type = CU_MEMORYTYPE_HOST;
@@ -709,7 +1079,7 @@ XKRT_DRIVER_ENTRYPOINT(queue_command_launch)(
                     break ;
                 }
 
-                case (COMMAND_TYPE_COPY_D2D_2D):
+                case (ocg::COMMAND_TYPE_COPY_D2D_2D):
                 {
                     src_type = CU_MEMORYTYPE_DEVICE;
                     dst_type = CU_MEMORYTYPE_DEVICE;
@@ -730,8 +1100,8 @@ XKRT_DRIVER_ENTRYPOINT(queue_command_launch)(
                 }
             }
 
-            const size_t dpitch = cmd->copy_2D.dst_device_view.ld * cmd->copy_2D.sizeof_type;
-            const size_t spitch = cmd->copy_2D.src_device_view.ld * cmd->copy_2D.sizeof_type;
+            const size_t dpitch = cmd->copy_2D.dst_ld * cmd->copy_2D.sizeof_type;
+            const size_t spitch = cmd->copy_2D.src_ld * cmd->copy_2D.sizeof_type;
 
             const size_t width  = cmd->copy_2D.m * cmd->copy_2D.sizeof_type;
             const size_t height = cmd->copy_2D.n;
@@ -756,8 +1126,26 @@ XKRT_DRIVER_ENTRYPOINT(queue_command_launch)(
                 .WidthInBytes   = width,
                 .Height         = height
             };
-            CU_SAFE_CALL(cuMemcpy2DAsync(&cpy, handle));
-            CU_SAFE_CALL(cuEventRecord(event, handle));
+            CU_SAFE_CALL(cuMemcpy2DAsync(&cpy, stream));
+            CU_SAFE_CALL(cuEventRecord(event, stream));
+            return EINPROGRESS;
+        }
+
+        case (ocg::COMMAND_TYPE_BATCH):
+        {
+            /* initialize cuda graph on first encounter */
+            if (cmd->batch.driver_handle == NULL)
+                cmd->batch.driver_handle = xkrt_cuda_driver_command_batch_init(device_driver_id, cmd);
+
+            if (cmd->batch.driver_handle == NULL)
+                LOGGER_FATAL("Failed to initialized a command batch");
+
+            /* launch it */
+            command_batch_cu_handle_t * handle = (command_batch_cu_handle_t *) cmd->batch.driver_handle;
+            assert(handle->graph_exec);
+
+            CU_SAFE_CALL(cuGraphLaunch(handle->graph_exec, stream));
+            CU_SAFE_CALL(cuEventRecord(event, stream));
             return EINPROGRESS;
         }
 
@@ -767,8 +1155,8 @@ XKRT_DRIVER_ENTRYPOINT(queue_command_launch)(
 }
 
 static inline int
-XKRT_DRIVER_ENTRYPOINT(queue_commands_wait)(
-    queue_t * iqueue
+XKRT_DRIVER_ENTRYPOINT(command_queue_wait_all)(
+    command_queue_t * iqueue
 ) {
     queue_cu_t * queue = (queue_cu_t *) iqueue;
     assert(queue);
@@ -780,10 +1168,10 @@ XKRT_DRIVER_ENTRYPOINT(queue_commands_wait)(
 }
 
 static inline int
-XKRT_DRIVER_ENTRYPOINT(queue_command_wait)(
-    queue_t * iqueue,
+XKRT_DRIVER_ENTRYPOINT(command_queue_wait)(
+    command_queue_t * iqueue,
     command_t * cmd,
-    queue_command_list_counter_t idx
+    xkrt_command_queue_list_counter_t idx
 ) {
     queue_cu_t * queue = (queue_cu_t *) iqueue;
     assert(queue);
@@ -799,27 +1187,28 @@ XKRT_DRIVER_ENTRYPOINT(queue_command_wait)(
 }
 
 static int
-XKRT_DRIVER_ENTRYPOINT(queue_commands_progress)(
-    queue_t * iqueue
+XKRT_DRIVER_ENTRYPOINT(command_queue_progress)(
+    command_queue_t * iqueue
 ) {
     assert(iqueue);
 
     queue_cu_t * queue = (queue_cu_t *) iqueue;
     int r = 0;
 
-    iqueue->pending.progress([&] (command_t * cmd, queue_command_list_counter_t p) {
+    iqueue->progress([&] (command_t * cmd, xkrt_command_queue_list_counter_t p) {
 
         switch (cmd->type)
         {
-            case (COMMAND_TYPE_KERN):
-            case (COMMAND_TYPE_COPY_H2H_1D):
-            case (COMMAND_TYPE_COPY_H2D_1D):
-            case (COMMAND_TYPE_COPY_D2H_1D):
-            case (COMMAND_TYPE_COPY_D2D_1D):
-            case (COMMAND_TYPE_COPY_H2H_2D):
-            case (COMMAND_TYPE_COPY_H2D_2D):
-            case (COMMAND_TYPE_COPY_D2H_2D):
-            case (COMMAND_TYPE_COPY_D2D_2D):
+            case (ocg::COMMAND_TYPE_PROG):
+            case (ocg::COMMAND_TYPE_PROG_LAUNCHER):
+            case (ocg::COMMAND_TYPE_COPY_H2H_1D):
+            case (ocg::COMMAND_TYPE_COPY_H2D_1D):
+            case (ocg::COMMAND_TYPE_COPY_D2H_1D):
+            case (ocg::COMMAND_TYPE_COPY_D2D_1D):
+            case (ocg::COMMAND_TYPE_COPY_H2H_2D):
+            case (ocg::COMMAND_TYPE_COPY_H2D_2D):
+            case (ocg::COMMAND_TYPE_COPY_D2H_2D):
+            case (ocg::COMMAND_TYPE_BATCH):
             {
                 CUevent event = queue->cu.events.buffer[p];
                 CUresult res = cuEventQuery(event);
@@ -842,11 +1231,11 @@ XKRT_DRIVER_ENTRYPOINT(queue_commands_progress)(
     return r;
 }
 
-static queue_t *
-XKRT_DRIVER_ENTRYPOINT(queue_create)(
+static command_queue_t *
+XKRT_DRIVER_ENTRYPOINT(command_queue_create)(
     device_t * device,
-    queue_type_t type,
-    queue_command_list_counter_t capacity
+    command_queue_type_t type,
+    xkrt_command_queue_list_counter_t capacity
 ) {
     assert(device);
     cu_set_context(device->driver_id);
@@ -859,14 +1248,10 @@ XKRT_DRIVER_ENTRYPOINT(queue_create)(
     /*************************/
     /* init xkrt queue      */
     /*************************/
-    queue_init(
-        (queue_t *) queue,
+    command_queue_init(
+        (command_queue_t *) queue,
         type,
-        capacity,
-        XKRT_DRIVER_ENTRYPOINT(queue_command_launch),
-        XKRT_DRIVER_ENTRYPOINT(queue_commands_progress),
-        XKRT_DRIVER_ENTRYPOINT(queue_commands_wait),
-        XKRT_DRIVER_ENTRYPOINT(queue_command_wait)
+        capacity
     );
 
     /*************************/
@@ -905,12 +1290,12 @@ XKRT_DRIVER_ENTRYPOINT(queue_create)(
         queue->cu.solver.handle = 0;
     }
 
-    return (queue_t *) queue;
+    return (command_queue_t *) queue;
 }
 
 static void
-XKRT_DRIVER_ENTRYPOINT(queue_delete)(
-    queue_t * iqueue
+XKRT_DRIVER_ENTRYPOINT(command_queue_delete)(
+    command_queue_t * iqueue
 ) {
     queue_cu_t * queue = (queue_cu_t *) iqueue;
     if (queue->cu.blas.handle)
@@ -942,7 +1327,7 @@ XKRT_DRIVER_ENTRYPOINT(device_info)(
 
     snprintf(buffer, size, "%s, cu device: %i, pci: %02x:%02x, %.2f (GB)",
         device->cu.prop.name,
-        device->inherited.global_id,
+        device->inherited.unique_id,
         device->cu.prop.pciBusID,
         device->cu.prop.pciDeviceID,
         ((double)device->cu.prop.mem_total)/1e9
@@ -1058,7 +1443,7 @@ XKRT_DRIVER_ENTRYPOINT(transfer_d2d)(void * dst, void * src, const size_t size)
 }
 
 int
-XKRT_DRIVER_ENTRYPOINT(transfer_h2d_async)(void * dst, void * src, const size_t size, queue_t * iqueue)
+XKRT_DRIVER_ENTRYPOINT(transfer_h2d_async)(void * dst, void * src, const size_t size, command_queue_t * iqueue)
 {
     queue_cu_t * queue = (queue_cu_t *) iqueue;
     CU_SAFE_CALL(cuMemcpyHtoDAsync((CUdeviceptr) dst, src, size, queue->cu.handle.high));
@@ -1066,7 +1451,7 @@ XKRT_DRIVER_ENTRYPOINT(transfer_h2d_async)(void * dst, void * src, const size_t 
 }
 
 int
-XKRT_DRIVER_ENTRYPOINT(transfer_d2h_async)(void * dst, void * src, const size_t size, queue_t * iqueue)
+XKRT_DRIVER_ENTRYPOINT(transfer_d2h_async)(void * dst, void * src, const size_t size, command_queue_t * iqueue)
 {
     queue_cu_t * queue = (queue_cu_t *) iqueue;
     CU_SAFE_CALL(cuMemcpyDtoHAsync(dst, (CUdeviceptr) src, size, queue->cu.handle.high));
@@ -1074,62 +1459,10 @@ XKRT_DRIVER_ENTRYPOINT(transfer_d2h_async)(void * dst, void * src, const size_t 
 }
 
 int
-XKRT_DRIVER_ENTRYPOINT(transfer_d2d_async)(void * dst, void * src, const size_t size, queue_t * iqueue)
+XKRT_DRIVER_ENTRYPOINT(transfer_d2d_async)(void * dst, void * src, const size_t size, command_queue_t * iqueue)
 {
     queue_cu_t * queue = (queue_cu_t *) iqueue;
     CU_SAFE_CALL(cuMemcpyDtoDAsync((CUdeviceptr)dst, (CUdeviceptr) src, size, queue->cu.handle.high));
-    return 0;
-}
-
-// kernel launch
-int XKRT_DRIVER_ENTRYPOINT(kernel_launch)(
-    queue_t * iqueue,
-    queue_command_list_counter_t idx,
-    const driver_module_fn_t * fn,
-    const unsigned int gx,
-    const unsigned int gy,
-    const unsigned int gz,
-    const unsigned int bx,
-    const unsigned int by,
-    const unsigned int bz,
-    const unsigned int shared_memory_bytes,
-    void * args,
-    const size_t args_size
-) {
-    queue_cu_t * queue = (queue_cu_t *) iqueue;
-    assert(queue);
-
-    void * conf[] = {
-        CU_LAUNCH_PARAM_BUFFER_POINTER,
-        args,
-        CU_LAUNCH_PARAM_BUFFER_SIZE,
-        (void *) &args_size,
-        CU_LAUNCH_PARAM_END
-    };
-
-    CUstream handle = queue->cu.handle.high;
-
-    CU_SAFE_CALL(
-        cuLaunchKernel(
-            (CUfunction) fn,
-            gx, gy, gz,
-            bx, by, bz,
-            shared_memory_bytes,
-            handle,
-            nullptr,
-            conf
-        )
-    );
-
-    # if 1
-    CUevent event = queue->cu.events.buffer[idx];
-    CU_SAFE_CALL(cuEventRecord(event, handle));
-    # else
-    // TODO - sync on event, this is temporary to design itnerfaces
-    cuStreamSynchronize(queue->cu.handle.high);
-    LOGGER_ERROR("remove the sync");
-    # endif
-
     return 0;
 }
 
@@ -1181,7 +1514,7 @@ XKRT_DRIVER_ENTRYPOINT(memory_unified_prefetch_device)(
     assert(device);
 
     thread_t * thread;
-    queue_t * iqueue;
+    command_queue_t * iqueue;
     device->offloader_queue_next(XKRT_QUEUE_TYPE_H2D, &thread, &iqueue);
     assert(thread);
     assert(iqueue);
@@ -1237,7 +1570,7 @@ XKRT_DRIVER_ENTRYPOINT(create_driver)(void)
     REGISTER(transfer_d2h_async);
     REGISTER(transfer_d2d_async);
 
-    REGISTER(kernel_launch);
+    REGISTER(prog_launch);
 
     REGISTER(memory_device_info);
     REGISTER(memory_device_allocate);
@@ -1255,9 +1588,13 @@ XKRT_DRIVER_ENTRYPOINT(create_driver)(void)
 
     REGISTER(device_cpuset);
 
-    REGISTER(queue_suggest);
-    REGISTER(queue_create);
-    REGISTER(queue_delete);
+    REGISTER(command_queue_create);
+    REGISTER(command_queue_delete);
+    REGISTER(command_queue_delete);
+    REGISTER(command_queue_launch);
+    REGISTER(command_queue_progress);
+    REGISTER(command_queue_wait_all);
+    REGISTER(command_queue_wait);
 
     REGISTER(module_load);
     REGISTER(module_unload);

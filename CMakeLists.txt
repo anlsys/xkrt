@@ -17,6 +17,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)  # Optional: disables compiler-specific extensions
 #########
 # RPATH #
 #########
+
 set(CMAKE_SKIP_BUILD_RPATH FALSE)
 set(CMAKE_BUILD_WITH_INSTALL_RPATH FALSE)
 set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
@@ -67,7 +68,8 @@ endif()
 ########
 
 SET(SOURCE_FILES
-    ${CMAKE_SOURCE_DIR}/src/memory/access.cc
+    ${CMAKE_SOURCE_DIR}/src/access.cc
+    ${CMAKE_SOURCE_DIR}/src/command/command-graph.cc
     ${CMAKE_SOURCE_DIR}/src/conf/conf.cc
     ${CMAKE_SOURCE_DIR}/src/debug/cairo.cc
     ${CMAKE_SOURCE_DIR}/src/distribution/distribution.cc
@@ -79,6 +81,8 @@ SET(SOURCE_FILES
     ${CMAKE_SOURCE_DIR}/src/logger/logger.cc
     ${CMAKE_SOURCE_DIR}/src/logger/metric.cc
     ${CMAKE_SOURCE_DIR}/src/memory.cc
+    ${CMAKE_SOURCE_DIR}/src/memory/access.cc
+    ${CMAKE_SOURCE_DIR}/src/memory/access/handle/dependency-map.cc
     ${CMAKE_SOURCE_DIR}/src/memory/coherent.cc
     ${CMAKE_SOURCE_DIR}/src/memory/copy.cc
     ${CMAKE_SOURCE_DIR}/src/memory/distribute.cc
@@ -90,6 +94,7 @@ SET(SOURCE_FILES
     ${CMAKE_SOURCE_DIR}/src/stats/stats.cc
     ${CMAKE_SOURCE_DIR}/src/task.cc
     ${CMAKE_SOURCE_DIR}/src/task/format.cc
+    ${CMAKE_SOURCE_DIR}/src/task/task-dependency-graph.cc
     ${CMAKE_SOURCE_DIR}/src/task/task.cc
     ${CMAKE_SOURCE_DIR}/src/thread/deque.cc
     ${CMAKE_SOURCE_DIR}/src/thread/thread.cc
@@ -118,6 +123,15 @@ set(XKRT_TARGETS ${XKRT})
 ###############
 # DEPENDENCES #
 ###############
+
+# OpenCG
+
+# find_package(OpenCG REQUIRED)
+# target_link_libraries(${XKRT} PRIVATE OpenCG::opencg)
+
+add_subdirectory(opencg/)
+target_link_libraries(${XKRT} PUBLIC opencg)
+include_directories(${CMAKE_SOURCE_DIR}/opencg/include/)
 
 # PTHREAD
 set(THREADS_PREFER_PTHREAD_FLAG ON)
@@ -332,5 +346,6 @@ install(FILES
 ################
 # Sub projects #
 ################
+
 add_subdirectory(tests/)
 enable_testing()

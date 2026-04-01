@@ -41,13 +41,13 @@
 
 # include <xkrt/driver/queue-command-list-counter.h>
 
-typedef void (*xkrt_kernel_launcher_t)(
+typedef void (*xkrt_prog_launcher_t)(
     void * runtime,
     void * device,
     void * task,
     void * queue,
     void * cmd,
-    xkrt_queue_command_list_counter_t idx
+    xkrt_command_queue_list_counter_t idx
 );
 
 # endif /* __XKRT_KERNEL_LAUNCHER_HPP__ */

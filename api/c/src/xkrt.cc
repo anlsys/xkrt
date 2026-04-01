@@ -145,7 +145,7 @@ xkrt_file_write_async(
 void *
 xkrt_memory_device_allocate(
     xkrt_runtime_t * runtime,
-    device_global_id_t device,
+    device_unique_id_t device,
     size_t size
 ) {
     assert(runtime);
@@ -156,7 +156,7 @@ xkrt_memory_device_allocate(
 void
 xkrt_memory_device_deallocate(
     xkrt_runtime_t * runtime,
-    device_global_id_t device,
+    device_unique_id_t device,
     void * chunk
 ) {
     assert(runtime);
@@ -167,7 +167,7 @@ xkrt_memory_device_deallocate(
 void *
 xkrt_memory_host_allocate(
     xkrt_runtime_t * runtime,
-    device_global_id_t device,
+    device_unique_id_t device,
     size_t size
 ) {
     assert(runtime);
@@ -178,7 +178,7 @@ xkrt_memory_host_allocate(
 void
 xkrt_memory_host_deallocate(
     xkrt_runtime_t * runtime,
-    device_global_id_t device,
+    device_unique_id_t device,
     void * ptr,
     size_t size
 ) {
@@ -190,7 +190,7 @@ xkrt_memory_host_deallocate(
 void *
 xkrt_memory_unified_allocate(
     xkrt_runtime_t * runtime,
-    device_global_id_t device,
+    device_unique_id_t device,
     size_t size
 ) {
     assert(runtime);
@@ -201,7 +201,7 @@ xkrt_memory_unified_allocate(
 void
 xkrt_memory_unified_deallocate(
     xkrt_runtime_t * runtime,
-    device_global_id_t device,
+    device_unique_id_t device,
     void * ptr,
     size_t size
 ) {
@@ -223,7 +223,7 @@ xkrt_driver_get(
 xkrt_device_t *
 xkrt_device_get(
     xkrt_runtime_t * runtime,
-    device_global_id_t device
+    device_unique_id_t device
 ) {
     assert(runtime);
     runtime_t * rt = (runtime_t *) runtime;
@@ -347,7 +347,7 @@ xkrt_task_accesses(xkrt_task_t * task)
 xkrt_access_t *
 xkrt_task_access(
     xkrt_task_t * task,
-    xkrt_task_access_counter_type_t access_id
+    xkrt_task_access_counter_t access_id
 ) {
     access_t * accesses = TASK_ACCESSES((const task_t *) task);
     return (xkrt_access_t *) (accesses + access_id);
@@ -356,7 +356,7 @@ xkrt_task_access(
 void *
 xkrt_task_access_replica(
     xkrt_task_t * task,
-    xkrt_task_access_counter_type_t access_id
+    xkrt_task_access_counter_t access_id
 ) {
     access_t * accesses = TASK_ACCESSES((const task_t *) task);
     access_t * access   = accesses + access_id;
@@ -477,17 +477,17 @@ __xkrt_set_accesses(
 
 void xkrt_task_spawn_generic(
     xkrt_runtime_t * runtime,
-    const xkrt_device_global_id_t device_global_id,
+    const xkrt_device_unique_id_t device_unique_id,
     const xkrt_task_flag_bitfield_t flags,
     const xkrt_task_format_id_t fmtid,
     const void * args,
     const size_t args_size,
     const xkrt_access_t * accesses_c,
-    const xkrt_task_access_counter_type_t naccesses,
-    const xkrt_task_access_counter_type_t ocr_access,
+    const xkrt_task_access_counter_t naccesses,
+    const xkrt_task_access_counter_t ocr_access,
     const xkrt_task_wait_counter_type_t   detachable_counter_initial
 ) {
-    assert((flags & TASK_FLAG_DEVICE) || (device_global_id == HOST_DEVICE_GLOBAL_ID));
+    assert((flags & TASK_FLAG_DEVICE) || (device_unique_id == XKRT_HOST_DEVICE_UNIQUE_ID));
 
     // retrieve tls
     thread_t * tls = thread_t::get_tls();
@@ -495,13 +495,12 @@ void xkrt_task_spawn_generic(
 
     // create the task
     runtime_t * rt = (runtime_t *) runtime;
-    const size_t task_size = task_compute_size(flags, naccesses);
-    task_t * task = rt->task_new(fmtid, flags, task_size + args_size);
+    task_t * task = rt->task_new(fmtid, flags, args, args_size, naccesses);
 
-    if (flags & TASK_FLAG_DEPENDENT)
+    if (flags & TASK_FLAG_ACCESSES)
     {
-        task_dep_info_t * dep = TASK_DEP_INFO(task);
-        new (dep) task_dep_info_t(naccesses);
+        task_acs_info_t * acs = TASK_ACS_INFO(task);
+        new (acs) task_acs_info_t(naccesses);
     }
 
     if (flags & TASK_FLAG_DETACHABLE)
@@ -513,25 +512,21 @@ void xkrt_task_spawn_generic(
     if (flags & TASK_FLAG_DEVICE)
     {
         task_dev_info_t * dev = TASK_DEV_INFO(task);
-        new (dev) task_dev_info_t(device_global_id, ocr_access);
+        new (dev) task_dev_info_t(device_unique_id, ocr_access);
     }
-
-    void * task_args = TASK_ARGS(task, task_size);
-    assert(task_args);
-    memcpy(task_args, args, args_size);
 
     access_t * accesses = TASK_ACCESSES(task, flags);
     __xkrt_set_accesses(task, accesses_c, naccesses, accesses);
-    tls->resolve(accesses, naccesses);
+    rt->task_accesses_resolve(accesses, naccesses);
 
     # if XKRT_SUPPORT_DEBUG
     snprintf(task->label, sizeof(task->label), "c-task-generic");
     # endif
 
-    device_t * device = rt->device_get(device_global_id);
+    device_t * device = rt->device_get(device_unique_id);
     assert(device);
 
-    tls->commit(task, runtime_t::task_team_enqueue, rt, device->team);
+    rt->team_task_commit(device->team, task);
 }
 
 void
@@ -543,17 +538,22 @@ xkrt_task_spawn(
     assert(runtime);
     runtime_t * rt = (runtime_t *) runtime;
 
-    auto wrapper = [func, user_data](runtime_t * runtime, device_t * device, task_t * task) {
-        func((xkrt_runtime_t *) runtime, (xkrt_device_t *) device, (xkrt_task_t *) task, user_data);
-    };
-
-    return rt->task_spawn(wrapper);
+    constexpr task_flag_bitfield_t flags = TASK_FLAG_ZERO;
+    return rt->task_spawn<flags>(
+        XKRT_UNSPECIFIED_DEVICE_UNIQUE_ID,
+        0,
+        nullptr,
+        nullptr,
+        [func, user_data](runtime_t * runtime, device_t * device, task_t * task) {
+            func((xkrt_runtime_t *) runtime, (xkrt_device_t *) device, (xkrt_task_t *) task, user_data);
+        }
+    );
 }
 
 void
 xkrt_task_spawn_with_format_with_accesses(
     xkrt_runtime_t * runtime,
-    const xkrt_device_global_id_t device_global_id,
+    const xkrt_device_unique_id_t device_unique_id,
     const xkrt_task_format_id_t fmtid,
     const void * args,
     const size_t args_size,
@@ -563,7 +563,7 @@ xkrt_task_spawn_with_format_with_accesses(
     assert(runtime);
     runtime_t * rt = (runtime_t *) runtime;
 
-    device_t * device = rt->device_get(device_global_id);
+    device_t * device = rt->device_get(device_unique_id);
     assert(device);
 
     team_t * team = rt->team_get(device->driver_type, device->driver_id);
@@ -576,22 +576,30 @@ xkrt_task_spawn_with_format_with_accesses(
     }
     else
     {
-        auto set_accesses = [&](task_t * task, access_t * accesses) {
-            __xkrt_set_accesses(task, accesses_c, naccesses, accesses);
-        };
-        rt->team_task_spawn(team, fmtid, args, args_size, set_accesses, (task_access_counter_t) naccesses);
+        constexpr task_flag_bitfield_t  flags = TASK_FLAG_ACCESSES;
+        constexpr task_access_counter_t ac    = 0;
+        task_t * task = rt->task_instanciate<flags>(
+            XKRT_UNSPECIFIED_DEVICE_UNIQUE_ID,
+            ac,
+            [&](task_t * task, access_t * accesses) { __xkrt_set_accesses(task, accesses_c, naccesses, accesses); },
+            nullptr,
+            args,
+            args_size,
+            fmtid
+        );
+        rt->team_task_commit(team, task);
     }
 }
 
 void
 xkrt_task_spawn_with_format(
     xkrt_runtime_t * runtime,
-    const xkrt_device_global_id_t device_global_id,
+    const xkrt_device_unique_id_t device_unique_id,
     const xkrt_task_format_id_t fmtid,
     const void * args,
     const size_t args_size
 ) {
-    return xkrt_task_spawn_with_format_with_accesses(runtime, device_global_id, fmtid, args, args_size, NULL, 0);
+    return xkrt_task_spawn_with_format_with_accesses(runtime, device_unique_id, fmtid, args, args_size, NULL, 0);
 }
 
 void
@@ -604,11 +612,17 @@ xkrt_team_task_spawn(
     assert(runtime);
     runtime_t * rt = (runtime_t *) runtime;
 
-    auto wrapper = [func, user_data](runtime_t * runtime, device_t * device, task_t * task) {
-        func((xkrt_runtime_t *) runtime, (xkrt_device_t *) device, (xkrt_task_t *) task, user_data);
-    };
-
-    rt->team_task_spawn((team_t *) team, wrapper);
+    constexpr task_flag_bitfield_t flags = TASK_FLAG_ZERO;
+    rt->team_task_spawn<flags>(
+        (team_t *) team,
+        XKRT_UNSPECIFIED_DEVICE_UNIQUE_ID,
+        0,
+        nullptr,
+        nullptr,
+        [func, user_data](runtime_t * runtime, device_t * device, task_t * task) {
+            func((xkrt_runtime_t *) runtime, (xkrt_device_t *) device, (xkrt_task_t *) task, user_data);
+        }
+    );
 }
 
 void
@@ -622,21 +636,25 @@ xkrt_team_task_spawn_with_accesses(
 ) {
     assert(runtime);
     assert(accesses_c);
+    assert(naccesses);
+    assert(naccesses < XKRT_TASK_MAX_ACCESSES);
 
     runtime_t * rt = (runtime_t *) runtime;
 
-    // convert C access to C++ access
-    auto set_accesses = [&](task_t * task, access_t * accesses) {
-        __xkrt_set_accesses(task, accesses_c, naccesses, accesses);
-    };
-
-    // function launcher
-    auto func_wrapper = [func, user_data](runtime_t * runtime, device_t * device, task_t * task) {
-        func((xkrt_runtime_t *) runtime, (xkrt_device_t *) device, (xkrt_task_t *) task, user_data);
-    };
-
     // spawn the task
-    rt->team_task_spawn((team_t *) team, func_wrapper, set_accesses, (task_access_counter_t) naccesses);
+    constexpr task_flag_bitfield_t flags = TASK_FLAG_ACCESSES;
+    rt->team_task_spawn<flags>(
+        (team_t *) team,
+        XKRT_UNSPECIFIED_DEVICE_UNIQUE_ID,
+        (task_access_counter_t) naccesses,
+        [&](task_t * task, access_t * accesses) {
+            __xkrt_set_accesses(task, accesses_c, naccesses, accesses);
+        },
+        nullptr,
+        [func, user_data](runtime_t * runtime, device_t * device, task_t * task) {
+            func((xkrt_runtime_t *) runtime, (xkrt_device_t *) device, (xkrt_task_t *) task, user_data);
+        }
+    );
 }
 
 //-----------------
@@ -711,7 +729,7 @@ int
 xkrt_driver_device_commit(
     xkrt_driver_t * driver,
     xkrt_device_driver_id_t device_driver_id,
-    xkrt_device_global_id_bitfield_t * affinity
+    xkrt_device_unique_id_bitfield_t * affinity
 ) {
     assert(driver);
     driver_t * drv = (driver_t *) driver;
@@ -852,13 +870,13 @@ xkrt_driver_memory_host_unregister(
 int
 xkrt_driver_memory_unified_advise_device(
     xkrt_driver_t * driver,
-    const xkrt_device_driver_id_t device_global_id,
+    const xkrt_device_driver_id_t device_unique_id,
     const void * addr,
     const size_t size
 ) {
     assert(driver);
     driver_t * drv = (driver_t *) driver;
-    return drv->f_memory_unified_advise_device(device_global_id, addr, size);
+    return drv->f_memory_unified_advise_device(device_unique_id, addr, size);
 }
 
 int
@@ -875,13 +893,13 @@ xkrt_driver_memory_unified_advise_host(
 int
 xkrt_driver_memory_unified_prefetch_device(
     xkrt_driver_t * driver,
-    const xkrt_device_driver_id_t device_global_id,
+    const xkrt_device_driver_id_t device_unique_id,
     const void * addr,
     const size_t size
 ) {
     assert(driver);
     driver_t * drv = (driver_t *) driver;
-    return drv->f_memory_unified_prefetch_device(device_global_id, addr, size);
+    return drv->f_memory_unified_prefetch_device(device_unique_id, addr, size);
 }
 
 int
@@ -939,11 +957,11 @@ xkrt_driver_transfer_h2d_async(
     void * dst,
     void * src,
     const size_t size,
-    xkrt_queue_t * queue
+    xkrt_command_queue_t * queue
 ) {
     assert(driver);
     driver_t * drv = (driver_t *) driver;
-    return drv->f_transfer_h2d_async(dst, src, size, (queue_t *) queue);
+    return drv->f_transfer_h2d_async(dst, src, size, (command_queue_t *) queue);
 }
 
 int
@@ -952,11 +970,11 @@ xkrt_driver_transfer_d2h_async(
     void * dst,
     void * src,
     const size_t size,
-    xkrt_queue_t * queue
+    xkrt_command_queue_t * queue
 ) {
     assert(driver);
     driver_t * drv = (driver_t *) driver;
-    return drv->f_transfer_d2h_async(dst, src, size, (queue_t *) queue);
+    return drv->f_transfer_d2h_async(dst, src, size, (command_queue_t *) queue);
 }
 
 int
@@ -965,20 +983,20 @@ xkrt_driver_transfer_d2d_async(
     void * dst,
     void * src,
     const size_t size,
-    xkrt_queue_t * queue
+    xkrt_command_queue_t * queue
 ) {
     assert(driver);
     driver_t * drv = (driver_t *) driver;
-    return drv->f_transfer_d2d_async(dst, src, size, (queue_t *) queue);
+    return drv->f_transfer_d2d_async(dst, src, size, (command_queue_t *) queue);
 }
 
 // KERNEL LAUNCH
 
 int
-xkrt_driver_kernel_launch(
+xkrt_driver_prog_launch(
     xkrt_driver_t * driver,
-    xkrt_queue_t * queue,
-    xkrt_queue_command_list_counter_t idx,
+    xkrt_command_queue_t * queue,
+    xkrt_command_queue_list_counter_t idx,
     const xkrt_driver_module_fn_t * fn,
     const unsigned int gx,
     const unsigned int gy,
@@ -992,15 +1010,15 @@ xkrt_driver_kernel_launch(
 ) {
     assert(driver);
     driver_t * drv = (driver_t *) driver;
-    return drv->f_kernel_launch((queue_t *) queue, idx, fn, gx, gy, gz, bx, by, bz, shared_memory_bytes, args, args_size);
+    return drv->f_prog_launch((command_queue_t *) queue, idx, fn, gx, gy, gz, bx, by, bz, shared_memory_bytes, args, args_size);
 }
 
 int
-xkrt_device_kernel_launch(
+xkrt_device_prog_launch(
     xkrt_runtime_t * runtime,
     xkrt_device_t * device,
-    xkrt_queue_t * queue,
-    xkrt_queue_command_list_counter_t idx,
+    xkrt_command_queue_t * queue,
+    xkrt_command_queue_list_counter_t idx,
     const xkrt_driver_module_fn_t * fn,
     const unsigned int gx,
     const unsigned int gy,
@@ -1018,25 +1036,25 @@ xkrt_device_kernel_launch(
     runtime_t *  rt = (runtime_t *) runtime;
     device_t  * dev = (device_t  *) device;
     driver_t  * drv = rt->driver_get(dev->driver_type);
-    return xkrt_driver_kernel_launch((xkrt_driver_t *) drv, queue, idx, fn, gx, gy, gz, bx, by, bz, shared_memory_bytes, args, args_size);
+    return xkrt_driver_prog_launch((xkrt_driver_t *) drv, queue, idx, fn, gx, gy, gz, bx, by, bz, shared_memory_bytes, args, args_size);
 }
 
 void
-xkrt_task_kernel_launch(
+xkrt_task_prog_launch(
     xkrt_runtime_t * runtime,
     xkrt_device_t * device,
     xkrt_task_t * task,
     int synchronous,
-    xkrt_kernel_launcher_t launcher
+    xkrt_prog_launcher_t launcher
 ) {
     assert(runtime);
     runtime_t * rt = (runtime_t *) runtime;
     task_t * t = (task_t *) task;
     device_t * dev = (device_t *) device;
     if (synchronous)
-        return rt->task_kernel_launch<true>(dev, t, (kernel_launcher_t) launcher);
+        return rt->task_prog_launch<true>(dev, t, (prog_launcher_t) launcher);
     else
-        return rt->task_kernel_launch<false>(dev, t, (kernel_launcher_t) launcher);
+        return rt->task_prog_launch<false>(dev, t, (prog_launcher_t) launcher);
 }
 
 // THREADING
@@ -1058,36 +1076,36 @@ xkrt_driver_device_cpuset(
 // QUEUE MANAGEMENT
 
 int
-xkrt_driver_queue_suggest(
+xkrt_driver_command_queue_suggest(
     xkrt_driver_t * driver,
     xkrt_device_driver_id_t device_driver_id,
-    xkrt_queue_type_t qtype
+    xkrt_command_queue_type_t qtype
 ) {
     assert(driver);
     driver_t * drv = (driver_t *) driver;
-    return drv->f_queue_suggest(device_driver_id, qtype);
+    return drv->f_command_queue_suggest(device_driver_id, qtype);
 }
 
-xkrt_queue_t *
-xkrt_driver_queue_create(
+xkrt_command_queue_t *
+xkrt_driver_command_queue_create(
     xkrt_driver_t * driver,
     xkrt_device_t * device,
-    xkrt_queue_type_t qtype,
-    xkrt_queue_command_list_counter_t capacity
+    xkrt_command_queue_type_t qtype,
+    xkrt_command_queue_list_counter_t capacity
 ) {
     assert(driver);
     driver_t * drv = (driver_t *) driver;
-    return (xkrt_queue_t *) drv->f_queue_create((device_t *) device, qtype, capacity);
+    return (xkrt_command_queue_t *) drv->f_command_queue_create((device_t *) device, qtype, capacity);
 }
 
 void
-xkrt_driver_queue_delete(
+xkrt_driver_command_queue_delete(
     xkrt_driver_t * driver,
-    xkrt_queue_t * queue
+    xkrt_command_queue_t * queue
 ) {
     assert(driver);
     driver_t * drv = (driver_t *) driver;
-    drv->f_queue_delete((queue_t *) queue);
+    drv->f_command_queue_delete((command_queue_t *) queue);
 }
 
 // MODULES
