@@ -409,6 +409,7 @@ __task_complete(
                                     assert(access_t::intersects(access, succ_access));
 
                                     // then we can prefetch memory
+                                    assert(succ->parent == task->parent);
                                     assert(succ->parent);
                                     MemoryCoherencyController * mcc = task_get_memory_controller(runtime, succ->parent, succ_access);
                                     if (mcc)

@@ -750,7 +750,6 @@ struct  runtime_t
         assert(thread);
         assert(thread->current_task);
         ++thread->current_task->cc;
-        task->parent = thread->current_task;
         __task_commit(task, F, args...);
         XKRT_STATS_INCR(this->stats.tasks[task->fmtid].commited, 1);
     }
@@ -866,6 +865,7 @@ struct  runtime_t
         # endif /* XKRT_SUPPORT_DEBUG */
 
         new (task) task_t(fmtid, flags);
+        task->parent = thread->current_task;
 
         if (flags & TASK_FLAG_RECORD)
         {
