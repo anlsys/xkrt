@@ -48,61 +48,70 @@
 
 XKRT_NAMESPACE_BEGIN
 
-    typedef struct  queue_cu_t
-    {
-        queue_t super;
+typedef struct  queue_cu_t
+{
+    command_queue_t super;
+
+    struct {
 
         struct {
+            CUstream  high;
+            CUstream  low;
+        } handle;
 
-            struct {
-                CUstream  high;
-                CUstream  low;
-            } handle;
+        struct {
+            CUevent * buffer;
+            xkrt_command_queue_list_counter_t capacity;
+        } events;
 
-            struct {
-                CUevent * buffer;
-                queue_command_list_counter_t capacity;
-            } events;
+        struct {
+            cublasHandle_t handle;
+        } blas;
 
-            struct {
-                cublasHandle_t handle;
-            } blas;
+        struct {
+            cusparseHandle_t handle;
+        } sparse;
 
-            struct {
-                cusparseHandle_t handle;
-            } sparse;
+        struct {
+            cusolverDnHandle_t handle;
+        } solver;
 
-            struct {
-                cusolverDnHandle_t handle;
-            } solver;
-
-        } cu;
-    }               queue_cu_t;
+    } cu;
+}               queue_cu_t;
 
 
-    typedef struct  device_cu_t
-    {
-        device_t inherited;
+typedef struct  device_cu_t
+{
+    device_t inherited;
 
-        struct  {
+    struct  {
 
-            CUcontext context;
-            CUdevice device;
+        CUcontext context;
+        CUdevice device;
 
-            struct {
-                int pciBusID;
-                int pciDeviceID;
-                size_t mem_total;
-                char name[64];      /* GPU name */
-            } prop;
+        struct {
+            int pciBusID;
+            int pciDeviceID;
+            size_t mem_total;
+            char name[64];      /* GPU name */
+        } prop;
 
-        } cu;
-    }               device_cu_t;
+    } cu;
+}               device_cu_t;
 
-    typedef struct  driver_cu_t
-    {
-        driver_t super;
-    }               driver_cu_t;
+typedef struct  driver_cu_t
+{
+    driver_t super;
+}               driver_cu_t;
+
+/* Opaque state kept behind command_batch_t::driver_handle for CUDA.
+ * Forward-declared here so it can be used in command_queue_launch. */
+typedef struct  command_batch_cu_handle_t
+{
+    CUgraph     graph;
+    CUgraphExec graph_exec;
+
+}               command_batch_cu_handle_t;
 
 XKRT_NAMESPACE_END
 

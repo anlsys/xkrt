@@ -39,6 +39,8 @@
 # define __XKRT_CALLBACK_H__
 
 # include <xkrt/namespace.h>
+# include <cassert>
+
 XKRT_NAMESPACE_BEGIN
 
 # define XKRT_CALLBACK_ARGS_MAX 5
@@ -47,6 +49,13 @@ typedef struct  callback_t
 {
     void (*func)(void * [XKRT_CALLBACK_ARGS_MAX]);
     void * args[XKRT_CALLBACK_ARGS_MAX];
+
+    inline void
+    raise(void)
+    {
+        assert(this->func);
+        this->func(this->args);
+    }
 }               callback_t;
 
 XKRT_NAMESPACE_END

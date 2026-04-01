@@ -45,8 +45,12 @@
 
 XKRT_NAMESPACE_BEGIN;
 
+//////////////
+//  HELPERS //
+//////////////
+
 const char *
-queue_type_to_str(xkrt_queue_type_t type)
+command_queue_type_to_str(xkrt_command_queue_type_t type)
 {
     switch (type)
     {
@@ -62,31 +66,11 @@ queue_type_to_str(xkrt_queue_type_t type)
     }
 }
 
-const char *
-command_type_to_str(command_type_t type)
-{
-     switch (type)
-     {
-         case (COMMAND_TYPE_KERN):        return "KERN";
-         case (COMMAND_TYPE_COPY_H2H_1D): return "COPY_H2H_1D";
-         case (COMMAND_TYPE_COPY_H2D_1D): return "COPY_H2D_1D";
-         case (COMMAND_TYPE_COPY_D2H_1D): return "COPY_D2H_1D";
-         case (COMMAND_TYPE_COPY_D2D_1D): return "COPY_D2D_1D";
-         case (COMMAND_TYPE_COPY_H2H_2D): return "COPY_H2H_2D";
-         case (COMMAND_TYPE_COPY_H2D_2D): return "COPY_H2D_2D";
-         case (COMMAND_TYPE_COPY_D2H_2D): return "COPY_D2H_2D";
-         case (COMMAND_TYPE_COPY_D2D_2D): return "COPY_D2D_2D";
-         case (COMMAND_TYPE_FD_READ):     return "FD_READ";
-         case (COMMAND_TYPE_FD_WRITE):    return "FD_WRITE";
-         default:                                   return NULL;
-    }
-}
-
 static inline void
-queue_command_list_init(
-    queue_command_list_t * list,
+command_queue_list_init(
+    command_queue_list_t * list,
     uint8_t * buffer,
-    queue_command_list_counter_t capacity
+    xkrt_command_queue_list_counter_t capacity
 ) {
     list->cmd = (command_t *) buffer;
     list->capacity = capacity;
@@ -95,37 +79,37 @@ queue_command_list_init(
 }
 
 void
-queue_init(
-    queue_t * queue,
-    queue_type_t type,
-    queue_command_list_counter_t capacity,
-    int (*f_queue_launch)(queue_t * queue, command_t * cmd, queue_command_list_counter_t idx),
-    int (*f_queues_progress)(queue_t * queue),
-    int (*f_queues_wait)(queue_t * queue),
-    int (*f_queue_wait)(queue_t * queue, command_t * cmd, queue_command_list_counter_t idx)
+command_queue_init(
+    command_queue_t * queue,
+    command_queue_type_t type,
+    xkrt_command_queue_list_counter_t capacity
 ) {
     queue->type = type;
-    queue->spinlock = SPINLOCK_INITIALIZER;
 
-    queue->f_command_launch    = f_queue_launch;
-    queue->f_commands_progress = f_queues_progress;
-    queue->f_commands_wait     = f_queues_wait;
-    queue->f_command_wait      = f_queue_wait;
-
-    uint8_t * mem = (uint8_t *) malloc(sizeof(command_t) * capacity * 2);
+    uint8_t * mem = (uint8_t *) malloc(
+        sizeof(command_t) * capacity    // ready
+      + sizeof(command_t) * capacity    // pending
+      + sizeof(bool)      * capacity    // completed
+    );
     assert(mem);
 
-    queue_command_list_init(
+    command_queue_list_init(
         &queue->ready,
         mem,
         capacity
     );
 
-    queue_command_list_init(
+    command_queue_list_init(
         &queue->pending,
         mem + sizeof(command_t) * capacity,
         capacity
     );
+
+    queue->completed = (bool *) (mem + 2 * sizeof(command_t) * capacity);
+    // memset(queue->completed, 0, sizeof(bool) * capacity);
+    assert(queue->completed);
+
+    queue->spinlock = SPINLOCK_INITIALIZER;
 
     # if XKRT_SUPPORT_STATS
     memset(&(queue->stats), 0, sizeof(queue->stats));
@@ -133,7 +117,7 @@ queue_init(
 }
 
 void
-queue_deinit(queue_t * queue)
+command_queue_deinit(command_queue_t * queue)
 {
     assert(queue);
     assert(queue->ready.cmd);
@@ -142,247 +126,139 @@ queue_deinit(queue_t * queue)
     free(queue->ready.cmd);
 }
 
+//////////////////////////////////////////
+//  MANAGEMENT CALLED BY ANY THREADS    //
+//////////////////////////////////////////
+
+command_t *
+command_queue_t::command_new(
+    const ocg::command_type_t ctype,
+    const command_flag_t flags
+) {
+    if (this->ready.is_full())
+        return NULL;
+
+    const xkrt_command_queue_list_counter_t p = this->ready.pos.w;
+    assert(0 <= p && p < this->ready.capacity);
+    command_t * cmd = this->ready.cmd + p;
+    new (cmd) command_t(ctype, flags);
+
+    return cmd;
+}
+
 int
-queue_t::commit(command_t * cmd)
+command_queue_t::emplace(const command_t * cmd)
 {
-    assert(cmd);
-    assert(!this->ready.is_full());
-
-    this->ready.pos.w = (this->ready.pos.w + 1) % this->ready.capacity;
-    XKRT_STATS_INCR(this->stats.commands[cmd->type].commited, 1);
-
-    LOGGER_DEBUG(
-        "Commited a command of type `%s` (%d ready, %d pending)`",
-        command_type_to_str(cmd->type),
-        this->ready.size(),
-        this->pending.size()
+    memcpy(
+        (void *) (this->ready.cmd + this->ready.pos.w),
+        (void *) (cmd),
+        sizeof(command_t)
     );
-
-    this->unlock();
-
     return 0;
 }
 
 int
-queue_t::launch_ready_commands(void)
+command_queue_t::commit(const command_t * cmd)
 {
-    assert(this->f_command_launch);
-    if (this->ready.is_empty())
-        return 0;
+    // TODO: multiple thread may commit in parallel
 
-    int r = 0;
+    assert(cmd);
+    assert(!this->ready.is_full());
 
-    /* for each ready command */
-    const queue_command_list_counter_t p = this->ready.iterate([this, &r] (queue_command_list_counter_t p) {
+    const xkrt_command_queue_list_counter_t p = this->ready.pos.w;
+    this->completed[p] = false;
+    this->ready.pos.w = (this->ready.pos.w + 1) % this->ready.capacity;
+    XKRT_STATS_INCR(this->stats.commands[cmd->type].commited, 1);
+    LOGGER_DEBUG(
+        "Commited a command of type `%s` (%d ready, %d pending)`",
+        ocg::command_type_to_str(cmd->type),
+        this->ready.size(),
+        this->pending.size()
+    );
 
-        /* if the pending queue is full, we cannot start more commands */
-        if (this->pending.is_full())
-            return false;
-
-        /* retrieve it */
-        command_t * cmd = this->ready.cmd + p;
-        assert(cmd);
-
-        LOGGER_DEBUG(
-            "Decoding command `%s` on queue %p of type `%s` - p=%u, r=%u, w=%u",
-            command_type_to_str(cmd->type),
-            this,
-            queue_type_to_str(this->type),
-            p,
-            this->ready.pos.r,
-            this->ready.pos.w
-        );
-
-        /* launch command */
-        switch (cmd->type)
-        {
-            /* kernel commands are launched by the command itself, not the driver */
-            case (COMMAND_TYPE_KERN):
-            {
-                ((kernel_launcher_t) cmd->kern.launch)(cmd->kern.runtime, cmd->kern.device, cmd->kern.task, this, cmd, p);
-                break ;
-            }
-
-            case (COMMAND_TYPE_COPY_H2H_1D):
-            case (COMMAND_TYPE_COPY_H2H_2D):
-            {
-                LOGGER_FATAL("Not implemented");
-                break ;
-            }
-
-            /* launch command */
-            case (COMMAND_TYPE_COPY_H2D_1D):
-            case (COMMAND_TYPE_COPY_D2H_1D):
-            case (COMMAND_TYPE_COPY_D2D_1D):
-            case (COMMAND_TYPE_COPY_H2D_2D):
-            case (COMMAND_TYPE_COPY_D2H_2D):
-            case (COMMAND_TYPE_COPY_D2D_2D):
-            case (COMMAND_TYPE_FD_READ):
-            case (COMMAND_TYPE_FD_WRITE):
-            default:
-            {
-                int err = this->f_command_launch(this, cmd, p);
-                switch (err)
-                {
-                    case (0):
-                    case (EINPROGRESS):
-                    {
-                        break ;
-                    }
-
-                    case (ENOSYS):
-                    {
-                        LOGGER_FATAL("Command `%s` not implemented", command_type_to_str(cmd->type));
-                        break ;
-                    }
-
-                    default:
-                    {
-                        LOGGER_FATAL("Unknown error after decoding command");
-                        break ;
-                    }
-                }
-            }
-        }
-
-        /* if the command is synchronous, it is completed now */
-        if (cmd->synchronous)
-        {
-            this->complete_command(p);
-        }
-        /* else, save to pending list */
-        else
-        {
-            /* the pending queue must not be full at that point */
-            assert(!this->pending.is_full());
-            const queue_command_list_counter_t wp = this->pending.pos.w;
-            this->pending.pos.w = (this->pending.pos.w + 1) % this->pending.capacity;
-
-            memcpy(
-                (void *) (this->pending.cmd + wp),
-                (void *) (this->ready.cmd   + p),
-                sizeof(command_t)
-            );
-
-            ++r;
-        }
-
-        /* continue */
-        LOGGER_DEBUG("(loop) ready.is_empty() = %d, pending.is_empty() = %d", this->ready.is_empty(), this->pending.is_empty());
-        return true;
-
-    }); /* RING_ITERATE */
-
-    // this barrier ensures that the threads that owns the queue correctly
-    // sees the 'ready' queue empty but not the 'pending' - else it would go
-    // to sleep even though there is pending commands
-    writemem_barrier();
-    this->ready.pos.r = p;
-
-    LOGGER_DEBUG("ready.is_empty() = %d, pending.is_empty() = %d", this->ready.is_empty(), this->pending.is_empty());
-
-    return r;
+    return 0;
 }
 
-// TODO : allow out of order completion
+//////////////////////////////////////////////
+//  MANAGEMENT CALLED BY THE OWNING THREAD  //
+//////////////////////////////////////////////
 
-template <bool set_completed_flag>
 static inline void
 __complete_command_internal(
-    queue_t * queue,
-    command_t * cmd
+    command_queue_t * queue,
+    const xkrt_command_queue_list_counter_t p
 ) {
+    assert(0 <= p && p < queue->pending.capacity);
+
+    command_t * cmd = queue->pending.cmd + p;
     assert(cmd >= queue->pending.cmd);
     assert(cmd <  queue->pending.cmd + queue->pending.capacity);
 
     LOGGER_DEBUG(
         "Completed command `%s` on queue %p of type `%s`",
-        command_type_to_str(cmd->type),
+        ocg::command_type_to_str(cmd->type),
         queue,
-        queue_type_to_str(queue->type)
+        command_queue_type_to_str(queue->type)
     );
 
-    if (set_completed_flag)
-        cmd->completed = true;
-
-    for (command_callback_index_t i = 0 ; i < cmd->callbacks.n ; ++i)
-    {
-        assert(cmd->callbacks.list[i].func);
-        cmd->callbacks.list[i].func(cmd->callbacks.list[i].args);
-    }
-
+    queue->completed[p] = true;
+    cmd->completion_callback_raise();
     XKRT_STATS_INCR(queue->stats.commands[cmd->type].completed, 1);
+
+    switch (cmd->type)
+    {
+        case (ocg::COMMAND_TYPE_COPY_H2H_1D):
+        case (ocg::COMMAND_TYPE_COPY_H2D_1D):
+        case (ocg::COMMAND_TYPE_COPY_D2H_1D):
+        case (ocg::COMMAND_TYPE_COPY_D2D_1D):
+        {
+            XKRT_STATS_INCR(queue->stats.transfered, cmd->copy_1D.size);
+            break ;
+        }
+
+        case (ocg::COMMAND_TYPE_COPY_H2H_2D):
+        case (ocg::COMMAND_TYPE_COPY_H2D_2D):
+        case (ocg::COMMAND_TYPE_COPY_D2H_2D):
+        case (ocg::COMMAND_TYPE_COPY_D2D_2D):
+        {
+            XKRT_STATS_INCR(queue->stats.transfered, cmd->copy_2D.m * cmd->copy_2D.n * cmd->copy_2D.sizeof_type);
+            break ;
+        }
+
+        default:
+        {
+            break ;
+        }
+    }
 }
 
-template <bool set_completed_flag>
-static inline void
-__complete_command_internal(queue_t * queue, const queue_command_list_counter_t p)
-{
-    command_t * cmd = queue->pending.cmd + p;
-    __complete_command_internal<set_completed_flag>(queue, cmd);
-}
-
-// complete the given command
 void
-queue_t::complete_command(const queue_command_list_counter_t p)
+command_queue_t::complete_command(const xkrt_command_queue_list_counter_t p)
 {
     assert(p >= 0);
     assert(p <  this->pending.capacity);
-    __complete_command_internal<true>(this, p);
+    __complete_command_internal(this, p);
 }
 
 void
-queue_t::complete_command(command_t * cmd)
+command_queue_t::complete_commands(const xkrt_command_queue_list_counter_t p)
 {
-    __complete_command_internal<true>(this, cmd);
-}
-
-void
-queue_t::complete_commands(const queue_command_list_counter_t p)
-{
-    this->pending.iterate([this] (queue_command_list_counter_t p) {
-        __complete_command_internal<false>(this, p);
+    this->pending.iterate([this] (xkrt_command_queue_list_counter_t p) {
+        __complete_command_internal(this, p);
         return true;
     });
     this->pending.pos.r = p;
 }
 
-void
-queue_t::wait_pending_commands(void)
-{
-    if (!this->pending.is_empty())
-    {
-        this->f_commands_wait(this);
-        this->complete_commands(this->pending.pos.w);
-    }
-}
-
-int
-queue_t::progress_pending_commands(void)
-{
-    assert(this->f_commands_progress);
-
-    if (this->pending.is_empty())
-        return 0;
-
-    LOGGER_DEBUG("Progressing pending commands of queue %p of type `%s` (%d pending) - ptr at r=%u, w=%u",
-            this, queue_type_to_str(this->type), this->pending.size(), this->pending.pos.r, this->pending.pos.w);
-
-    // ask for progression of the given commands
-    const int r = this->f_commands_progress(this);
-
-    // move reading position to first uncompleted cmd
-    const queue_command_list_counter_t p = this->pending.iterate([this] (queue_command_list_counter_t p) {
-        return (this->pending.cmd[p].completed) ? true : false;
+xkrt_command_queue_list_counter_t
+command_queue_t::progress(
+    const std::function<bool(command_t * cmd, xkrt_command_queue_list_counter_t p)> & process
+) {
+    return this->pending.iterate([&] (xkrt_command_queue_list_counter_t p) {
+        if (this->completed[p])
+            return true;
+        return process(this->pending.cmd + p, p);
     });
-    this->pending.pos.r = p;
-
-    LOGGER_DEBUG("Progressed pending commands of queue %p of type `%s` (%d pending)",
-            this, queue_type_to_str(this->type), this->pending.size());
-
-    // return err code
-    return r;
 }
 
 XKRT_NAMESPACE_END;
-

@@ -38,20 +38,21 @@
 #ifndef __XKRT_RUNTIME_H__
 # define __XKRT_RUNTIME_H__
 
-# include <xkrt/support.h>
-# include <xkrt/types.h>
+# include <xkrt/command/command.hpp>
 # include <xkrt/conf/conf.h>
 # include <xkrt/distribution/distribution.h>
 # include <xkrt/driver/driver.h>
-# include <xkrt/thread/team.h>
-# include <xkrt/thread/thread.h>
 # include <xkrt/memory/access/coherency-controller.hpp>
 # include <xkrt/memory/access/common/interval-set.hpp>
 # include <xkrt/memory/register.h>
 # include <xkrt/memory/routing/router-affinity.hpp>
 # include <xkrt/stats/stats.h>
+# include <xkrt/support.h>
 # include <xkrt/sync/spinlock.h>
 # include <xkrt/task/task.hpp>
+# include <xkrt/thread/team.h>
+# include <xkrt/thread/thread.h>
+# include <xkrt/types.h>
 
 # include <hwloc.h>
 
@@ -143,6 +144,30 @@ struct  runtime_t
     void reset_coherence_controllers(void);
     void reset_dependence_controllers(void);
 
+    //////////////
+    // COMMANDS //
+    //////////////
+
+    /** Submit a command to the passed device */
+    int command_submit(
+        const device_unique_id_t device_unique_id,
+        command_t * command
+    );
+
+    /**
+     *  The routines bellow emit a command.
+     *  It increases the current task detach counter by 1.
+     *  Once the command completed, it decrements the detact counter by 1.
+     */
+    int
+    task_emit_command(
+        const device_unique_id_t device_unique_id,
+        const command_queue_type_t qtype,
+        const ocg::command_type_t ctype,
+        const command_flag_t flags,
+        const std::function<void(command_t *)> builder
+    );
+
     ////////////////////
     // DATA MOVEMENTS //
     ////////////////////
@@ -150,20 +175,20 @@ struct  runtime_t
     /**
      * @brief Submit a 1D copy command to a device queue
      *
-     * @param device_global_id Global ID of the device executing the copy
+     * @param device_unique_id Global ID of the device executing the copy
      * @param size Number of bytes to copy
-     * @param dst_device_global_id Destination device global ID
+     * @param dst_device_unique_id Destination device global ID
      * @param dst_device_addr Destination device address
-     * @param src_device_global_id Source device global ID
+     * @param src_device_unique_id Source device global ID
      * @param src_device_addr Source device address
      * @param callback Callback function to invoke upon command completion
      */
     void copy(
-        const device_global_id_t   device_global_id,
+        const device_unique_id_t   device_unique_id,
         const size_t               size,
-        const device_global_id_t   dst_device_global_id,
+        const device_unique_id_t   dst_device_unique_id,
         const uintptr_t            dst_device_addr,
-        const device_global_id_t   src_device_global_id,
+        const device_unique_id_t   src_device_unique_id,
         const uintptr_t            src_device_addr,
         const callback_t         & callback
     );
@@ -171,20 +196,20 @@ struct  runtime_t
     /**
      * @brief Submit a 2D copy command to a device queue
      *
-     * @param device_global_id Global ID of the device executing the copy
+     * @param device_unique_id Global ID of the device executing the copy
      * @param host_view Host memory view
-     * @param dst_device_global_id Destination device global ID
+     * @param dst_device_unique_id Destination device global ID
      * @param dst_device_view Destination device memory replica view
-     * @param src_device_global_id Source device global ID
+     * @param src_device_unique_id Source device global ID
      * @param src_device_view Source device memory replica view
      * @param callback Callback function to invoke upon completion
      */
     void copy(
-        const device_global_id_t      device_global_id,
+        const device_unique_id_t      device_unique_id,
         const memory_view_t         & host_view,
-        const device_global_id_t      dst_device_global_id,
+        const device_unique_id_t      dst_device_unique_id,
         const memory_replica_view_t & dst_device_view,
-        const device_global_id_t      src_device_global_id,
+        const device_unique_id_t      src_device_unique_id,
         const memory_replica_view_t & src_device_view,
         const callback_t            & callback
     );
@@ -200,20 +225,20 @@ struct  runtime_t
      *   - Accesses: virtual read on Interval(src.ai, src.bi)
      *   - Routine: submit a copy command for this chunk
      *
-     * @param device_global_id Global ID of the device executing the copy
+     * @param device_unique_id Global ID of the device executing the copy
      * @param size Total number of bytes to copy
-     * @param dst_device_global_id Destination device global ID
+     * @param dst_device_unique_id Destination device global ID
      * @param dst_device_addr Destination device base address
-     * @param src_device_global_id Source device global ID
+     * @param src_device_unique_id Source device global ID
      * @param src_device_addr Source device base address
      * @param n Number of parallel tasks to spawn
      */
     void memory_copy_async(
-        const device_global_id_t   device_global_id,
+        const device_unique_id_t   device_unique_id,
         const size_t               size,
-        const device_global_id_t   dst_device_global_id,
+        const device_unique_id_t   dst_device_unique_id,
         const uintptr_t            dst_device_addr,
-        const device_global_id_t   src_device_global_id,
+        const device_unique_id_t   src_device_unique_id,
         const uintptr_t            src_device_addr,
         int                        n
     );
@@ -361,80 +386,80 @@ struct  runtime_t
     /**
      * @brief Ensure chunk0 is preallocated on the device
      *
-     * @param device_global_id Global device identifier
+     * @param device_unique_id Global device identifier
      * @param memory_id Device memory index
      */
-    void memory_device_preallocate_ensure(const device_global_id_t device_global_id, const int memory_id);
+    void memory_device_preallocate_ensure(const device_unique_id_t device_unique_id, const int memory_id);
 
     /**
      * @brief Allocate memory on a specific device memory bank
      *
-     * @param device_global_id Global device identifier
+     * @param device_unique_id Global device identifier
      * @param size Size in bytes to allocate
      * @param memory_id Device memory index (bank)
      * @return Pointer to allocated chunk, or nullptr on failure
      */
-    area_chunk_t * memory_device_allocate_on(const device_global_id_t device_global_id, const size_t size, const int memory_id);
+    area_chunk_t * memory_device_allocate_on(const device_unique_id_t device_unique_id, const size_t size, const int memory_id);
 
     /**
      * @brief Allocate memory on device's default memory bank
      *
-     * @param device_global_id Global device identifier
+     * @param device_unique_id Global device identifier
      * @param size Size in bytes to allocate
      * @return Pointer to allocated chunk, or nullptr on failure
      */
-    area_chunk_t * memory_device_allocate(const device_global_id_t device_global_id, const size_t size);
+    area_chunk_t * memory_device_allocate(const device_unique_id_t device_unique_id, const size_t size);
 
     /**
      * @brief Deallocate a device memory chunk
      *
-     * @param device_global_id Global device identifier
+     * @param device_unique_id Global device identifier
      * @param chunk Pointer to chunk to deallocate
      */
-    void memory_device_deallocate(const device_global_id_t device_global_id, area_chunk_t * chunk);
+    void memory_device_deallocate(const device_unique_id_t device_unique_id, area_chunk_t * chunk);
 
     /**
      * @brief Deallocate all memory previously allocated on the device
      *
-     * @param device_global_id Global device identifier
+     * @param device_unique_id Global device identifier
      */
-    void memory_device_deallocate_all(const device_global_id_t device_global_id);
+    void memory_device_deallocate_all(const device_unique_id_t device_unique_id);
 
     /**
      * @brief Allocate host memory using a device driver
      *
-     * @param device_global_id Global device identifier (determines which driver to use)
+     * @param device_unique_id Global device identifier (determines which driver to use)
      * @param size Size in bytes to allocate
      * @return Pointer to allocated memory, or nullptr on failure
      */
-    void * memory_host_allocate(const device_global_id_t device_global_id, const size_t size);
+    void * memory_host_allocate(const device_unique_id_t device_unique_id, const size_t size);
 
     /**
      * @brief Deallocate host memory using a device driver
      *
-     * @param device_global_id Global device identifier (determines which driver to use)
+     * @param device_unique_id Global device identifier (determines which driver to use)
      * @param mem Pointer to memory to deallocate
      * @param size Size in bytes
      */
-    void memory_host_deallocate(const device_global_id_t device_global_id, void * mem, const size_t size);
+    void memory_host_deallocate(const device_unique_id_t device_unique_id, void * mem, const size_t size);
 
     /**
      * @brief Allocate unified memory accessible by both host and device
      *
-     * @param device_global_id Global device identifier (determines which driver to use)
+     * @param device_unique_id Global device identifier (determines which driver to use)
      * @param size Size in bytes to allocate
      * @return Pointer to allocated unified memory, or nullptr on failure
      */
-    void * memory_unified_allocate(const device_global_id_t device_global_id, const size_t size);
+    void * memory_unified_allocate(const device_unique_id_t device_unique_id, const size_t size);
 
     /**
      * @brief Deallocate unified memory
      *
-     * @param device_global_id Global device identifier (determines which driver to use)
+     * @param device_unique_id Global device identifier (determines which driver to use)
      * @param mem Pointer to unified memory to deallocate
      * @param size Size in bytes
      */
-    void memory_unified_deallocate(const device_global_id_t device_global_id, void * mem, const size_t size);
+    void memory_unified_deallocate(const device_unique_id_t device_unique_id, void * mem, const size_t size);
 
     /////////////////////
     // MEMORY MOVEMENT //
@@ -443,16 +468,16 @@ struct  runtime_t
     /**
      * @brief Synchronously allocate a non-coherent device replica
      *
-     * @param device_global_id Global device identifier
+     * @param device_unique_id Global device identifier
      * @param ptr Host memory pointer
      * @param size Size in bytes
      */
-    void memory_noncoherent_alloc(device_global_id_t device_global_id, void * ptr, size_t size);
+    void memory_noncoherent_alloc(device_unique_id_t device_unique_id, void * ptr, size_t size);
 
     /**
      * @brief Synchronously allocate a non-coherent device replica for a matrix
      *
-     * @param device_global_id Global device identifier
+     * @param device_unique_id Global device identifier
      * @param storage Matrix storage layout
      * @param ptr Host matrix pointer
      * @param ld Leading dimension
@@ -460,21 +485,22 @@ struct  runtime_t
      * @param n Number of columns
      * @param sizeof_type Size of each element in bytes
      */
-    void memory_noncoherent_alloc(device_global_id_t device_global_id, matrix_storage_t storage, void * ptr, size_t ld, size_t m, size_t n, size_t sizeof_type);
+    void memory_noncoherent_alloc(device_unique_id_t device_unique_id, matrix_storage_t storage, void * ptr, size_t ld, size_t m, size_t n, size_t sizeof_type);
 
     /**
      * @brief Spawn an empty task with a read access on the passed segment
      *
-     * @param device_global_id Global device identifier
+     * @param device_unique_id Global device identifier
      * @param ptr Host memory pointer
      * @param size Size in bytes
      */
-    void memory_coherent_async(device_global_id_t device_global_id, void * ptr, size_t size);
+    void memory_coherent_async(device_unique_id_t device_unique_id, void * ptr, size_t size);
+    void memory_coherent_async(device_unique_id_t device_unique_id, void * ptr, size_t size, int n);
 
     /**
      * @brief Spawn an empty task with a read access on the passed matrix
      *
-     * @param device_global_id Global device identifier
+     * @param device_unique_id Global device identifier
      * @param storage Matrix storage layout
      * @param ptr Host matrix pointer
      * @param ld Leading dimension
@@ -482,21 +508,21 @@ struct  runtime_t
      * @param n Number of columns
      * @param sizeof_type Size of each element in bytes
      */
-    void memory_coherent_async(device_global_id_t device_global_id, matrix_storage_t storage, void * ptr, size_t ld, size_t m, size_t n, size_t sizeof_type);
+    void memory_coherent_async(device_unique_id_t device_unique_id, matrix_storage_t storage, void * ptr, size_t ld, size_t m, size_t n, size_t sizeof_type);
 
     /**
      * @brief Spawn an empty undeferred task with a read access on the passed segment
      *
-     * @param device_global_id Global device identifier
+     * @param device_unique_id Global device identifier
      * @param ptr Host memory pointer
      * @param size Size in bytes
      */
-    void memory_coherent_sync(device_global_id_t device_global_id, void * ptr, size_t size);
+    void memory_coherent_sync(device_unique_id_t device_unique_id, void * ptr, size_t size);
 
     /**
      * @brief Spawn an empty undeferred task with a read access on the passed matrix
      *
-     * @param device_global_id Global device identifier
+     * @param device_unique_id Global device identifier
      * @param storage Matrix storage layout
      * @param ptr Host matrix pointer
      * @param ld Leading dimension
@@ -504,27 +530,27 @@ struct  runtime_t
      * @param n Number of columns
      * @param sizeof_type Size of each element in bytes
      */
-    void memory_coherent_sync(device_global_id_t device_global_id, matrix_storage_t storage, void * ptr, size_t ld, size_t m, size_t n, size_t sizeof_type);
+    void memory_coherent_sync(device_unique_id_t device_unique_id, matrix_storage_t storage, void * ptr, size_t ld, size_t m, size_t n, size_t sizeof_type);
 
     /**
      * @brief Hint to unified memory system about future device access
      *
-     * @param device_global_id Global device identifier
+     * @param device_unique_id Global device identifier
      * @param addr Memory address
      * @param size Size in bytes
      * @return 0 on success, non-zero on error
      */
-    int memory_unified_advise  (const device_global_id_t device_global_id, const void * addr, const size_t size);
+    int memory_unified_advise  (const device_unique_id_t device_unique_id, const void * addr, const size_t size);
 
     /**
      * @brief Prefetch unified memory to make it coherent on device
      *
-     * @param device_global_id Global device identifier
+     * @param device_unique_id Global device identifier
      * @param addr Memory address
      * @param size Size in bytes
      * @return 0 on success, non-zero on error
      */
-    int memory_unified_prefetch(const device_global_id_t device_global_id, const void * addr, const size_t size);
+    int memory_unified_prefetch(const device_unique_id_t device_unique_id, const void * addr, const size_t size);
 
     /////////////////////////
     // MEMORY REGISTRATION //
@@ -676,9 +702,58 @@ struct  runtime_t
         return this->memory_touch_async(team, ptr, size, n);
     }
 
+    //////////////
+    // ACCESSES //
+    //////////////
+
+    /**
+     *  Set edges with previously inserted accesses in the passed task domain.
+     *
+     *      task must be a task with TASK_FLAG_DOM
+     *      accesses is the list of accesses to linked
+     *      n is the number of accesses
+     */
+    void task_accesses_link(task_t * task, access_t * accesses, task_access_counter_t n);
+
+    /**
+     *  Insert an access in the passed task domain.
+     *      task must be a task with TASK_FLAG_DOM
+     *      accesses is the list of accesses to put
+     *      n is the number of accesses
+     */
+    void task_accesses_put(task_t * task, access_t * accesses, task_access_counter_t n);
+
+    /** Do link + put */
+    void task_accesses_resolve(task_t * task, access_t * accesses, task_access_counter_t n);
+
+    inline void
+    task_accesses_resolve(access_t * accesses, task_access_counter_t n)
+    {
+        thread_t * tls = thread_t::get_tls();
+        assert(tls);
+        assert(tls->current_task);
+        return this->task_accesses_resolve(tls->current_task, accesses, n);
+    }
+
     /////////////
     // TASKING //
     /////////////
+
+    template <typename... Args>
+    inline void
+    task_commit(
+        task_t * task,
+        void (*F)(Args..., task_t *),
+        Args... args
+    ) {
+        thread_t * thread = thread_t::get_tls();
+        assert(thread);
+        assert(thread->current_task);
+        ++thread->current_task->cc;
+        task->parent = thread->current_task;
+        __task_commit(task, F, args...);
+        XKRT_STATS_INCR(this->stats.tasks[task->fmtid].commited, 1);
+    }
 
     /* Commit a task - so it may be schedule from now once its dependences
      * completed. The task will be pushed to a device team */
@@ -725,28 +800,89 @@ struct  runtime_t
     /* duplicate a moldable task (do not use unless you know what you're doing) */
     task_t * task_dup(const task_t * task);
 
-    /* prototype of a task routine */
-    typedef std::function<void(runtime_t *, device_t *, task_t *)> task_routine_t;
-
-    /* prototype of a routine to set task accesses */
-    typedef std::function<void(task_t *, access_t *)> task_accesses_setter_t;
-
     ////////////////////////////////
     // TASK INSTANCIATION HELPERS //
     ////////////////////////////////
 
+    typedef std::function<void(runtime_t *, device_t *, task_t *)>  task_routine_t;
+    typedef std::function<void(task_t *, access_t *)>               task_accesses_setter_t;
+    typedef std::function<bool(task_t *, access_t *)>               task_split_condition_t;
+
     /* Allocate a new task and call its constructor */
     template <bool use_thread_stack = true>
-    inline task_t * task_new(const task_format_id_t fmtid, const task_flag_bitfield_t flags, const size_t size)
-    {
-        task_t * task = this->task_allocate<use_thread_stack>(size);
+    inline task_t * task_new(
+        const task_format_id_t fmtid,
+        task_flag_bitfield_t flags,
+        const void * args,
+        const size_t args_size,
+        const task_access_counter_t n_accesses
+    ) {
+        thread_t * thread = thread_t::get_tls();
+        assert(thread);
+
+        if (n_accesses)
+            assert(flags & TASK_FLAG_ACCESSES);
+
+        if (thread->current_task->flags & TASK_FLAG_GRAPH_RECORDING)
+            flags |= TASK_FLAG_RECORD;
+
+        const size_t task_size = task_compute_size(flags, n_accesses);
+        const size_t size = task_size + args_size;
+
+        task_t * task;
+
+        if (use_thread_stack)
+        {
+            // if the task stack is full
+            if (thread->memory_stack_ptr + size > thread->memory_stack_bottom + XKRT_THREAD_MAX_MEMORY)
+            {
+                LOGGER_INFO("Task stack full! Increase `XKRT_THREAD_MAX_MEMORY` and recompile to avoid this");
+
+                // wait for all tasks completion
+                this->task_wait();
+
+                // clear all tasks references
+                # if XKRT_SUPPORT_DEBUG
+                thread->tasks.clear();
+                # endif /* XKRT_SUPPORT_DEBUG */
+                this->reset_dependence_controllers();
+
+                // reset the stack
+                this->task_deallocate_all();
+            }
+
+            // else, get a new task
+            task = (task_t *) thread->memory_stack_ptr;
+            thread->memory_stack_ptr += size;
+        }
+        else
+        {
+            // TODO: this task is leaking atm
+            task = (task_t *) malloc(size);
+        }
+
+        # if XKRT_SUPPORT_DEBUG
+        thread->tasks.push_back(task);
+        # endif /* XKRT_SUPPORT_DEBUG */
+
         new (task) task_t(fmtid, flags);
+
+        if (flags & TASK_FLAG_RECORD)
+        {
+            task_rec_info_t * rec = TASK_REC_INFO(task);
+            new (rec) xkrt::task_rec_info_t();
+        }
+
+        if (args)
+        {
+            assert(args_size);
+            void * task_args = TASK_ARGS(task, task_size);
+            assert(task_args);
+            memcpy(task_args, args, args_size);
+        }
+
         return task;
     }
-
-    /* Allocate a new task */
-    template <bool use_thread_stack>
-    task_t * task_allocate(const size_t size);
 
     /* Deallocate all tasks previously allocated by the calling thread */
     void task_deallocate_all(void);
@@ -754,94 +890,49 @@ struct  runtime_t
     template <task_flag_bitfield_t flags>
     inline task_t *
     task_instanciate(
-        const task_format_id_t fmtid,
+        const device_unique_id_t device_unique_id,
+        const task_access_counter_t ac,
+        const task_accesses_setter_t & set_accesses,
+        const task_split_condition_t & split_condition,
         const void * args,
         const size_t args_size,
-        const task_accesses_setter_t & set_accesses,
-        const task_access_counter_t naccesses
+        const task_format_id_t fmtid
     ) {
-        assert(naccesses > 0);
-        assert(set_accesses);
+        assert( (flags & TASK_FLAG_DEVICE)    || (device_unique_id == XKRT_UNSPECIFIED_DEVICE_UNIQUE_ID));
+        assert(!(flags & TASK_FLAG_ACCESSES)  || (set_accesses    && ac));
+        assert(!(flags & TASK_FLAG_MOLDABLE)  || (split_condition && ac));
 
         // retrieve tls
         thread_t * tls = thread_t::get_tls();
         assert(tls);
 
         // create the task
-        const size_t task_size = task_compute_size(flags, naccesses);
-        task_t * task = this->task_new(fmtid, flags, task_size + args_size);
+        task_t * task = this->task_new(fmtid, flags, args, args_size, ac);
+        assert(task);
 
-        task_dep_info_t * dep = TASK_DEP_INFO(task);
-        new (dep) task_dep_info_t(naccesses);
-
-        void * task_args = TASK_ARGS(task, task_size);
-        assert(task_args);
-        memcpy(task_args, args, args_size);
-
-        access_t * accesses = TASK_ACCESSES(task, flags);
-        set_accesses(task, accesses);
-        tls->resolve(accesses, naccesses);
-
-        # if XKRT_SUPPORT_DEBUG
-        snprintf(task->label, sizeof(task->label), "capture-dynamic-access");
-        # endif
-
-        return task;
-    }
-
-    template <task_flag_bitfield_t flags, size_t args_size>
-    inline task_t *
-    task_instanciate(
-        const task_format_id_t fmtid,
-        const task_accesses_setter_t & set_accesses,
-        const task_access_counter_t naccesses
-    ) {
-        return this->task_instanciate<flags>(fmtid, NULL, args_size, set_accesses, naccesses);
-    }
-
-    template <task_access_counter_t ac, bool has_set_accesses, bool has_split_condition>
-    inline task_t *
-    task_instanciate(
-        const task_routine_t & f,
-        const task_accesses_setter_t & set_accesses,
-        const std::function<bool(task_t *, access_t *)> & split_condition
-    ) {
-        static_assert(ac == 0 || has_set_accesses);     // must have both or none
-        static_assert(!has_split_condition || ac > 0);  // cannot split if task has no accesses
-
-        assert(has_set_accesses    == (set_accesses    != nullptr));
-        assert(has_split_condition == (split_condition != nullptr));
-
-        // retrieve tls
-        thread_t * tls = thread_t::get_tls();
-        assert(tls);
-
-        // create the task
-        constexpr task_flag_bitfield_t depflag = ac                  ? TASK_FLAG_DEPENDENT : TASK_FLAG_ZERO;
-        constexpr task_flag_bitfield_t molflag = has_split_condition ? TASK_FLAG_MOLDABLE  : TASK_FLAG_ZERO;
-        constexpr task_flag_bitfield_t flags = depflag | molflag;
-        constexpr size_t task_size = task_compute_size(flags, ac);
-        constexpr size_t args_size = sizeof(f);
-
-        task_t * task = this->task_new(this->formats.host_capture, flags, task_size + args_size);
-
-        std::function<void(runtime_t *, device_t *, task_t *)> * fcpy = (std::function<void(runtime_t *, device_t *, task_t *)> *) TASK_ARGS(task, task_size);
-        new (fcpy) std::function<void(runtime_t *, device_t *, task_t *)>(f);
-
-        if (depflag)
+        if constexpr (flags & TASK_FLAG_DEVICE)
         {
-            task_dep_info_t * dep = TASK_DEP_INFO(task);
-            new (dep) task_dep_info_t(ac);
-
-            access_t * accesses = TASK_ACCESSES(task, flags);
-            set_accesses(task, accesses);
-            tls->resolve(accesses, ac);
+            task_dev_info_t * dev = TASK_DEV_INFO(task);
+            new (dev) task_dev_info_t(device_unique_id, XKRT_UNSPECIFIED_TASK_ACCESS);
         }
 
-        if (molflag)
+        if constexpr (flags & TASK_FLAG_MOLDABLE)
         {
             task_mol_info_t * mol = TASK_MOL_INFO(task);
             new (mol) task_mol_info_t(split_condition, args_size);
+        }
+
+        if constexpr (flags & TASK_FLAG_ACCESSES)
+        {
+            task_acs_info_t * acs = TASK_ACS_INFO(task);
+            new (acs) task_acs_info_t(ac);
+
+            access_t * accesses = TASK_ACCESSES(task);
+            assert(accesses);
+            assert(ac);
+            set_accesses(task, accesses);
+            assert(tls->current_task);
+            this->task_accesses_resolve(tls->current_task, accesses, ac);
         }
 
         # if XKRT_SUPPORT_DEBUG
@@ -851,74 +942,69 @@ struct  runtime_t
         return task;
     }
 
+    template <task_flag_bitfield_t flags>
+    inline task_t *
+    task_instanciate(
+        const device_unique_id_t device_unique_id,
+        const task_access_counter_t ac,
+        const task_accesses_setter_t & set_accesses,
+        const task_split_condition_t & split_condition,
+        const task_routine_t & f
+    ) {
+        return task_instanciate<flags>(device_unique_id, ac, set_accesses, split_condition, &f, sizeof(f), this->formats.host_capture);
+    }
+
     /**
      * @brief Spawn a task in the currently executing thread team
-     * @tparam ac Task access counter specifying the number of data accesses
-     * @tparam has_set_accesses Flag indicating if access setter is provided
-     * @tparam has_split_condition Flag indicating if split condition is provided
-     * @param set_accesses Function to set task data accesses
-     * @param split_condition Function to determine if task should be split (for moldable tasks)
+     * @tparam flags Task flags
+     * @tparam ac Task access counter specifying the number of accesses
+     * @param device_unique_id The device's global id to use if TASK_FLAG_DEVICE is set
+     * @param set_accesses Function to set task data accesses if TASK_FLAG_ACCESSES is set
+     * @param split_condition Function to determine if task should be split if TASK_FLAG_MOLDABLE is set
      * @param f Task execution function
      */
-    template <task_access_counter_t ac, bool has_set_accesses, bool has_split_condition>
+    template <task_flag_bitfield_t flags>
     inline void
     task_spawn(
+        const device_unique_id_t device_unique_id,
+        const task_access_counter_t ac,
         const task_accesses_setter_t & set_accesses,
-        const std::function<bool(task_t *, access_t *)> & split_condition,
-        const std::function<void(runtime_t *, device_t *, task_t *)> & f
+        const task_split_condition_t & split_condition,
+        const task_routine_t & f
     ) {
         // create the task
-        task_t * task = this->task_instanciate<ac, has_set_accesses, has_split_condition>(f, set_accesses, split_condition);
+        task_t * task = this->task_instanciate<flags>(device_unique_id, ac, set_accesses, split_condition, f);
         assert(task);
 
         // commit the task
-        thread_t * tls = thread_t::get_tls();
-        assert(tls);
-
-        tls->commit(task, task_enqueue, this);
+        this->task_commit(task);
     }
 
-    /**
-     * @brief Spawn a task with data accesses and split condition
-     * @tparam ac Task access counter specifying the number of data accesses
-     * @param set_accesses Function to set task data accesses
-     * @param split_condition Function to determine if task should be split
-     * @param f Task execution function
-     */
-    template <task_access_counter_t ac>
+    inline void
+    task_spawn(const task_routine_t & f)
+    {
+        return this->task_spawn<TASK_FLAG_ZERO>(XKRT_UNSPECIFIED_DEVICE_UNIQUE_ID, 0, nullptr, nullptr, f);
+    }
+
+    template<task_access_counter_t ac>
     inline void
     task_spawn(
         const task_accesses_setter_t & set_accesses,
-        const std::function<bool(task_t *, access_t *)> & split_condition,
-        const std::function<void(runtime_t *, device_t *, task_t *)> & f
+        const task_split_condition_t & split_condition,
+        const task_routine_t & f
     ) {
-        return this->task_spawn<ac, true, true>(set_accesses, split_condition, f);
+        static_assert(ac);
+        return this->task_spawn<TASK_FLAG_ACCESSES>(XKRT_UNSPECIFIED_DEVICE_UNIQUE_ID, ac, set_accesses, split_condition, f);
     }
 
-    /**
-     * @brief Spawn a task with data accesses but no split condition
-     * @tparam ac Task access counter specifying the number of data accesses
-     * @param set_accesses Function to set task data accesses
-     * @param f Task execution function
-     */
-    template <task_access_counter_t ac>
+    template<task_access_counter_t ac>
     inline void
     task_spawn(
         const task_accesses_setter_t & set_accesses,
-        const std::function<void(runtime_t *, device_t *, task_t *)> & f
+        const task_routine_t & f
     ) {
-        this->task_spawn<ac, true, false>(set_accesses, nullptr, f);
-    }
-
-    /**
-     * @brief Spawn a simple task with no data accesses
-     * @param f Task execution function
-     */
-    inline void
-    task_spawn(
-        const std::function<void(runtime_t *, device_t *, task_t *)> & f
-    ) {
-        this->task_spawn<0, false, false>(nullptr, nullptr, f);
+        static_assert(ac);
+        return this->task_spawn<ac>(set_accesses, nullptr, f);
     }
 
     /////////////////////////
@@ -1023,63 +1109,10 @@ struct  runtime_t
     // THREADING - TASKING //
     /////////////////////////
 
-    /**
-     * @brief Spawn a task within a specific team with given accesses
-     * @param team Target team for task execution
-     * @param set_accesses Function to set task data accesses
-     * @param f Task execution function
-     * @param naccesses Number of data accesses (must be > 0)
-     */
     inline void
-    team_task_spawn(
-        team_t * team,
-        const task_routine_t & f,
-        const task_accesses_setter_t & set_accesses,
-        const task_access_counter_t naccesses
-    ) {
-        assert(naccesses > 0);
-
-        // create the task
-        constexpr task_flag_bitfield_t flags = TASK_FLAG_DEPENDENT;
-        constexpr size_t args_size = sizeof(task_routine_t);
-        const size_t task_size = task_compute_size(flags, naccesses);
-        task_t * task = task_instanciate<flags, args_size>(this->formats.host_capture, set_accesses, naccesses);
-        assert(task);
-
-        task_routine_t * routine = (task_routine_t *) TASK_ARGS(task, task_size);
-        new (routine) task_routine_t(f);
-
-        // commit the task
-        thread_t * tls = thread_t::get_tls();
-        tls->commit(task, task_team_enqueue, this, team);
-    }
-
-    /**
-     * @brief Spawn a task within a specific team with given accesses
-     * @param team Target team for task execution
-     * @param set_accesses Function to set task data accesses
-     * @param f Task execution function
-     * @param naccesses Number of data accesses (must be > 0)
-     */
-    inline void
-    team_task_spawn(
-        team_t * team,
-        const task_format_id_t fmtid,
-        const void * args,
-        const size_t args_size,
-        const task_accesses_setter_t & set_accesses,
-        const task_access_counter_t naccesses
-    ) {
-        assert(naccesses > 0);
-
-        // create the task
-        constexpr task_flag_bitfield_t flags = TASK_FLAG_DEPENDENT | TASK_FLAG_DETACHABLE;
-        task_t * task = task_instanciate<flags>(fmtid, args, args_size, set_accesses, naccesses);
-        assert(task);
-
-        // commit the task
-        thread_t * tls = thread_t::get_tls();
-        tls->commit(task, task_team_enqueue, this, team);
+    team_task_commit(team_t * team, task_t * task)
+    {
+        this->task_commit(task, task_team_enqueue, this, team);
     }
 
     /**
@@ -1092,70 +1125,24 @@ struct  runtime_t
      * @param split_condition Function to determine if task should be split
      * @param f Task execution function
      */
-    template <task_access_counter_t ac, bool has_set_accesses, bool has_split_condition>
+    template <task_flag_bitfield_t flags>
     inline void
     team_task_spawn(
         team_t * team,
+        const device_unique_id_t device_unique_id,
+        const task_access_counter_t ac,
         const task_accesses_setter_t & set_accesses,
         const std::function<bool(task_t *, access_t *)> & split_condition,
         const std::function<void(runtime_t *, device_t *, task_t *)> & f
     ) {
+        assert(team);
+
         // create the task
-        task_t * task = task_instanciate<ac, has_set_accesses, has_split_condition>(f, set_accesses, split_condition);
+        task_t * task = task_instanciate<flags>(device_unique_id, ac, set_accesses, split_condition, f);
         assert(task);
 
         // commit the task
-        thread_t * tls = thread_t::get_tls();
-        tls->commit(task, task_team_enqueue, this, team);
-    }
-
-    /**
-     * @brief Spawn a team task with data accesses and split condition
-     * @tparam ac Task access counter specifying the number of data accesses
-     * @param team Target team for task execution
-     * @param set_accesses Function to set task data accesses
-     * @param split_condition Function to determine if task should be split
-     * @param f Task execution function
-     */
-    template <task_access_counter_t ac>
-    inline void
-    team_task_spawn(
-        team_t * team,
-        const task_accesses_setter_t & set_accesses,
-        const std::function<bool(task_t *, access_t *)> & split_condition,
-        const std::function<void(runtime_t *, device_t *, task_t *)> & f
-    ) {
-        return this->team_task_spawn<ac, true, true>(team, set_accesses, split_condition, f);
-    }
-
-    /**
-     * @brief Spawn a team task with data accesses but no split condition
-     * @tparam ac Task access counter specifying the number of data accesses
-     * @param team Target team for task execution
-     * @param set_accesses Function to set task data accesses
-     * @param f Task execution function
-     */
-    template <task_access_counter_t ac>
-    inline void
-    team_task_spawn(
-        team_t * team,
-        const task_accesses_setter_t & set_accesses,
-        const std::function<void(runtime_t *, device_t *, task_t *)> & f
-    ) {
-        this->team_task_spawn<ac, true, false>(team, set_accesses, nullptr, f);
-    }
-
-    /**
-     * @brief Spawn a simple team task with no data accesses
-     * @param team Target team for task execution
-     * @param f Task execution function
-     */
-    inline void
-    team_task_spawn(
-        team_t * team,
-        const std::function<void(runtime_t *, device_t *, task_t *)> & f
-    ) {
-        this->team_task_spawn<0, false, false>(team, nullptr, nullptr, f);
+        this->team_task_commit(team, task);
     }
 
     //////////////////
@@ -1190,17 +1177,17 @@ struct  runtime_t
 
     /**
      * @brief Start recording energy consumption for a device
-     * @param device_global_id Global identifier of the device
+     * @param device_unique_id Global identifier of the device
      * @param[out] pwr Power measurement structure to initialize
      */
-    void power_start(const device_global_id_t device_global_id, power_t * pwr);
+    void power_start(const device_unique_id_t device_unique_id, power_t * pwr);
 
     /**
      * @brief Stop recording and retrieve energy consumption
-     * @param device_global_id Global identifier of the device
+     * @param device_unique_id Global identifier of the device
      * @param[in,out] pwr Power measurement structure to finalize
      */
-    void power_stop(const device_global_id_t device_global_id, power_t * pwr);
+    void power_stop(const device_unique_id_t device_unique_id, power_t * pwr);
 
     ///////////////
     // UTILITIES //
@@ -1215,17 +1202,17 @@ struct  runtime_t
 
     /**
      * @brief Get a device by its global identifier
-     * @param device_global_id Global device identifier
+     * @param device_unique_id Global device identifier
      * @return Pointer to the device, or nullptr if not found
      */
-    device_t * device_get(const device_global_id_t device_global_id);
+    device_t * device_get(const device_unique_id_t device_unique_id);
 
     /**
      * @brief Get bitfield of all devices for a given driver type
      * @param type Driver type
      * @return Bitfield with bits set for each available device
      */
-    device_global_id_bitfield_t devices_get(const driver_type_t type);
+    device_unique_id_bitfield_t devices_get(const driver_type_t type);
 
     /**
      * @brief Get the number of committed (active) devices
@@ -1315,17 +1302,79 @@ struct  runtime_t
      *  'launcher' is the kernel launcher
      */
     template <bool synchronous>
-    void task_kernel_launch(
+    void task_prog_launch(
         device_t * device,
         task_t * task,
-        kernel_launcher_t launcher
+        prog_launcher_t launcher
     );
 
-    # if XKRT_SUPPORT_STATS
+    ///////////////////////////
+    // Task dependency graph //
+    ///////////////////////////
+
+    /**
+     *  Set the 'TASK_FLAG_GRAPH_RECORDING' bit of the currently executing task.
+     *  It means that all tasks and their emitted commands will be recorded to their `task_rec_info_t` struct for later replay.
+     *  If "only-record" is true, then the task executes but emitted commands are not.
+     *  Else, the task executes so its emitted commands.
+     */
+    void task_dependency_graph_record_start(task_dependency_graph_t * tdg, bool execute_commands);
+
+    /** Replay a task dependency graph */
+    void task_dependency_graph_replay(task_dependency_graph_t * tdg);
+
+    /**
+     *  Unset the 'TASK_FLAG_GRAPH_RECORDING' bit of the currently execution task.
+     *  Additionally, construct a command graph from all commands previously emitted.
+     *  Example use:
+     *      task_spawn()
+     *      task_spawn()
+     *      task_wait();
+     *      task_dependency_graph_record_start()
+     *      task_spawn()                        // A
+     *      task_spawn()                        // B
+     *      task_spawn()                        // C
+     *      task_wait()                         // task executes, but emitted commands are enqueued
+     *      g = task_dependency_graph_record_stop()     // create a command graphs from A, B and C
+     *      task_dependency_graph_replay(g)             // launch commands, returns after all commands completed
+     *      task_dependency_graph_destroy(g)            // destroy the command graph
+     */
+    void task_dependency_graph_record_stop(void);
+
+    /**
+     *  Destroy a command graph record
+     */
+    void task_dependency_graph_destroy(task_dependency_graph_t * tdg);
+
+    ///////////////////
+    // Command graph //
+    ///////////////////
+
+    /**
+     *  Construct a command graph from a task dependency graph
+     *  Dependencies are set between commands to ensure the same order of
+     *  execution as per the task scheduling enforced.
+     */
+    void command_graph_from_task_dependency_graph(
+        task_dependency_graph_t * tdg,          /* IN  */
+        command_graph_t * cg                    /* OUT */
+    );
+
+    /**
+     *  Launch and wait for completion of every commands of the graph
+     */
+    void command_graph_replay(command_graph_t * cg);
+
+    /**
+     *  Destroy a command graph
+     */
+    void command_graph_destroy(command_graph_t * cg);
 
     ///////////
     // STATS //
     ///////////
+
+    # if XKRT_SUPPORT_STATS
 
     /**
      * @brief Runtime statistics collection

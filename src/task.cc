@@ -36,16 +36,17 @@
 ** knowledge of the CeCILL-C license and that you accept its terms.
 **/
 
-# include <xkrt/runtime.h>
-# include <xkrt/internals.h>
 # include <xkrt/driver/device.hpp>
 # include <xkrt/driver/driver.h>
 # include <xkrt/driver/queue.h>
-# include <xkrt/logger/logger.h>
+# include <xkrt/internals.h>
 # include <xkrt/logger/bits-to-str.h>
+# include <xkrt/logger/logger.h>
 # include <xkrt/logger/todo.h>
-# include <xkrt/sync/mem.h>
+# include <xkrt/memory/access/blas/memory-tree.hpp>
+# include <xkrt/runtime.h>
 # include <xkrt/stats/stats.h>
+# include <xkrt/sync/mem.h>
 # include <xkrt/task/task.hpp>
 
 # include <cassert>
@@ -59,10 +60,9 @@ driver_type_to_task_format_target(driver_type_t driver_type)
 {
     switch (driver_type)
     {
-        # define CASE(X)                        \
-            case (XKRT_DRIVER_TYPE_##X):        \
-                return XKRT_TASK_FORMAT_TARGET_##X;  \
-                break ;
+        # define CASE(X)                            \
+            case (XKRT_DRIVER_TYPE_##X):            \
+                return XKRT_TASK_FORMAT_TARGET_##X; \
 
         CASE(HOST)
         CASE(CUDA)
@@ -75,6 +75,7 @@ driver_type_to_task_format_target(driver_type_t driver_type)
 
         default:
             LOGGER_FATAL("Invalid device driver type");
+            return XKRT_TASK_FORMAT_TARGET_MAX;
     }
 }
 
@@ -84,7 +85,7 @@ task_format_target_to_driver_type(task_format_target_t fmt)
     switch (fmt)
     {
         # define CASE(X)                        \
-            case (XKRT_TASK_FORMAT_TARGET_##X):      \
+            case (XKRT_TASK_FORMAT_TARGET_##X): \
                 return XKRT_DRIVER_TYPE_##X;    \
                 break ;
 
@@ -97,17 +98,182 @@ task_format_target_to_driver_type(task_format_target_t fmt)
 
         # undef CASE
 
-            default:
+        default:
             LOGGER_FATAL("Invalid task format target");
+            return XKRT_DRIVER_TYPE_MAX;
     }
 }
 
-static inline
-device_global_id_t
-__task_guess_device(
+/////////////////////
+// TASK SUBMISSION //
+/////////////////////
+
+static inline void
+runtime_task_enqueue_host(
     runtime_t * runtime,
     task_t * task
 ) {
+    thread_t * tls = thread_t::get_tls();
+    assert(tls);
+
+    // tls->team == NULL means it come from a user-thread, unknown to kaapi
+    // tls->device_unique_id != XKRT_DRIVER_TYPE_HOST means it is a kaapi thread, but not a host thread
+    if (tls->team == NULL || tls->device_unique_id != XKRT_HOST_DEVICE_UNIQUE_ID)
+    {
+        device_t * device = runtime->device_get(XKRT_HOST_DEVICE_UNIQUE_ID);
+        runtime->task_team_enqueue(device->team, task);
+    }
+    else
+    {
+        runtime->task_thread_enqueue(tls, task);
+    }
+}
+
+static inline void
+runtime_task_enqueue_device(
+    runtime_t * runtime,
+    task_t * task
+) {
+    // task must be flagged
+    assert(task->flags & TASK_FLAG_DEVICE);
+    task_dev_info_t * dev = TASK_DEV_INFO(task);
+
+    // Bitfield of devices eligible to the task
+    // Initially set to all devices, logic bellow removes bits from it to elect only one
+    device_unique_id_bitfield_t devices_bitfield = XKRT_DEVICES_MASK_ALL;
+
+    // if the task format suggests a format type, filter for the devices that supports this format
+    task_format_t * format;
+    if (task->fmtid != XKRT_TASK_FORMAT_NULL)
+    {
+        format = runtime->task_format_get(task->fmtid);
+        assert(format);
+        if (format->suggest)
+        {
+            task_format_target_t fmt_target = format->suggest(task);
+            if (fmt_target != XKRT_TASK_FORMAT_TARGET_NO_SUGGEST)
+            {
+                driver_type_t driver_type = task_format_target_to_driver_type(fmt_target);
+                device_unique_id_bitfield_t suggested_devices = runtime->devices_get(driver_type);
+                if (devices_bitfield & suggested_devices)
+                    devices_bitfield &= suggested_devices;
+            }
+        }
+    }
+
+    // if an owner-computes rules (ocr) parameter is set, filter to keep only
+    // devices that owns the larger volume of coherent bytes
+    if (dev->ocr_access_index != XKRT_UNSPECIFIED_TASK_ACCESS)
+    {
+        // if an ocr is set, task must be a dependent task (i.e. with some accesses)
+        assert(task->flags & TASK_FLAG_ACCESSES);
+
+        // retrieve the access
+        task_acs_info_t * acs = TASK_ACS_INFO(task);
+        assert(dev->ocr_access_index >= 0 && dev->ocr_access_index < acs->ac);
+        access_t * access = TASK_ACCESSES(task) + dev->ocr_access_index;
+
+        // looking for the device that owns the data
+        MemoryCoherencyController * memcontroller = task_get_memory_controller(runtime, task->parent, access);
+        assert(memcontroller);
+
+        // retrieve owners excluding the host device
+        const device_unique_id_bitfield_t owners = memcontroller->who_owns(access) & ~(1 << XKRT_HOST_DEVICE_UNIQUE_ID);;
+
+        // if there is no owners in the eligible list
+        if ((devices_bitfield & owners) == 0)
+        {
+            // keep all devices eligible
+        }
+        else
+        {
+            // keep only owners
+            devices_bitfield &= owners;
+        }
+
+        assert(devices_bitfield);
+    }
+
+    // programmer provided an explicit targeted device
+    if (dev->targeted_device_id != XKRT_UNSPECIFIED_DEVICE_UNIQUE_ID)
+    {
+        // if device is not available
+        if (dev->targeted_device_id >= runtime->drivers.devices.n)
+            LOGGER_FATAL("Scheduled a task on a non-existing device of global id %u (only %u devices available)", dev->targeted_device_id, runtime->drivers.devices.n);
+
+        // if it is present in the bitfield, then select that device
+        if (devices_bitfield & (1 << dev->targeted_device_id))
+            devices_bitfield = (device_unique_id_bitfield_t) (1 << dev->targeted_device_id);
+    }
+
+    //////////////////////////////////////
+
+    // At that point, 'device_bitfield' contains the list of eligible devices
+    // We retrieve only one now
+
+    assert(devices_bitfield);
+    device_unique_id_t device_unique_id = XKRT_HOST_DEVICE_UNIQUE_ID;
+
+    // if any device available, pick one
+    if (devices_bitfield != (1 << XKRT_HOST_DEVICE_UNIQUE_ID))
+    {
+        // bitmask of all devices but the host
+        device_unique_id_bitfield_t bitmask = (device_unique_id_bitfield_t) ((1 << runtime->drivers.devices.n) - 1) & ~(1 << XKRT_HOST_DEVICE_UNIQUE_ID);
+
+        // pick randomly
+        device_unique_id = (device_unique_id_t) __random_set_bit(devices_bitfield & bitmask) - 1;
+    }
+
+    // save device id into the task info
+    assert((device_unique_id >= 0 && device_unique_id < runtime->drivers.devices.n));
+    dev->elected_device_unique_id = device_unique_id;
+
+    LOGGER_DEBUG("Enqueuing task `%s` to device %d", task->label, device_unique_id);
+
+    device_t * device = runtime->drivers.devices.list[device_unique_id];
+    assert(device);
+
+    /* push a task to a thread of the device */
+    runtime->task_team_enqueue(device->team, task);
+}
+
+static inline void
+runtime_task_enqueue(
+    runtime_t * runtime,
+    task_t * task
+) {
+    assert(task->state.value == TASK_STATE_READY);
+
+    /* if the task is flagged, then schedule it onto an implicit team of threads */
+    if (task->flags & TASK_FLAG_DEVICE)
+        runtime_task_enqueue_device(runtime, task);
+    /* else, submit it whether to the host implicit team, or to the currently executing team */
+    else
+        runtime_task_enqueue_host(runtime, task);
+}
+
+/**
+ *  Entry point when a task is ready to be fetched.
+ *  It elects a thread and a device for fetching accesses and executing the task
+ */
+void
+runtime_t::task_enqueue(task_t * task)
+{
+    runtime_task_enqueue(this, task);
+}
+
+
+
+static inline
+device_unique_id_t
+__access_guess_device(
+    runtime_t * runtime,
+    access_t * access
+) {
+    task_t * task = access->task;
+    if (task == NULL)
+        return XKRT_UNSPECIFIED_DEVICE_UNIQUE_ID;
+
     // if that task must execute on a device
     if (task->flags & TASK_FLAG_DEVICE)
     {
@@ -122,7 +288,7 @@ __task_guess_device(
         assert(dev);
 
         // if it has a targeted device set, return it
-        if (dev->targeted_device_id != UNSPECIFIED_DEVICE_GLOBAL_ID)
+        if (dev->targeted_device_id != XKRT_UNSPECIFIED_DEVICE_UNIQUE_ID)
             return dev->targeted_device_id;
 
         // if it has an OCR, we may already know which device will own most
@@ -145,11 +311,11 @@ __task_guess_device(
         }
 
         // could not find the device to execute
-        return UNSPECIFIED_DEVICE_GLOBAL_ID;
+        return XKRT_UNSPECIFIED_DEVICE_UNIQUE_ID;
     }
     // else, it executes on the host
     else
-        return HOST_DEVICE_GLOBAL_ID;
+        return XKRT_HOST_DEVICE_UNIQUE_ID;
 }
 
 /**
@@ -168,8 +334,8 @@ __task_complete(
         task->state.value == TASK_STATE_EXECUTING       ||
         task->state.value == TASK_STATE_READY
     );
-    if (task->flags & TASK_FLAG_DEPENDENT)
-        assert(TASK_DEP_INFO(task)->wc.load() == 0);
+    if (task->flags & TASK_FLAG_ACCESSES)
+        assert(TASK_ACS_INFO(task)->wc.load() == 0);
     if (task->flags & TASK_FLAG_DETACHABLE)
         assert(TASK_DET_INFO(task)->wc.load() == 0);
 
@@ -188,60 +354,110 @@ __task_complete(
     task->parent->cc.fetch_sub(1, std::memory_order_relaxed);
 
     // if the task has successors, that dependency is now satisfied
-    if (task->flags & TASK_FLAG_DEPENDENT)
+    if (task->flags & TASK_FLAG_ACCESSES)
     {
-        task_dep_info_t * dep = TASK_DEP_INFO(task);
+        const device_unique_id_t task_device_unique_id = task_get_device_unique_id(task);
+        task_acs_info_t * acs = TASK_ACS_INFO(task);
         access_t * accesses = TASK_ACCESSES(task);
-        for (task_access_counter_t i = 0 ; i < dep->ac ; ++i)
+        for (task_access_counter_t i = 0 ; i < acs->ac ; ++i)
         {
             access_t * access = accesses + i;
+            assert(access->mode & ACCESS_MODE_V || access->state == ACCESS_STATE_FETCHED);
 
             // detached access, not my responsibility to fulfill this dependency
             if (access->mode & ACCESS_MODE_D)
                 continue ;
 
+            // iterate on each successor accesses
             for (access_t * succ_access : access->successors)
             {
-                // get successor task
                 task_t * succ = succ_access->task;
+                assert(succ);
 
                 ////////////////////////
                 // MEMORY PREFETCHING //
                 ////////////////////////
 
+                // if prefetching is enabled
                 if (runtime->conf.enable_prefetching)
                 {
-                    // if the succ access is not being fetched, or got fetched already
-                    if (succ_access->state == ACCESS_STATE_INIT)
+                    // if the predecessor access that just completed wrote memory
+                    if ((access->mode & ACCESS_MODE_W) && access->successors.size())
                     {
-                        // if the pred access wrote memory
-                        if (access->mode & ACCESS_MODE_W)
+                        // set recording task to current completing task
+                        thread_t * thread = thread_t::get_tls();
+                        if (task->flags & TASK_FLAG_RECORD) thread->current_task_record = task;
+
+                        // If the successor access reads the memory, then it needs be fetched
+                        if ((succ_access->mode & ACCESS_MODE_R) && !(succ_access->mode & ACCESS_MODE_V))
                         {
-                            // if successor device can already be known
-                            const device_global_id_t device_global_id = __task_guess_device(runtime, succ);
-                            if (device_global_id != UNSPECIFIED_DEVICE_GLOBAL_ID)
+                            assert(succ_access->state == ACCESS_STATE_INIT);
+
+                            // if the successor access device can already be known
+                            const device_unique_id_t device_unique_id = __access_guess_device(runtime, succ_access);
+                            if (device_unique_id != XKRT_UNSPECIFIED_DEVICE_UNIQUE_ID)
                             {
-                                // then we can prefetch memory
-                                MemoryCoherencyController * mcc = task_get_memory_controller(runtime, succ->parent, succ_access);
-                                if (mcc)
-                                    mcc->fetch(succ_access, device_global_id);
-                            }
-                        }
-                    }
-                }
+                                // fast way out - if the predecessor and successor executed on the same device
+                                if (device_unique_id == task_device_unique_id)
+                                {
+                                    // nothing to do
+                                }
+                                // else, we can prefetch memory
+                                else
+                                {
+                                    // intersect accesses and fetch it
+                                    assert(access_t::intersects(access, succ_access));
+
+                                    // then we can prefetch memory
+                                    assert(succ->parent);
+                                    MemoryCoherencyController * mcc = task_get_memory_controller(runtime, succ->parent, succ_access);
+                                    if (mcc)
+                                    {
+                                        // 1 = 1x1 in case of interval/interval accesses
+                                        // 4 = 2x2 in case of mat/mat accesses
+                                        // 6 = 3x2 in case of interval/rect accesses
+                                        small_vector_t<Rect, 6> rects;
+
+                                        // fetch each individual intersecting rectangles
+                                        for (const Rect & r1 : access->rects())
+                                        {
+                                            for (const Rect & r2 : succ_access->rects())
+                                            {
+                                                Rect * rect = rects.emplace_back();
+                                                Rect::intersection(rect, r1, r2);
+                                                if (rect->is_empty())
+                                                    rects.pop_back();
+                                            }
+                                        }
+                                        assert(rects.size() >= 1);
+
+                                        // launch
+                                        // TODO: kinda ugly, but currently only supporting BLAS matrix mcc anyway
+                                        ((BLASMemoryTree *) mcc)->fetch(NULL, device_unique_id, rects.span(), ACCESS_MODE_R, succ_access->scope);
+                                    } /* if mcc */
+                                } /* if executing succ on another device */
+                            } /* if succ device is known */
+                        } /* if successor is a non-virtual read */
+
+                        /* unset target record */
+                        if (task->flags & TASK_FLAG_RECORD) thread->current_task_record = NULL;
+
+                    } /* if successor has a write mode */
+                } /* if prefeteching is enabled */
 
                 //////////////////////////////////
                 // RELEASE TASK DEPENPENDENCIES //
                 //////////////////////////////////
 
-                assert(succ->flags & TASK_FLAG_DEPENDENT);
-                task_dep_info_t * sdep = TASK_DEP_INFO(succ);
+                assert(succ->flags & TASK_FLAG_ACCESSES);
+                task_acs_info_t * sacs = TASK_ACS_INFO(succ);
 
                 // task may be ready now
-                if (sdep->wc.fetch_sub(1, std::memory_order_seq_cst) == 1)
-                    __task_ready(succ, runtime_submit_task, runtime);
-            }
-        }
+                if (sacs->wc.fetch_sub(1, std::memory_order_seq_cst) == 1)
+                    __task_ready(succ, runtime_task_enqueue, runtime);
+
+            } /* for each successor */
+        } /* for each access */
     }
 }
 
@@ -254,7 +470,7 @@ __task_detachable_decr(
 ) {
     assert(task->flags & TASK_FLAG_DETACHABLE);
     task_det_info_t * det = TASK_DET_INFO(task);
-    if (det->wc.fetch_sub(N, std::memory_order_relaxed) == N)
+    if (det->wc.fetch_sub(N, std::memory_order_acq_rel) == N)
         __task_complete(runtime, task);
 }
 
@@ -330,8 +546,10 @@ task_execute(runtime_t * runtime, device_t * device, task_t * task)
             {
                 task_t * current = thread->current_task;
                 thread->current_task = task;
+                if (task->flags & TASK_FLAG_RECORD) thread->current_task_record = task;
                 ((void (*)(runtime_t *, device_t *, task_t *)) format->f[targetfmt])(runtime, device, task);
                 thread->current_task = current;
+                if (task->flags & TASK_FLAG_RECORD) thread->current_task_record = NULL;
 
                 /* if the task yielded, requeue it */
                 if (task->flags & TASK_FLAG_REQUEUE)
@@ -344,7 +562,7 @@ task_execute(runtime_t * runtime, device_t * device, task_t * task)
                     __task_executed(runtime, task);
             }
             else
-                LOGGER_FATAL("Task format for `%p` has no impl for device `%u`", task, device->global_id);
+                LOGGER_FATAL("Task format for `%p` has no impl for device `%u`", task, device->unique_id);
         }
         else
             LOGGER_FATAL("Invalid format for task `%p`", task);
@@ -356,8 +574,7 @@ body_host_capture(runtime_t * runtime, device_t * device, task_t * task)
 {
     assert(task);
 
-    std::function<void(runtime_t *, device_t *, task_t *)> * f =
-        (std::function<void(runtime_t *, device_t *, task_t *)> *) TASK_ARGS(task);
+    runtime_t::task_routine_t * f = (runtime_t::task_routine_t *) TASK_ARGS(task);
     (*f)(runtime, device, task);
 }
 
@@ -365,7 +582,7 @@ void
 task_host_capture_register_format(runtime_t * runtime)
 {
     task_format_t format;
-    memset(format.f, 0, sizeof(format.f));
+    memset(&format, 0, sizeof(format));
     format.f[XKRT_TASK_FORMAT_TARGET_HOST] = (task_format_func_t) body_host_capture;
     snprintf(format.label, sizeof(format.label), "host_capture");
     runtime->formats.host_capture = runtime->task_format_create(&format);
@@ -374,11 +591,7 @@ task_host_capture_register_format(runtime_t * runtime)
 void
 runtime_t::task_commit(task_t * task)
 {
-    thread_t * thread = thread_t::get_tls();
-    assert(thread);
-
-    thread->commit(task, runtime_submit_task, this);
-    XKRT_STATS_INCR(this->stats.tasks[task->fmtid].commited, 1);
+    this->task_commit(task, runtime_task_enqueue, this);
 }
 
 void
@@ -419,173 +632,19 @@ runtime_t::task_dup(
     assert(mol);
 
     const size_t args_size = mol->args_size;
-    const size_t task_size = TASK_SIZE(task);
+    const task_access_counter_t AC = (task->flags & TASK_FLAG_ACCESSES) ? TASK_ACS_INFO(task)->ac : 0;
 
-    task_t * dup = this->task_allocate<false>(task_size + args_size);
+    task_t * dup = this->task_new<false>(task->fmtid, task->flags, NULL, args_size, AC);
 
     // TODO: probably not C++ standard, but should work ?
-    memcpy(dup, task, task_size + args_size);
+    assert(TASK_SIZE(task) == TASK_SIZE(dup));
+    memcpy(dup, task, TASK_SIZE(task) + args_size);
 
     # if XKRT_SUPPORT_DEBUG
     snprintf(dup->label, sizeof(dup->label), "%s-dup", task->label);
     # endif
 
     return dup;
-}
-
-/////////////////////
-// TASK SUBMISSION //
-/////////////////////
-
-static inline void
-submit_task_host(
-    runtime_t * runtime,
-    task_t * task
-) {
-    thread_t * tls = thread_t::get_tls();
-    assert(tls);
-
-    // tls->team == NULL means it come from a user-thread, unknown to kaapi
-    // tls->device_global_id != XKRT_DRIVER_TYPE_HOST means it is a kaapi thread, but not a host thread
-    if (tls->team == NULL || tls->device_global_id != HOST_DEVICE_GLOBAL_ID)
-    {
-        device_t * device = runtime->device_get(HOST_DEVICE_GLOBAL_ID);
-        runtime->task_team_enqueue(device->team, task);
-    }
-    else
-    {
-        assert(tls->team == runtime->device_get(HOST_DEVICE_GLOBAL_ID)->team);
-        runtime->task_thread_enqueue(tls, task);
-    }
-}
-
-static inline void
-submit_task_device(
-    runtime_t * runtime,
-    task_t * task
-) {
-    // task must be flagged
-    assert(task->flags & TASK_FLAG_DEVICE);
-    task_dev_info_t * dev = TASK_DEV_INFO(task);
-
-    // Bitfield of devices eligible to the task
-    // Initially set to all devices, logic bellow removes bits from it to elect only one
-    device_global_id_bitfield_t devices_bitfield = XKRT_DEVICES_MASK_ALL;
-
-    // if the task format suggests a format type, filter for the devices that supports this format
-    task_format_t * format;
-    if (task->fmtid != XKRT_TASK_FORMAT_NULL)
-    {
-        format = runtime->task_format_get(task->fmtid);
-        assert(format);
-        if (format->suggest)
-        {
-            task_format_target_t fmt_target = format->suggest(task);
-            if (fmt_target != XKRT_TASK_FORMAT_TARGET_NO_SUGGEST)
-            {
-                driver_type_t driver_type = task_format_target_to_driver_type(fmt_target);
-                device_global_id_bitfield_t suggested_devices = runtime->devices_get(driver_type);
-                if (devices_bitfield & suggested_devices)
-                    devices_bitfield &= suggested_devices;
-            }
-        }
-    }
-
-    // if an owner-computes rules (ocr) parameter is set, filter to keep only
-    // devices that owns the larger volume of coherent bytes
-    if (dev->ocr_access_index != UNSPECIFIED_TASK_ACCESS)
-    {
-        // if an ocr is set, task must be a dependent task (i.e. with some accesses)
-        assert(task->flags & TASK_FLAG_DEPENDENT);
-
-        // retrieve the access
-        task_dep_info_t * dep = TASK_DEP_INFO(task);
-        assert(dev->ocr_access_index >= 0 && dev->ocr_access_index < dep->ac);
-        access_t * access = TASK_ACCESSES(task) + dev->ocr_access_index;
-
-        // looking for the device that owns the data
-        MemoryCoherencyController * memcontroller = task_get_memory_controller(runtime, task->parent, access);
-        assert(memcontroller);
-
-        // retrieve owners excluding the host device
-        const device_global_id_bitfield_t owners = memcontroller->who_owns(access) & ~(1 << HOST_DEVICE_GLOBAL_ID);;
-
-        // if there is no owners in the eligible list
-        if ((devices_bitfield & owners) == 0)
-        {
-            // keep all devices eligible
-        }
-        else
-        {
-            // keep only owners
-            devices_bitfield &= owners;
-        }
-
-        assert(devices_bitfield);
-    }
-
-    // programmer provided an explicit targeted device
-    if (dev->targeted_device_id != UNSPECIFIED_DEVICE_GLOBAL_ID)
-    {
-        // it is present in the bitfield, then select that device
-        if (devices_bitfield & (1 << dev->targeted_device_id))
-            devices_bitfield = (device_global_id_bitfield_t) (1 << dev->targeted_device_id);
-    }
-
-    //////////////////////////////////////
-
-    // At that point, 'device_bitfield' contains the list of eligible devices
-    // We retrieve only one now
-
-    assert(devices_bitfield);
-    device_global_id_t device_global_id = HOST_DEVICE_GLOBAL_ID;
-
-    // if any device available, pick one
-    if (devices_bitfield != (1 << HOST_DEVICE_GLOBAL_ID))
-    {
-        // bitmask of all devices but the host
-        device_global_id_bitfield_t bitmask = (device_global_id_bitfield_t) ((1 << runtime->drivers.devices.n) - 1) & ~(1 << HOST_DEVICE_GLOBAL_ID);
-
-        // pick randomly
-        device_global_id = (device_global_id_t) __random_set_bit(devices_bitfield & bitmask) - 1;
-    }
-
-    // save device id into the task info
-    assert((device_global_id >= 0 && device_global_id < runtime->drivers.devices.n));
-    dev->elected_device_id = device_global_id;
-
-    LOGGER_DEBUG("Enqueuing task `%s` to device %d", task->label, device_global_id);
-
-    device_t * device = runtime->drivers.devices.list[device_global_id];
-    assert(device);
-
-    /* push a task to a thread of the device */
-    runtime->task_team_enqueue(device->team, task);
-}
-
-/**
- *  Entry point when a task is ready to be fetched.
- *  It elects a thread and a device for fetching accesses and executing the task
- */
-void
-runtime_submit_task(
-    runtime_t * runtime,
-    task_t * task
-) {
-    assert(task->state.value == TASK_STATE_READY);
-
-    /* if the task is flagged, then schedule it onto an implicit team of threads */
-    if (task->flags & TASK_FLAG_DEVICE)
-        submit_task_device(runtime, task);
-    /* else, submit it whether to the host implicit team, or to the currently executing team */
-    else
-        submit_task_host(runtime, task);
-}
-
-void
-runtime_t::task_enqueue(task_t * task)
-{
-    runtime_submit_task(this, task);
 }
 
 XKRT_NAMESPACE_END

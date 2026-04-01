@@ -44,23 +44,38 @@
  */
 typedef enum    xkrt_task_flags_t
 {
-    TASK_FLAG_ZERO          = 0,
-    TASK_FLAG_DEPENDENT     = (1 << 0), // may have dependencies
-    TASK_FLAG_DETACHABLE    = (1 << 1), // completion is associated with the completion of events
-    TASK_FLAG_DEVICE        = (1 << 2), // may execute on a device
-    TASK_FLAG_DOMAIN        = (1 << 3), // may have dependent children tasks - in such case, it will have a dependency and a memory domain
-    TASK_FLAG_MOLDABLE      = (1 << 4), // the task may be split
+    TASK_FLAG_ZERO = 0,
+
+    // These flags changes the `task_t` data structure memory layout
+    // They must be set once for all before task instanciation
+
+    TASK_FLAG_ACCESSES              = (1 <<  0),    // may have accesses
+    TASK_FLAG_DETACHABLE            = (1 <<  1),    // completion is associated with the completion of events
+    TASK_FLAG_DEVICE                = (1 <<  2),    // may execute on a different device than host
+    TASK_FLAG_DOMAIN                = (1 <<  3),    // children tasks may have dependencies
+    TASK_FLAG_MOLDABLE              = (1 <<  4),    // may be split
+    TASK_FLAG_GRAPH                 = (1 <<  5),    // children tasks must be recorded
+    TASK_FLAG_RECORD                = (1 <<  6),    // has a record - which implies buffering of emitted command
+
+    // These flags are run-time indicators
+    // They can be dynamically set/unset, even after task creation
+
+    TASK_FLAG_GRAPH_RECORDING       = (1 <<  7),    // currently recording a graph
+    TASK_FLAG_GRAPH_EXECUTE_COMMAND = (1 <<  8),    // recorded commands are also executed
+    TASK_FLAG_REQUEUE               = (1 <<  9),    // must be re-queued after returning from its routine
+
+    // Use for debugging
+
+    TASK_FLAG_MAX                   = (1 << 10)
 
     // support me in the future
-  // TASK_FLAG_CANCEL        = (1 << 5), // cancelled
-  // TASK_FLAG_UNDEFERED     = (1 << X), // suspend the current task execution until that task completed
-  // TASK_FLAG_PERSISTENT    = (1 << Y), // persistence
+      // TASK_FLAG_CANCEL        = (1 << X), // cancelled
+      // TASK_FLAG_UNDEFERED     = (1 << Y), // suspend the current task execution until that task completed
+      // TASK_FLAG_PERSISTENT    = (1 << Z), // persistence
 
-    TASK_FLAG_REQUEUE       = (1 << 7), // will be re-queued after returning from its body
-    TASK_FLAG_MAX           = (1 << 8)
 }               xkrt_task_flags_t;
 
-typedef uint8_t xkrt_task_flag_bitfield_t;
+typedef uint16_t xkrt_task_flag_bitfield_t;
 _Static_assert(TASK_FLAG_MAX <= (1 << 8*sizeof(xkrt_task_flag_bitfield_t)), "");
 
 #endif /* __XKRT_TASK_FLAG_H__ */

@@ -51,14 +51,14 @@ runtime_t::driver_get(
 
 device_t *
 runtime_t::device_get(
-    const device_global_id_t device_global_id
+    const device_unique_id_t device_unique_id
 ) {
-    assert(device_global_id >= 0);
-    assert(device_global_id < this->drivers.devices.n);
-    return this->drivers.devices.list[device_global_id];
+    assert(device_unique_id >= 0);
+    assert(device_unique_id < this->drivers.devices.n);
+    return this->drivers.devices.list[device_unique_id];
 }
 
-device_global_id_bitfield_t
+device_unique_id_bitfield_t
 runtime_t::devices_get(const driver_type_t type)
 {
     driver_t * driver = driver_get(type);

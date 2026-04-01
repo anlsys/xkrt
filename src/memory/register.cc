@@ -146,10 +146,12 @@ runtime_t::memory_register(
                          * different memory controllers */
                         this->registered_memory[(uintptr_t)ptr] = size;
 
-                        if (dom->mccs.interval)
-                            ((BLASMemoryTree *) dom->mccs.interval)->registered((uintptr_t)ptr, size);
+                        // TODO: probably racy with memory coherence controller creation
 
-                        for (MemoryCoherencyController * mcc : dom->mccs.blas)
+                        if (dom->mccs.interval.mcc)
+                            ((BLASMemoryTree *) dom->mccs.interval.mcc)->registered((uintptr_t)ptr, size);
+
+                        for (MemoryCoherencyController * mcc : dom->mccs.blas.mcc)
                             ((BLASMemoryTree *)mcc)->registered((uintptr_t)ptr, size);
                     }
                     # endif /* XKRT_MEMORY_REGISTER_OVERFLOW_PROTECTION */
@@ -231,10 +233,12 @@ runtime_t::memory_unregister(
                      * different memory controllers */
                     this->registered_memory.erase((uintptr_t)ptr);
 
-                    if (dom->mccs.interval)
-                        ((BLASMemoryTree *) dom->mccs.interval)->unregistered((uintptr_t)ptr, size);
+                    // TODO: probably racy with memory coherence controller creation
 
-                    for (MemoryCoherencyController * mcc : dom->mccs.blas)
+                    if (dom->mccs.interval.mcc)
+                        ((BLASMemoryTree *) dom->mccs.interval.mcc)->unregistered((uintptr_t)ptr, size);
+
+                    for (MemoryCoherencyController * mcc : dom->mccs.blas.mcc)
                         ((BLASMemoryTree *)mcc)->unregistered((uintptr_t)ptr, size);
                 }
                 # endif /* XKRT_MEMORY_REGISTER_OVERFLOW_PROTECTION */
@@ -259,8 +263,12 @@ runtime_t::memory_unregister(
 int
 runtime_t::memory_register_async(void * ptr, size_t size)
 {
-    // TODO : could be optimized using a custom format for register tasks
-    this->task_spawn(
+    constexpr task_flag_bitfield_t flags = TASK_FLAG_ZERO;
+    this->task_spawn<flags>(
+        XKRT_UNSPECIFIED_DEVICE_UNIQUE_ID,
+        0,
+        nullptr,
+        nullptr,
         [=] (runtime_t * runtime, device_t * device, task_t * task) {
             (void) device; (void) task;
             runtime->memory_register(ptr, size);
@@ -272,8 +280,12 @@ runtime_t::memory_register_async(void * ptr, size_t size)
 int
 runtime_t::memory_unregister_async(void * ptr, size_t size)
 {
-    // TODO : could be optimized using a custom format for unregister tasks
-    this->task_spawn(
+    constexpr task_flag_bitfield_t flags = TASK_FLAG_ZERO;
+    this->task_spawn<flags>(
+        XKRT_UNSPECIFIED_DEVICE_UNIQUE_ID,
+        0,
+        nullptr,
+        nullptr,
         [=] (runtime_t * runtime, device_t * device, task_t * task) {
             (void) device; (void) task;
             runtime->memory_unregister(ptr, size);
@@ -301,7 +313,7 @@ typedef enum    memory_op_type_t
 }               memory_op_type_t;
 
 constexpr size_t args_size = sizeof(memory_op_async_args_t);
-constexpr task_flag_bitfield_t flags = TASK_FLAG_DEPENDENT;
+constexpr task_flag_bitfield_t flags = TASK_FLAG_ACCESSES;
 
 template<memory_op_type_t T>
 static void
@@ -311,10 +323,7 @@ body_memory_async(runtime_t * runtime, device_t * device, task_t * task)
     assert(runtime);
     assert(task);
 
-    constexpr task_access_counter_t AC = (T == TOUCH) ? 1 : 2;
-    constexpr size_t task_size = task_compute_size(flags, AC);
-
-    memory_op_async_args_t * args = (memory_op_async_args_t *) TASK_ARGS(task, task_size);
+    memory_op_async_args_t * args = (memory_op_async_args_t *) TASK_ARGS(task);
     assert(args->start < args->end);
 
     if constexpr (T == REGISTER)
@@ -345,7 +354,6 @@ memory_op_async(
     assert(n > 0);
 
     constexpr task_access_counter_t AC = (T == TOUCH) ? 1 : 2;
-    constexpr size_t task_size = task_compute_size(flags, AC);
 
     thread_t * tls = thread_t::get_tls();
     assert(tls);
@@ -380,10 +388,10 @@ memory_op_async(
     for (size_t i = 0 ; i < ntasks ; ++i)
     {
         // create a task that will register/pin/unpin the memory
-        task_t * task = runtime->task_new(fmtid, flags, task_size + args_size);
+        task_t * task = runtime->task_new(fmtid, flags, NULL, args_size, AC);
 
-        task_dep_info_t * dep = TASK_DEP_INFO(task);
-        new (dep) task_dep_info_t(AC);
+        task_acs_info_t * acs = TASK_ACS_INFO(task);
+        new (acs) task_acs_info_t(AC);
 
         // setup register args
         memory_op_async_args_t * args = (memory_op_async_args_t *) TASK_ARGS(task);
@@ -420,10 +428,10 @@ memory_op_async(
         # endif /* XKRT_SUPPORT_DEBUG */
 
         // resolve dependencies
-        tls->resolve(accesses, AC);
+        runtime->task_accesses_resolve(accesses, AC);
 
         // commit task
-        tls->commit(task, runtime_t::task_team_enqueue, runtime, team);
+        runtime->team_task_commit(team, task);
     }
 
     return 0;

@@ -47,13 +47,13 @@ typedef struct  copy_args_t
     runtime_t * runtime;
 
     // the device responsible to perform the copy
-    device_global_id_t device_global_id;
+    device_unique_id_t device_unique_id;
 
     // pointers
-    device_global_id_t dst_device_global_id;
+    device_unique_id_t dst_device_unique_id;
     uintptr_t dst_device_mem;
 
-    device_global_id_t src_device_global_id;
+    device_unique_id_t src_device_unique_id;
     uintptr_t src_device_mem;
 
     // size of the copy
@@ -63,20 +63,20 @@ typedef struct  copy_args_t
 
 void
 runtime_t::copy(
-    const device_global_id_t      device_global_id,
+    const device_unique_id_t      device_unique_id,
     const memory_view_t         & host_view,
-    const device_global_id_t      dst_device_global_id,
+    const device_unique_id_t      dst_device_unique_id,
     const memory_replica_view_t & dst_device_view,
-    const device_global_id_t      src_device_global_id,
+    const device_unique_id_t      src_device_unique_id,
     const memory_replica_view_t & src_device_view,
     const callback_t            & callback
 ) {
-    device_t * device = this->device_get(device_global_id);
+    device_t * device = this->device_get(device_unique_id);
     device->offloader_queue_command_submit_copy<memory_view_t, memory_replica_view_t>(
         host_view,
-        dst_device_global_id,
+        dst_device_unique_id,
         dst_device_view,
-        src_device_global_id,
+        src_device_unique_id,
         src_device_view,
         callback
     );
@@ -84,21 +84,21 @@ runtime_t::copy(
 
 void
 runtime_t::copy(
-    const device_global_id_t   device_global_id,
+    const device_unique_id_t   device_unique_id,
     const size_t               size,
-    const device_global_id_t   dst_device_global_id,
+    const device_unique_id_t   dst_device_unique_id,
     const uintptr_t            dst_device_addr,
-    const device_global_id_t   src_device_global_id,
+    const device_unique_id_t   src_device_unique_id,
     const uintptr_t            src_device_addr,
     const callback_t         & callback
 ) {
-    device_t * device = this->device_get(device_global_id);
+    device_t * device = this->device_get(device_unique_id);
     // TODO: create 1x command per pinned segment, and callback
     device->offloader_queue_command_submit_copy<size_t, uintptr_t>(
         size,
-        dst_device_global_id,
+        dst_device_unique_id,
         dst_device_addr,
-        src_device_global_id,
+        src_device_unique_id,
         src_device_addr,
         callback
     );
@@ -111,17 +111,16 @@ runtime_t::copy(
 typedef struct  memory_copy_async_args_t
 {
     size_t               size;
-    device_global_id_t   dst_device_global_id;
+    device_unique_id_t   dst_device_unique_id;
     uintptr_t            dst_device_addr;
-    device_global_id_t   src_device_global_id;
+    device_unique_id_t   src_device_unique_id;
     uintptr_t            src_device_addr;
 }               memory_copy_async_args_t;
 
 /* the task completes once all segment completed */
-constexpr task_flag_bitfield_t flags = TASK_FLAG_DEVICE | TASK_FLAG_DEPENDENT | TASK_FLAG_DETACHABLE;
-constexpr unsigned int ac  = 1;
-constexpr size_t task_size = task_compute_size(flags, ac);
-constexpr size_t args_size = sizeof(memory_copy_async_args_t);
+constexpr task_flag_bitfield_t  flags       = TASK_FLAG_DEVICE | TASK_FLAG_ACCESSES | TASK_FLAG_DETACHABLE;
+constexpr task_access_counter_t AC          = 1;
+constexpr size_t                args_size   = sizeof(memory_copy_async_args_t);
 
 static void
 body_memory_copy_async_callback(void * vargs [XKRT_CALLBACK_ARGS_MAX])
@@ -139,8 +138,6 @@ body_memory_copy_async_callback(void * vargs [XKRT_CALLBACK_ARGS_MAX])
 static void
 body_memory_copy_async(runtime_t * runtime, device_t * device, task_t * task)
 {
-    runtime->task_detachable_incr(task);
-
     callback_t callback;
     callback.func    = body_memory_copy_async_callback;
     callback.args[0] = runtime;
@@ -149,16 +146,16 @@ body_memory_copy_async(runtime_t * runtime, device_t * device, task_t * task)
     memory_copy_async_args_t * args = (memory_copy_async_args_t *) TASK_ARGS(task);
     assert(args);
 
-    runtime->copy(device->global_id, args->size, args->dst_device_global_id, args->dst_device_addr, args->src_device_global_id, args->src_device_addr, callback);
+    runtime->copy(device->unique_id, args->size, args->dst_device_unique_id, args->dst_device_addr, args->src_device_unique_id, args->src_device_addr, callback);
 }
 
 void
 runtime_t::memory_copy_async(
-    const device_global_id_t   device_global_id,
+    const device_unique_id_t   device_unique_id,
     const size_t               size,
-    const device_global_id_t   dst_device_global_id,
+    const device_unique_id_t   dst_device_unique_id,
     const uintptr_t            dst_device_addr,
-    const device_global_id_t   src_device_global_id,
+    const device_unique_id_t   src_device_unique_id,
     const uintptr_t            src_device_addr,
     int n
 ) {
@@ -175,27 +172,27 @@ runtime_t::memory_copy_async(
         assert(src_device_addr <= a);
         assert(b <= src_device_addr + size);
 
-        task_t * task = this->task_new(fmtid, flags, task_size + args_size);
+        task_t * task = this->task_new(fmtid, flags, NULL, args_size, AC);
 
         const size_t offset = a - src_device_addr;
         const size_t size   = b - a;
 
         // copy arguments
-        memory_copy_async_args_t * args = (memory_copy_async_args_t *) TASK_ARGS(task, task_size);
+        memory_copy_async_args_t * args = (memory_copy_async_args_t *) TASK_ARGS(task);
         args->size                  = size;
-        args->dst_device_global_id  = dst_device_global_id;
+        args->dst_device_unique_id  = dst_device_unique_id;
         args->dst_device_addr       = dst_device_addr + offset;
-        args->src_device_global_id  = src_device_global_id;
+        args->src_device_unique_id  = src_device_unique_id;
         args->src_device_addr       = src_device_addr + offset;
 
-        task_dep_info_t * dep = TASK_DEP_INFO(task);
-        new (dep) task_dep_info_t(ac);
+        task_acs_info_t * acs = TASK_ACS_INFO(task);
+        new (acs) task_acs_info_t(AC);
 
         task_det_info_t * det = TASK_DET_INFO(task);
-        new (det) task_det_info_t(ac);
+        new (det) task_det_info_t(AC);
 
         task_dev_info_t * dev = TASK_DEV_INFO(task);
-        new (dev) task_dev_info_t(device_global_id, UNSPECIFIED_TASK_ACCESS);
+        new (dev) task_dev_info_t(device_unique_id, XKRT_UNSPECIFIED_TASK_ACCESS);
 
         # if XKRT_SUPPORT_DEBUG
         snprintf(task->label, sizeof(task->label), "memory_copy_async");
@@ -205,7 +202,7 @@ runtime_t::memory_copy_async(
         access_t * accesses = TASK_ACCESSES(task, flags);
         constexpr access_mode_t mode = (access_mode_t) (ACCESS_MODE_W | ACCESS_MODE_V);
         new (accesses + 0) access_t(task, a, b, mode);
-        thread->resolve(accesses, 1);
+        this->task_accesses_resolve(accesses, AC);
 
         // commit
         this->task_commit(task);

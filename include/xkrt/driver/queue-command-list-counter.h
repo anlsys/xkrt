@@ -39,6 +39,6 @@
 # define __XKRT_QUEUE_COMMAND_LIST_COUNTER_H__
 
 /* counter for the queue queues */
-typedef unsigned int xkrt_queue_command_list_counter_t;
+typedef unsigned int xkrt_command_queue_list_counter_t;
 
 #endif /* __XKRT_QUEUE_COMMAND_LIST_COUNTER_H__ */

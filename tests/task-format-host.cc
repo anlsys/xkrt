@@ -74,10 +74,11 @@ main(void)
 
     // Submit the task
     constexpr task_flag_bitfield_t flags = TASK_FLAG_ZERO;
-    constexpr size_t task_size = task_compute_size(flags, 0);
+    constexpr void * args = NULL;
     constexpr size_t args_size = 0;
+    constexpr task_access_counter_t AC = 0;
 
-    task_t * task = runtime.task_new(fmtid, flags, task_size + args_size);
+    task_t * task = runtime.task_new(fmtid, flags, args, args_size, AC);
     runtime.task_commit(task);
 
     // wait

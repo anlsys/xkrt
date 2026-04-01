@@ -39,11 +39,10 @@
 #ifndef __QUEUE_HPP__
 # define __QUEUE_HPP__
 
-# include <xkrt/support.h>
-# include <xkrt/driver/command.h>
-# include <xkrt/driver/command-type.h>
+# include <xkrt/command/command.hpp>
 # include <xkrt/driver/queue-type.h>
 # include <xkrt/stats/stats.h>
+# include <xkrt/support.h>
 # include <xkrt/sync/lockable.hpp>
 # include <xkrt/thread/thread.h>
 
@@ -51,184 +50,153 @@
 
 XKRT_NAMESPACE_BEGIN
 
-const char * queue_type_to_str(xkrt_queue_type_t type);
+const char * command_queue_type_to_str(xkrt_command_queue_type_t type);
 
-// TODO: memory layout
-// I think we want compacity on 'cmd->completed' to fastly test for progress
-class queue_command_list_t
+struct command_queue_list_t
 {
-    public:
+    // TODO: memory layout: do we want AoS or SoA here ?
+    command_t * cmd;                                 /* commands buffer */
+    xkrt_command_queue_list_counter_t capacity;      /* buffer capacity */
+    struct {
+        volatile xkrt_command_queue_list_counter_t r; /* first command to process */
+        volatile xkrt_command_queue_list_counter_t w; /* next position for inserting commands */
+    } pos;
 
-        command_t * cmd;                             /* commands buffer */
-        queue_command_list_counter_t capacity;       /* buffer capacity */
-        struct {
-            volatile queue_command_list_counter_t r; /* first command to process */
-            volatile queue_command_list_counter_t w; /* next position for inserting commands */
-        } pos;
+    /* methods */
+    int
+    is_full(void) const
+    {
+        return (this->pos.w  == this->pos.r - 1);
+    }
 
-    public:
+    int
+    is_empty(void) const
+    {
+        return (this->pos.r == this->pos.w);
+    }
 
-        /* methods */
-        int
-        is_full(void) const
-        {
-            return (this->pos.w  == this->pos.r - 1);
+    xkrt_command_queue_list_counter_t
+    size(void) const
+    {
+        if (this->pos.r <= this->pos.w)
+            return (this->pos.w - this->pos.r);
+        else
+            return this->capacity - this->pos.r + this->pos.w;
+    }
+
+    /**
+     *  Iterate on each command at index p of the list,
+     *  and stop early if process(p) returns false
+     */
+    inline xkrt_command_queue_list_counter_t
+    iterate(const std::function<bool(xkrt_command_queue_list_counter_t p)> & process)
+    {
+        const xkrt_command_queue_list_counter_t a = this->pos.r;
+        const xkrt_command_queue_list_counter_t b = this->pos.w;
+
+        assert(a < this->capacity);
+        assert(b < this->capacity);
+
+        if (a <= b) {
+            for (xkrt_command_queue_list_counter_t i = a; i < b; ++i)
+                if (!process(i)) return i;
+        } else {
+            for (xkrt_command_queue_list_counter_t i = a; i < capacity; ++i)
+                if (!process(i)) return i;
+            for (xkrt_command_queue_list_counter_t i = 0; i < b; ++i)
+                if (!process(i)) return i;
         }
-
-        int
-        is_empty(void) const
-        {
-            return (this->pos.r == this->pos.w);
-        }
-
-        queue_command_list_counter_t
-        size(void) const
-        {
-            if (this->pos.r <= this->pos.w)
-                return (this->pos.w - this->pos.r);
-            else
-                return this->capacity - this->pos.r + this->pos.w;
-        }
-
-        /**
-         *  Iterate on each command at index p of the list,
-         *  and stop early if process(p) returns false
-         */
-        inline queue_command_list_counter_t
-        iterate(const std::function<bool(queue_command_list_counter_t p)> & process)
-        {
-            const queue_command_list_counter_t a = this->pos.r;
-            const queue_command_list_counter_t b = this->pos.w;
-
-            assert(a < this->capacity);
-            assert(b < this->capacity);
-
-            if (a <= b) {
-                for (queue_command_list_counter_t i = a; i < b; ++i)
-                    if (!process(i)) return i;
-            } else {
-                for (queue_command_list_counter_t i = a; i < capacity; ++i)
-                    if (!process(i)) return i;
-                for (queue_command_list_counter_t i = 0; i < b; ++i)
-                    if (!process(i)) return i;
-            }
-            return b;
-        }
-
-        /**
-         *  Iterate on each command at index p of the list, if it is not completed already.
-         *  Stop early if process(cmd, p) returned false
-         */
-        inline queue_command_list_counter_t
-        progress(const std::function<bool(command_t * cmd, queue_command_list_counter_t p)> & process)
-        {
-            return this->iterate([&] (queue_command_list_counter_t p) {
-                command_t * cmd = this->cmd + p;
-                if (cmd->completed)
-                    return true;
-                return process(cmd, p);
-            });
-        }
+        return b;
+    }
 };
 
-# pragma message(TODO "make this a C++ class and use inheritance/pure virtual - currently hybrid of C struct C++ class :(")
-
 /* this is a 'io_queue' equivalent */
-class queue_t : public Lockable
+struct command_queue_t
 {
-    public:
+    /* the type of that queue */
+    command_queue_type_t type;
 
-        /* the type of that queue */
-        queue_type_t type;
+    // TODO: currently, ready/pending/completed are SoA, we probably want AoS to:
+    //  - perform fast copy from ready to pending
+    //  - fast test of completion given a command
 
-        /* queue for ready command */
-        queue_command_list_t ready;
+    /* queue for ready command */
+    command_queue_list_t ready;
 
-        /* queue for pending commands to progress */
-        queue_command_list_t pending;
+    /* queue for pending commands to progress */
+    command_queue_list_t pending;
 
-        # if XKRT_SUPPORT_STATS
+    /* whether command at index 'p' is completed */
+    bool * completed;
+
+    /* spinlock on the ready queue
+     *  - any threasd may push to it
+     *  - the owning thread may move from it to the pending queue
+     */
+    spinlock_t spinlock;
+
+    # if XKRT_SUPPORT_STATS
+    struct {
         struct {
-            struct {
-                stats_int_t commited;
-                stats_int_t completed;
-            } commands[COMMAND_TYPE_MAX];
-            stats_int_t transfered;
-        } stats;
-        # endif /* XKRT_SUPPORT_STATS */
+            stats_int_t commited;
+            stats_int_t completed;
+        } commands[ocg::COMMAND_TYPE_MAX];
+        stats_int_t transfered;
+    } stats;
+    # endif /* XKRT_SUPPORT_STATS */
 
-        /* launch a queue command */
-        int (*f_command_launch)(queue_t * queue, command_t * cmd, queue_command_list_counter_t idx);
+    /**
+     *  Return true if the queue is full of commands, false otherwise
+     *  Threading: called by any thread
+     */
+    int is_full(void) const;
 
-        /* progrtream command */
-        int (*f_commands_progress)(queue_t * queue);
+    /**
+     *  Allocate a new command to the queue (must then be commited via 'commit') later
+     *  Threading: called by any thread
+     */
+    command_t * command_new(const ocg::command_type_t ctype, const command_flag_t flags);
 
-        /* wait commands completion on a queue */
-        int (*f_commands_wait)(queue_t * queue);
+    /**
+     *  Commit a command previously allocated via 'command_new'
+     *  Threading: called by any thread
+     */
+    int commit(const command_t * command);
 
-        /* wait commands completion on a queue */
-        int (*f_command_wait)(queue_t * queue, command_t * cmd, queue_command_list_counter_t idx);
+    /**
+     *  Memcpy the passed command to the end of the ready queue.
+     *  Threading: called by any thread
+     */
+    int emplace(const command_t * command);
 
-    public:
+    /**
+     *  Iterate on each command at index p of the list, if it is not completed already.
+     *  Stop early if process(cmd, p) returned false
+     *  Threading: called by the owning thread only
+     */
+    xkrt_command_queue_list_counter_t progress(const std::function<bool(command_t * cmd, xkrt_command_queue_list_counter_t p)> & process);
 
-        /* allocate a new command to the queue (must then be commited via 'commit') */
-        template <bool synchronous>
-        command_t * command_new(const command_type_t ctype)
-        {
-            if (this->ready.is_full())
-                return NULL;
+    /**
+     *  Complete the command at the i-th position in the pending queue (invoke callbacks)
+     *  Threading: called by the owning thread only
+     */
+    void complete_command(const xkrt_command_queue_list_counter_t p);
 
-            assert(this->ready.pos.w >= 0 && this->ready.pos.w < this->ready.capacity);
-            command_t * cmd = this->ready.cmd + this->ready.pos.w;
-            cmd->type = ctype;
-            cmd->synchronous = synchronous;
-            cmd->completed = false;
-            cmd->callbacks.n = 0;
+    /**
+     *  Complete all commands until index 'ok_p' (see complete_command)
+     *  Threading: called by the owning thread only
+     */
+    void complete_commands(const xkrt_command_queue_list_counter_t ok_p);
 
-            return cmd;
-        }
+};  /* command_queue_t */
 
-        /* complete the command at the i-th position in the pending queue (invoke callbacks) */
-        void complete_command(const queue_command_list_counter_t p);
-
-        /* complete the command that must be in the pending queue */
-        void complete_command(command_t * cmd);
-
-        /* commit the command to the queue (must be allocated via 'command_new') */
-        int commit(command_t * command);
-
-        /* launch commands, and may generate pending commands */
-        int launch_ready_commands(void);
-
-        /* progress pending commands */
-        int progress_pending_commands(void);
-
-        /* (internal) complete all commands to 'ok_p' */
-        void complete_commands(const queue_command_list_counter_t ok_p);
-
-        /* wait for completion of all pending commands */
-        void wait_pending_commands(void);
-
-        /* return true if the queue is full of commands, false otherwise */
-        int is_full(void) const;
-
-        /* return true if the queue is empty, false otherwise */
-        int is_empty(void) const;
-
-
-};  /* queue_t */
-
-void queue_init(
-    queue_t * queue,
-    queue_type_t qtype,
-    queue_command_list_counter_t capacity,
-    int (*f_command_launch)(queue_t * queue, command_t * cmd, queue_command_list_counter_t idx),
-    int (*f_commands_progress)(queue_t * queue),
-    int (*f_commands_wait)(queue_t * queue),
-    int (*f_command_wait)(queue_t * queue, command_t * cmd, queue_command_list_counter_t idx)
+void command_queue_init(
+    command_queue_t * queue,
+    command_queue_type_t qtype,
+    xkrt_command_queue_list_counter_t capacity
 );
 
-void queue_deinit(queue_t * queue);
+void command_queue_deinit(command_queue_t * queue);
 
 XKRT_NAMESPACE_END
 

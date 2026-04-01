@@ -45,70 +45,58 @@
 # define INTERVAL_DIFF_TYPE_T   ptrdiff_t
 # define INTERVAL_TYPE_MODIFIER "%lu"
 
-class Interval {
-
+struct Interval
+{
     // represent the interval [a..b[
-    public:
-        INTERVAL_TYPE_T a, b;
+    INTERVAL_TYPE_T a, b;
 
-    public:
-        Interval() : Interval(0, 0) {}
-        Interval(INTERVAL_TYPE_T aa, INTERVAL_TYPE_T bb) : a(aa), b(bb) {}
-        virtual ~Interval() {}
+    Interval() : a(), b() {}
+    Interval(INTERVAL_TYPE_T aa, INTERVAL_TYPE_T bb) : a(aa), b(bb) {}
 
-        inline bool
-        is_empty(void) const
-        {
-            assert(this->a <= this->b);
-            return this->a == this->b;
-        }
+    inline bool
+    is_empty(void) const
+    {
+        assert(this->a <= this->b);
+        return this->a == this->b;
+    }
 
-        inline INTERVAL_DIFF_TYPE_T
-        length(void) const
-        {
-            return (INTERVAL_DIFF_TYPE_T)(this->b - this->a);
-        }
+    inline INTERVAL_DIFF_TYPE_T
+    length(void) const
+    {
+        return (INTERVAL_DIFF_TYPE_T)(this->b - this->a);
+    }
 
-        inline bool
-        includes(const Interval & interval) const
-        {
-            return (this->a <= interval.a && interval.b <= this->b);
-        }
+    inline bool
+    includes(const Interval & interval) const
+    {
+        return (this->a <= interval.a && interval.b <= this->b);
+    }
 
-        friend bool
-        operator==(const Interval & lhs, const Interval & rhs)
-        {
-            return lhs.a == rhs.a && lhs.b == rhs.b;
-        }
+    friend bool
+    operator==(const Interval & lhs, const Interval & rhs)
+    {
+        return lhs.a == rhs.a && lhs.b == rhs.b;
+    }
 
-        friend bool
-        operator!=(const Interval & lhs, const Interval & rhs)
-        {
-            return lhs.a != rhs.a || lhs.b != rhs.b;
-        }
+    friend bool
+    operator!=(const Interval & lhs, const Interval & rhs)
+    {
+        return lhs.a != rhs.a || lhs.b != rhs.b;
+    }
 
-        Interval &
-        operator=(const Interval & other)
-        {
-            this->a = other.a;
-            this->b = other.b;
-            return *this;
-        }
+    inline bool
+    intersects(const Interval & other) const
+    {
+        return this->a < other.b && other.a < this->b;
+    }
 
-        inline bool
-        intersects(const Interval & other) const
-        {
-            return this->a < other.b && other.a < this->b;
-        }
-
-        bool
-        operator<(const Interval & other) const
-        {
-            // this class should only be used to represent disjoint intervals
-            assert(!this->intersects(other));
-            return this->b <= other.a;
-        }
-
+    bool
+    operator<(const Interval & other) const
+    {
+        // this class should only be used to represent disjoint intervals
+        assert(!this->intersects(other));
+        return this->b <= other.a;
+    }
 };
 
 #endif /* __INTERVAL_HPP__ */

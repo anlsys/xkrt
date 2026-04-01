@@ -51,29 +51,29 @@ static inline void
 distribute1D_submit(
     runtime_t * runtime,
     uintptr_t x1, uintptr_t x2,
-    device_global_id_t device_global_id
+    device_unique_id_t device_unique_id
 ) {
     thread_t * thread = thread_t::get_tls();
     assert(thread);
 
-    # define AC 1
-    constexpr task_flag_bitfield_t flags = TASK_FLAG_DEPENDENT | TASK_FLAG_DEVICE;
-    constexpr size_t task_size = task_compute_size(flags, AC);
-    constexpr size_t args_size = 0;
-    constexpr task_format_id_t fmtid = XKRT_TASK_FORMAT_NULL;
+    constexpr task_flag_bitfield_t  flags       = TASK_FLAG_ACCESSES | TASK_FLAG_DEVICE;
+    constexpr void                * args        = NULL;
+    constexpr size_t                args_size   = 0;
+    constexpr task_format_id_t      fmtid       = XKRT_TASK_FORMAT_NULL;
+    constexpr task_access_counter_t AC          = 1;
 
-    task_t * task = runtime->task_new(fmtid, flags, task_size + args_size);
+    task_t * task = runtime->task_new(fmtid, flags, args, args_size, AC);
 
-    task_dep_info_t * dep = TASK_DEP_INFO(task);
-    new (dep) task_dep_info_t(AC);
+    task_acs_info_t * acs = TASK_ACS_INFO(task);
+    new (acs) task_acs_info_t(AC);
 
     task_dev_info_t * dev = TASK_DEV_INFO(task);
-    new (dev) task_dev_info_t(device_global_id, UNSPECIFIED_TASK_ACCESS);
+    new (dev) task_dev_info_t(device_unique_id, XKRT_UNSPECIFIED_TASK_ACCESS);
 
     access_t * accesses = TASK_ACCESSES(task);
     new (accesses + 0) access_t(task, x1, x2, ACCESS_MODE_R);
 
-    thread->resolve(accesses, AC);
+    runtime->task_accesses_resolve(accesses, AC);
     # undef AC
 
     #if XKRT_SUPPORT_DEBUG
@@ -93,24 +93,24 @@ distribute2D_submit(
     size_t sizeof_type,
     size_t hx, size_t hy,
     size_t tm, size_t tn,
-    device_global_id_t device_global_id
+    device_unique_id_t device_unique_id
 ) {
     thread_t * thread = thread_t::get_tls();
     assert(thread);
 
-    # define AC 1
-    constexpr task_flag_bitfield_t flags = TASK_FLAG_DEPENDENT | TASK_FLAG_DEVICE;
-    constexpr size_t task_size = task_compute_size(flags, AC);
-    constexpr size_t args_size = 0;
-    constexpr task_format_id_t fmtid = XKRT_TASK_FORMAT_NULL;
+    constexpr task_flag_bitfield_t  flags       = TASK_FLAG_ACCESSES | TASK_FLAG_DEVICE;
+    constexpr void                * args        = NULL;
+    constexpr size_t                args_size   = 0;
+    constexpr task_access_counter_t AC          = 1;
+    constexpr task_format_id_t      fmtid       = XKRT_TASK_FORMAT_NULL;
 
-    task_t * task = runtime->task_new(fmtid, flags, task_size + args_size);
+    task_t * task = runtime->task_new(fmtid, flags, args, args_size, AC);
 
-    task_dep_info_t * dep = TASK_DEP_INFO(task);
-    new (dep) task_dep_info_t(AC);
+    task_acs_info_t * acs = TASK_ACS_INFO(task);
+    new (acs) task_acs_info_t(AC);
 
     task_dev_info_t * dev = TASK_DEV_INFO(task);
-    new (dev) task_dev_info_t(device_global_id, UNSPECIFIED_TASK_ACCESS);
+    new (dev) task_dev_info_t(device_unique_id, XKRT_UNSPECIFIED_TASK_ACCESS);
 
     access_t * accesses = TASK_ACCESSES(task);
     {
@@ -124,7 +124,7 @@ distribute2D_submit(
         const  size_t sy = y1 - y0;
         new (accesses + 0) access_t(task, storage, ptr, ld, x0, y0, sx, sy, sizeof_type, ACCESS_MODE_R);
     }
-    thread->resolve(accesses, AC);
+    runtime->task_accesses_resolve(accesses, AC);
     # undef AC
 
     #if XKRT_SUPPORT_DEBUG

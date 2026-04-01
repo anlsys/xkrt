@@ -44,9 +44,9 @@ static inline void
 memory_deallocate_all(
     runtime_t * runtime
 ) {
-    for (device_global_id_t device_global_id = 0 ; device_global_id < runtime->drivers.devices.n ;  ++device_global_id)
+    for (device_unique_id_t device_unique_id = 0 ; device_unique_id < runtime->drivers.devices.n ;  ++device_unique_id)
     {
-        device_t * device = runtime->device_get(device_global_id);
+        device_t * device = runtime->device_get(device_unique_id);
         assert(device);
 
         // device memory
@@ -78,15 +78,15 @@ runtime_t::reset_coherence_controllers(void)
     //     dom->deps.handle = NULL;
     // }
 
-    if (dom->mccs.interval)
+    if (dom->mccs.interval.mcc)
     {
-        dom->mccs.interval->unref();
-        dom->mccs.interval = NULL;
+        dom->mccs.interval.mcc->unref();
+        dom->mccs.interval.mcc = NULL;
     }
 
-    for (auto mcc : dom->mccs.blas)
+    for (auto mcc : dom->mccs.blas.mcc)
         mcc->unref();
-    dom->mccs.blas.clear();
+    dom->mccs.blas.mcc.clear();
 }
 
 void

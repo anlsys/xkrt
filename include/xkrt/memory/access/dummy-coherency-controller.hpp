@@ -46,7 +46,7 @@ class DummyMemoryCoherencyController {
     public:
 
         /* returns a bitfield of devices that owns the most bytes of the given access */
-        xkrt_device_global_id_bitfield_t
+        xkrt_device_unique_id_bitfield_t
         who_owns(access_t * access)
         {
             LOGGER_FATAL("Tried to run coherency controller on an unsupported access");
@@ -63,7 +63,7 @@ class DummyMemoryCoherencyController {
         void
         fetch(
             access_t * access,
-            xkrt_device_global_id_t device_global_id
+            xkrt_device_unique_id_t device_unique_id
         ) {
             LOGGER_FATAL("Tried to run coherency controller on an unsupported access");
         }

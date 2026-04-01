@@ -27,6 +27,7 @@ set(TEST_SOURCES
     memory-unregister-async.cc
     moldability.cc
     sync.cc
+    task-dependency-graph.cc
     task-dependency-handle.cc
     task-dependency-interval-matrix.cc
     task-dependency-interval.cc

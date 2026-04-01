@@ -38,19 +38,17 @@
 # define __DEPENDENCY_DOMAIN_HPP__
 
 # include <xkrt/consts.h>
-# include <xkrt/types.h>
 # include <xkrt/logger/logger.h>
 # include <xkrt/logger/todo.h>
 # include <xkrt/memory/access/access.hpp>
+# include <xkrt/namespace.h>
+# include <xkrt/types.h>
 
 XKRT_NAMESPACE_BEGIN
 
 class DependencyDomain
 {
-    public:
-
-        virtual ~DependencyDomain() {}
-
+# if 0
     public:
 
         // set edges with previous accesses
@@ -76,6 +74,7 @@ class DependencyDomain
             for (int i = 0 ; i < AC ; ++i)
                 this->put(accesses + i);
         }
+# endif
 };
 
 XKRT_NAMESPACE_END

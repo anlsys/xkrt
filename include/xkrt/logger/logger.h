@@ -72,14 +72,32 @@ extern int LOGGER_INITIALIZED;
 extern volatile double   LOGGER_TIME_ELAPSED;
 extern volatile uint64_t LOGGER_LAST_TIME;
 
+# define LOGGER_PRINT_LINE() \
+    fprintf(LOGGER_FD, "%s:%d (%s)\n", __FILE__, __LINE__, __func__);
+
 # if LOGGER_SHUT_UP
 
 #  define LOGGER_PRINT(...)
+#  define LOGGER_NOT_IMPLEMENTED_WARN(...)
+#  define LOGGER_NOT_SUPPORTED(...)
+#  define LOGGER_NOT_IMPLEMENTED(...)
+#  define LOGGER_INFO(...)
+#  define LOGGER_WARN(...)
+#  define LOGGER_ERROR(...)
+#  define LOGGER_IMPL(...)
+#  define LOGGER_DEBUG(...)
+#  define LOGGER_FATAL(...)                                                         \
+    do {                                                                            \
+        fprintf(LOGGER_FD, "XKRT aborted with the following error message:\n\t");   \
+        fprintf(LOGGER_FD, __VA_ARGS__);                                            \
+        fprintf(LOGGER_FD, "\n");                                                   \
+        fprintf(LOGGER_FD, "at");                                                   \
+        LOGGER_PRINT_LINE();                                                        \
+        fflush(LOGGER_FD);                                                          \
+        abort();                                                                    \
+    } while (0)
 
 # else /* LOGGER_SHUT_UP */
-
-# define LOGGER_PRINT_LINE() \
-    fprintf(LOGGER_FD, "%s:%d (%s)\n", __FILE__, __LINE__, __func__);
 
 # define LOGGER_PRINT(LVL, ...)                                                 \
     do {                                                                        \
@@ -131,8 +149,6 @@ extern volatile uint64_t LOGGER_LAST_TIME;
         }                                                                       \
     } while (0)
 
-# endif /* LOGGER_SHUT_UP */
-
 # define LOGGER_NOT_IMPLEMENTED_WARN(S)                                 \
     LOGGER_IMPL("'%s' at %s:%d in %s()",                                \
             S, __FILE__, __LINE__, __func__);
@@ -144,11 +160,13 @@ extern volatile uint64_t LOGGER_LAST_TIME;
 # define LOGGER_WARN(...)  LOGGER_PRINT(LOGGER_PRINT_WARN_ID,  __VA_ARGS__)
 # define LOGGER_ERROR(...) LOGGER_PRINT(LOGGER_PRINT_ERROR_ID, __VA_ARGS__)
 # define LOGGER_IMPL(...)  LOGGER_PRINT(LOGGER_PRINT_IMPL_ID,  __VA_ARGS__)
+# define LOGGER_FATAL(...) LOGGER_PRINT(LOGGER_PRINT_FATAL_ID, __VA_ARGS__)
 # if XKRT_SUPPORT_DEBUG
 #  define LOGGER_DEBUG(...) LOGGER_PRINT(LOGGER_PRINT_DEBUG_ID, __VA_ARGS__)
 # else
 #  define LOGGER_DEBUG(...)
 # endif
-# define LOGGER_FATAL(...) LOGGER_PRINT(LOGGER_PRINT_FATAL_ID, __VA_ARGS__)
+
+# endif /* LOGGER_SHUT_UP */
 
 #endif /* __LOGGER_H__*/

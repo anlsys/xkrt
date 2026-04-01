@@ -43,12 +43,15 @@
 
 typedef volatile char spinlock_t;
 
-# define SPINLOCK_LOCK(L)                                                   \
-    do {                                                                    \
-        char zero = (char) 0;                                               \
-        while (__sync_val_compare_and_swap(&L, zero, (char)1) == (char) 1)  \
-            mem_pause();                                                    \
+# define SPINLOCK_LOCK(L)                                                       \
+    do {                                                                        \
+        while (__sync_val_compare_and_swap(&L, (char)0, (char)1) == (char) 1)   \
+            mem_pause();                                                        \
     } while (0)
+
+/* Evaluates to true if the lock is taken */
+# define SPINLOCK_TRYLOCK(L)                                            \
+    (__sync_val_compare_and_swap(&L, (char)0, (char)1) == (char) 0)
 
 # define SPINLOCK_UNLOCK(L)             \
     do {                                \

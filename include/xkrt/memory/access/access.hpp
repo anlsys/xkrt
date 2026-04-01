@@ -43,9 +43,9 @@
 # include <xkrt/memory/access/mode.h>
 # include <xkrt/memory/access/scope.h>
 # include <xkrt/memory/access/type.h>
+# include <xkrt/data-structures/small-vector.h>
 # include <xkrt/memory/view.hpp>
 
-# include <vector>
 # include <span>
 
 /**
@@ -332,6 +332,23 @@ class access_t
         /* access type */
         access_type_t type;
 
+        /* As opposed to kaapi/v1, we have no data handle to attach a sync access onto.
+         * How to remove that vector and have a similar 'sync access' logic instead ?
+         * For now, this implementation will be good enough pre-reserving 8 successors */
+        small_vector_t<access_t *, 8> successors;
+
+        /* The owning task.
+         * Instead, we could use a smaller type (uint8_t) with the number of
+         * accesses  + the index of that access in the task struct accessses
+         * array, allowing to retrieve the original task */
+        task_t * task;
+
+        /* host view of the access = mapped memory from the region */
+        memory_view_t host_view;
+
+        /* device view of the access - set after fetching the data */
+        memory_replica_view_t device_view;
+
         /////////////////////////////////////////////////
         // region -         depends on the access type //
         /////////////////////////////////////////////////
@@ -374,6 +391,12 @@ class access_t
 
         } region;
 
+    public:
+
+        /////////////
+        // methods //
+        /////////////
+
         std::span<Rect>
         rects()
         {
@@ -402,34 +425,7 @@ class access_t
             }
         }
 
-        //////////
-        // data //
-        //////////
-
-        /* As opposed to kaapi/v1, we have no data handle to attach a sync access onto.
-         * How to remove that vector and have a similar 'sync access' logic instead ?
-         * For now, this implementation will be good enough pre-reserving 8 successors */
-        std::vector<access_t *> successors;
-
-        /* The owning task.
-         * Instead, we could use a smaller type (uint8_t) with the number of
-         * accesses  + the index of that access in the task struct accessses
-         * array, allowing to retrieve the original task */
-        # define ACCESS_GET_TASK(A) (A->task)
-        task_t * task;
-
-        /* host view of the access = mapped memory from the region */
-        memory_view_t host_view;
-
-        /* device view of the access - set after fetching the data */
-        memory_replica_view_t device_view;
-
-    public:
-        /////////////
-        // methods //
-        /////////////
-
-        /** return true if the two access intersects */
+        /** return true if the two accesses' region intersects */
         static bool intersects(access_t * x, access_t * y);
 
         /** return true if the two accesses conflict */
@@ -444,6 +440,22 @@ class access_t
         );
 
     public:
+
+        //////////////////////
+        // COPY CONSTRUCTOR //
+        //////////////////////
+
+        access_t(access_t * other) :
+            state(other->state),
+            mode(other->mode),
+            concurrency(other->concurrency),
+            scope(other->scope),
+            type(other->type),
+            successors(),
+            task(other->task),
+            host_view(),
+            device_view()
+        {}
 
         //////////////////////////////////////////////////////////////////////
         // HANDLE ACCESSES CONSTRUCTORS                                     //
@@ -467,9 +479,6 @@ class access_t
             device_view()
         {
             this->region.point.handle = addr;
-
-            /* clear preallocated empty successors */
-            successors.reserve(8);
         }
 
         //////////////////////////////////////////////////////////////////////
@@ -495,8 +504,6 @@ class access_t
             host_view(MATRIX_COLMAJOR, a,    SIZE_MAX,    0,     0,     (size_t) (b - a), 1, 1),
             device_view()
         {
-            successors.reserve(8);
-
             /* Only ACCESS_CONCURRENCY_SEQUENTIAL is supported yet */
             assert(concurrency == ACCESS_CONCURRENCY_SEQUENTIAL ||
                     concurrency == ACCESS_CONCURRENCY_COMMUTATIVE);
@@ -560,8 +567,6 @@ class access_t
             host_view(storage, addr, ld, offset_m, offset_n, m, n, s),
             device_view()
         {
-            successors.reserve(8);
-
             /* Only ACCESS_CONCURRENCY_SEQUENTIAL is supported yet */
             assert(concurrency == ACCESS_CONCURRENCY_SEQUENTIAL ||
                     concurrency == ACCESS_CONCURRENCY_COMMUTATIVE);
@@ -606,8 +611,6 @@ class access_t
             host_view(storage, 0, ld, 0, 0, 0, 0, s),
             device_view()
         {
-            successors.reserve(8);
-
             assert(storage == MATRIX_COLMAJOR);
             assert(mode == ACCESS_MODE_R); // not a big deal, but right now only called from `coherent_async`
             assert(!h.is_empty());
@@ -658,8 +661,6 @@ class access_t
             host_view(MATRIX_COLMAJOR, 0, 0, 0, 0, 0, 0, 0),
             device_view()
         {
-            successors.reserve(8);
-
             /* Only ACCESS_CONCURRENCY_SEQUENTIAL is supported yet */
             assert(concurrency == ACCESS_CONCURRENCY_SEQUENTIAL);
         }

@@ -53,7 +53,7 @@ XKRT_NAMESPACE_BEGIN
 //  DEVICE CONF //
 //////////////////
 
-typedef struct  conf_queue_t
+typedef struct  conf_command_queue_t
 {
     /* number of queue per operation type */
     int8_t n;
@@ -61,11 +61,11 @@ typedef struct  conf_queue_t
     /* number of concurrent operations */
     uint32_t concurrency;
 
-}               conf_queue_t;
+}               conf_command_queue_t;
 
 typedef struct  conf_offloader_t
 {
-    conf_queue_t queues[XKRT_QUEUE_TYPE_ALL];
+    conf_command_queue_t queues[XKRT_QUEUE_TYPE_ALL];
     uint16_t capacity;
 
 }               conf_offloader_t;
@@ -73,7 +73,7 @@ typedef struct  conf_offloader_t
 typedef struct  conf_device_t
 {
     float gpu_mem_percent;      /* % of gpu memory to allocate initially */
-    device_global_id_t ngpus;   /* number of GPU for this node */
+    device_unique_id_t ngpus;   /* number of GPU for this node */
     bool use_p2p;               /* enable/disable p2p */
     conf_offloader_t offloader; /* offloader conf */
 }               conf_device_t;

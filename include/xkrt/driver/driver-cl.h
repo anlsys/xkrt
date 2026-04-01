@@ -74,7 +74,7 @@ typedef struct  device_cl_t
 
 typedef struct  queue_cl_t
 {
-    queue_t super;
+    command_queue_t super;
 
     struct {
         cl_command_queue queue;

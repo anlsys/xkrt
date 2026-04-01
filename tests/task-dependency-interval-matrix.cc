@@ -48,7 +48,7 @@ XKRT_NAMESPACE_USE;
 static int x = 0;
 
 # define AC 1
-constexpr task_flag_bitfield_t flags = TASK_FLAG_DEPENDENT;
+constexpr task_flag_bitfield_t flags = TASK_FLAG_ACCESSES;
 constexpr size_t task_size = task_compute_size(flags, AC);
 constexpr size_t args_size = sizeof(int);
 
@@ -88,10 +88,10 @@ main(void)
     // Create task on interval [0..100]
     {
         // Create a task
-        task_t * task = runtime.task_new(fmtid, flags, task_size + args_size);
+        task_t * task = runtime.task_new(fmtid, flags, NULL, args_size, AC);
 
-        task_dep_info_t * dep = TASK_DEP_INFO(task);
-        new (dep) task_dep_info_t(AC);
+        task_acs_info_t * acs = TASK_ACS_INFO(task);
+        new (acs) task_acs_info_t(AC);
 
         int * args = (int *) TASK_ARGS(task, task_size);
         *args = 0;
@@ -102,9 +102,9 @@ main(void)
 
         // set accesses
         access_t * accesses = TASK_ACCESSES(task);
-        static_assert(AC <= TASK_MAX_ACCESSES);
+        static_assert(AC <= XKRT_TASK_MAX_ACCESSES);
         new (accesses + 0) access_t(task, 0, 100, ACCESS_MODE_W);
-        thread->resolve(accesses, AC);
+        runtime.task_accesses_resolve(accesses, AC);
 
         // submit it to the runtime
         runtime.task_commit(task);
@@ -113,10 +113,10 @@ main(void)
     // Create task on matrix that conflicts with [0..100]
     {
         // Create a task
-        task_t * task = runtime.task_new(fmtid, flags, task_size + args_size);
+        task_t * task = runtime.task_new(fmtid, flags, NULL, args_size, AC);
 
-        task_dep_info_t * dep = TASK_DEP_INFO(task);
-        new (dep) task_dep_info_t(AC);
+        task_acs_info_t * acs = TASK_ACS_INFO(task);
+        new (acs) task_acs_info_t(AC);
 
         int * args = (int *) TASK_ARGS(task, task_size);
         *args = 1;
@@ -127,7 +127,7 @@ main(void)
 
         // set accesses
         access_t * accesses = TASK_ACCESSES(task);
-        static_assert(AC <= TASK_MAX_ACCESSES);
+        static_assert(AC <= XKRT_TASK_MAX_ACCESSES);
         const void * addr = (void *) 3;
         const size_t ld = 8;
         const size_t offset_m = 0;
@@ -136,7 +136,7 @@ main(void)
         const size_t n = 8;
         const size_t s = 1;
         new (accesses + 0) access_t(task, MATRIX_COLMAJOR, addr, ld, 0, 0, m, n, s, ACCESS_MODE_W);
-        thread->resolve(accesses, AC);
+        runtime.task_accesses_resolve(accesses, AC);
 
         // submit it to the runtime
         runtime.task_commit(task);
@@ -145,10 +145,10 @@ main(void)
     // Create task on interval [0..100]
     {
         // Create a task
-        task_t * task = runtime.task_new(fmtid, flags, task_size + args_size);
+        task_t * task = runtime.task_new(fmtid, flags, NULL, args_size, AC);
 
-        task_dep_info_t * dep = TASK_DEP_INFO(task);
-        new (dep) task_dep_info_t(AC);
+        task_acs_info_t * acs = TASK_ACS_INFO(task);
+        new (acs) task_acs_info_t(AC);
 
         int * args = (int *) TASK_ARGS(task, task_size);
         *args = 2;
@@ -159,9 +159,9 @@ main(void)
 
         // set accesses
         access_t * accesses = TASK_ACCESSES(task);
-        static_assert(AC <= TASK_MAX_ACCESSES);
+        static_assert(AC <= XKRT_TASK_MAX_ACCESSES);
         new (accesses + 0) access_t(task, 0, 100, ACCESS_MODE_W);
-        thread->resolve(accesses, AC);
+        runtime.task_accesses_resolve(accesses, AC);
 
         // submit it to the runtime
         runtime.task_commit(task);

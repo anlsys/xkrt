@@ -89,7 +89,7 @@ typedef struct  device_memory_info_t
     ////////////////////////////////
 
     /* whether this area was already allocated+mapped to the device */
-    int allocated;
+    bool allocated;
 
     /* the area of that memory */
     area_t area;
@@ -114,14 +114,14 @@ typedef struct  device_t
     device_driver_id_t driver_id;
 
     /* global device id in [0, XKRT_DEVICES_MAX[ - host is a virtual device of id 'XKRT_DEVICES_MAX' */
-    device_global_id_t global_id;
+    device_unique_id_t unique_id;
 
     /* the device state */
     std::atomic<device_state_t> state;
 
     /* affinity[i] - j-th bit is set to '1' if this device has an affinity 'i'
      * with 'j' (the lowest affinity, the better perf) */
-    device_global_id_bitfield_t * affinity;
+    device_unique_id_bitfield_t * affinity;
 
     /* the device team */
     team_t * team;
@@ -188,126 +188,47 @@ typedef struct  device_t
     std::atomic<int> next_queue[XKRT_MAX_THREADS_PER_DEVICE][XKRT_QUEUE_TYPE_ALL];
 
     /* basic queue */
-    queue_t ** queues[XKRT_MAX_THREADS_PER_DEVICE][XKRT_QUEUE_TYPE_ALL];
-
-    /* initialize the offloader (must be called once before any thread called the 'thread' version) */
-    void offloader_init(
-        int (*f_queue_suggest)(device_driver_id_t device_driver_id, queue_type_t type)
-    );
-
-    /* initialize a thread of the offloader */
-    void offloader_init_thread(
-        int tid,
-        queue_t * (*f_queue_create)(device_t * device, queue_type_t type, queue_command_list_counter_t capacity)
-    );
-
-    /* launch ready commands in every queues */
-    int offloader_launch(int tid);
-
-    /* progress pending commands in every queues */
-    int offloader_progress(int tid);
+    command_queue_t ** queues[XKRT_MAX_THREADS_PER_DEVICE][XKRT_QUEUE_TYPE_ALL];
 
     /* progress pending commands in every queues */
     int offloader_wait_random_command(int tid);
 
     /* set 'ready' and 'pending' to false whether there is ready/pending
      * commands in the queues of the given type */
-    void offloader_queues_are_empty(int tid, const queue_type_t qtype, bool * ready, bool * pending) const;
+    void offloader_queues_are_empty(int tid, const command_queue_type_t qtype, bool * ready, bool * pending) const;
 
     /* get next queue to use for submitting a command for the given type */
     void offloader_queue_next(
-        const queue_type_t type,
+        const command_queue_type_t type,
         thread_t ** pthread,        /* OUT */
-        queue_t ** pqueue           /* OUT */
+        command_queue_t ** pqueue           /* OUT */
     );
 
-    /* launch ready commands dispatching them in queues of the given type */
-    int offloader_queue_commands_launch(int tid, const queue_type_t qtype);
+    /* submit a command to the device */
+    int command_submit(command_t * command);
 
-    /* progress pending commands in queues of the given type of the given thread.
-     * If blocking is true, also waits for the completion of pending commands */
-    template <bool blocking>
-    int
-    offloader_queue_commands_progress(
-        int tid,
-        const queue_type_t qtype
-    ) {
-        int err = 0;
-        unsigned int bgn = (qtype == XKRT_QUEUE_TYPE_ALL) ?               0 : qtype;
-        unsigned int end = (qtype == XKRT_QUEUE_TYPE_ALL) ? XKRT_QUEUE_TYPE_ALL : qtype + 1;
-        for (unsigned int s = bgn ; s < end ; ++s)
-        {
-            for (int i = 0 ; i < this->count[s] ; ++i)
-            {
-                queue_t * queue = this->queues[tid][s][i];
-                assert(queue);
-
-                if (queue->pending.is_empty())
-                    continue ;
-
-                queue_command_list_counter_t n;
-                do {
-                    queue->lock();
-                    if (blocking)
-                    {
-                        queue->wait_pending_commands();
-                        err = 0;
-                    }
-                    else
-                        err = queue->progress_pending_commands();
-                    queue->unlock();
-                    n = queue->pending.size();
-                    assert(n < queue->pending.capacity);
-                } while (n > this->conf->offloader.queues[s].concurrency);
-                assert(err == 0 || err == EINPROGRESS);
-            }
-        }
-        return 0;
-    }
-
-    /* create a new command and lock the queue */
-    template<bool synchronous>
+    /* create a new command */
     void offloader_queue_command_new(
-        const queue_type_t qtype,       /* IN  */
-              thread_t ** pthread,      /* OUT */
-              queue_t ** pqueue,        /* OUT */
-        const command_type_t ctype,     /* IN  */
-              command_t ** pcmd         /* OUT */
-    ) {
-        assert(pqueue);
-        assert(pcmd);
-
-        /* retrieve native queue */
-        this->offloader_queue_next(qtype, pthread, pqueue);
-        assert(*pthread);
-        assert(*pqueue);
-        assert((*pqueue)->type == qtype);
-
-        /* allocate the command */
-        do {
-            (*pqueue)->lock();
-            (*pcmd) = (*pqueue)->command_new<synchronous>(ctype);
-            if (*pcmd)
-                break ;
-            (*pqueue)->unlock();
-
-            LOGGER_FATAL("Stream is full, increase 'XKRT_OFFLOADER_CAPACITY' or implement support for full-queue management yourself :-) (sorry)");
-
-        } while (1);
-
-        /* queue is locked, will be unlocked in the commit */
-    }
+        const command_queue_type_t qtype,   /* IN  */
+        const ocg::command_type_t ctype,         /* IN  */
+        const command_flag_t flags,         /* IN  */
+        thread_t ** pthread,                /* OUT */
+        command_queue_t ** pqueue,          /* OUT */
+        command_t ** pcmd                   /* OUT */
+    );
 
     /* commit a command previously returned with
-     * "offloader_queue_command_new" and unlock the queue */
+     * "offloader_queue_command_new" */
     void offloader_queue_command_commit(
         thread_t * thread,
-        queue_t * queue,
+        command_queue_t * queue,
         command_t * cmd
     );
 
+    # pragma message(TODO "Remove all these routines to use a generic runtime API")
+
     /* submit a file I/O command */
-    template <command_type_t T>
+    template <ocg::command_type_t T>
     command_t * offloader_queue_command_submit_file(
         int    fd,
         void * buffer,
@@ -316,19 +237,19 @@ typedef struct  device_t
         const std::optional<callback_t> & callback = std::nullopt
     ) {
         static_assert(
-            T == COMMAND_TYPE_FD_READ ||
-            T == COMMAND_TYPE_FD_WRITE
+            T == ocg::COMMAND_TYPE_FD_READ ||
+            T == ocg::COMMAND_TYPE_FD_WRITE
         );
 
         /* create a new command and retrieve its offload queue */
-        constexpr queue_type_t   qtype = (T == COMMAND_TYPE_FD_READ) ? XKRT_QUEUE_TYPE_FD_READ : XKRT_QUEUE_TYPE_FD_WRITE;
-        constexpr command_type_t ctype = T;
+        constexpr command_queue_type_t   qtype = (T == ocg::COMMAND_TYPE_FD_READ) ? XKRT_QUEUE_TYPE_FD_READ : XKRT_QUEUE_TYPE_FD_WRITE;
+        constexpr ocg::command_type_t ctype = T;
+        constexpr command_flag_t flags = COMMAND_FLAG_NONE;
 
         thread_t * thread;
-        queue_t * queue;
+        command_queue_t * queue;
         command_t * cmd;
-        constexpr bool synchronous = false;
-        this->offloader_queue_command_new<synchronous>(qtype, &thread, &queue, ctype, &cmd);
+        this->offloader_queue_command_new(qtype, ctype, flags, &thread, &queue, &cmd);
         assert(thread);
         assert(queue);
         assert(cmd);
@@ -341,65 +262,65 @@ typedef struct  device_t
 
         /* submit cmd */
         if (callback)
-            cmd->push_callback(*callback);
+            cmd->completion_callback_push(*callback);
         this->offloader_queue_command_commit(thread, queue, cmd);
 
         return cmd;
     }
 
-    template <bool synchronous>
+    template <command_flag_t flags>
     command_t * offloader_queue_command_submit_kernel(
         void * runtime,
         task_t * task,
-        kernel_launcher_t launch,
+        prog_launcher_t launch,
         const std::optional<callback_t> & callback = std::nullopt
     ) {
         /* create a new command and retrieve its offload queue */
         thread_t * thread;
-        queue_t * queue;
+        command_queue_t * queue;
         command_t * cmd;
-        this->offloader_queue_command_new<synchronous>(
-            XKRT_QUEUE_TYPE_KERN,   /* IN */
-            &thread,                /* OUT */
-            &queue,                 /* OUT */
-            COMMAND_TYPE_KERN,      /* IN */
-            &cmd                    /* OUT */
+        this->offloader_queue_command_new(
+            XKRT_QUEUE_TYPE_KERN,
+            ocg::COMMAND_TYPE_PROG_LAUNCHER,
+            flags,
+            &thread,
+            &queue,
+            &cmd
         );
         assert(thread);
         assert(queue);
         assert(cmd);
-        assert(queue->is_locked());
 
         /* create a new kernel command */
-        cmd->kern.launch  = (void (*)()) launch;
-        cmd->kern.runtime = runtime;
-        cmd->kern.device  = this;
-        cmd->kern.task    = task;
+        cmd->prog_launcher.launch  = (void (*)()) launch;
+        cmd->prog_launcher.runtime = runtime;
+        cmd->prog_launcher.device  = this;
+        cmd->prog_launcher.task    = task;
         if (callback)
-            cmd->push_callback(*callback);
+            cmd->completion_callback_push(*callback);
 
         this->offloader_queue_command_commit(thread, queue, cmd);
 
         return cmd;
-    };
+    }
 
     /* copy */
     template <typename HOST_VIEW_T, typename DEVICE_VIEW_T>
     command_t *
     offloader_queue_command_submit_copy(
         const HOST_VIEW_T               & host_view,
-        const device_global_id_t          dst_device_global_id,
+        const device_unique_id_t          dst_device_unique_id,
         const DEVICE_VIEW_T             & dst_device_view,
-        const device_global_id_t          src_device_global_id,
+        const device_unique_id_t          src_device_unique_id,
         const DEVICE_VIEW_T             & src_device_view,
         const std::optional<callback_t> & callback = std::nullopt
     ) {
-        assert(this->global_id == dst_device_global_id || this->global_id == src_device_global_id);
+        assert(this->unique_id == dst_device_unique_id || this->unique_id == src_device_unique_id);
 
         /* find the command type */
-        command_type_t ctype;
-        const int src_is_host = (src_device_global_id == HOST_DEVICE_GLOBAL_ID) ? 1 : 0;
-        const int dst_is_host = (dst_device_global_id == HOST_DEVICE_GLOBAL_ID) ? 1 : 0;
+        ocg::command_type_t ctype;
+        const int src_is_host = (src_device_unique_id == XKRT_HOST_DEVICE_UNIQUE_ID) ? 1 : 0;
+        const int dst_is_host = (dst_device_unique_id == XKRT_HOST_DEVICE_UNIQUE_ID) ? 1 : 0;
 
         /* assertions */
         # define IS_1D (std::is_same<HOST_VIEW_T, size_t>()        && std::is_same<DEVICE_VIEW_T, uintptr_t>())
@@ -409,11 +330,11 @@ typedef struct  device_t
             assert(host_view);
             assert(dst_device_view);
             assert(src_device_view);
-            ctype = ( src_is_host &&  dst_is_host) ? COMMAND_TYPE_COPY_H2H_1D :
-                    ( src_is_host && !dst_is_host) ? COMMAND_TYPE_COPY_H2D_1D :
-                    (!src_is_host &&  dst_is_host) ? COMMAND_TYPE_COPY_D2H_1D :
-                    (!src_is_host && !dst_is_host) ? COMMAND_TYPE_COPY_D2D_1D :
-                    COMMAND_TYPE_MAX;
+            ctype = ( src_is_host &&  dst_is_host) ? ocg::COMMAND_TYPE_COPY_H2H_1D :
+                    ( src_is_host && !dst_is_host) ? ocg::COMMAND_TYPE_COPY_H2D_1D :
+                    (!src_is_host &&  dst_is_host) ? ocg::COMMAND_TYPE_COPY_D2H_1D :
+                    (!src_is_host && !dst_is_host) ? ocg::COMMAND_TYPE_COPY_D2D_1D :
+                    ocg::COMMAND_TYPE_MAX;
         } else if constexpr(IS_2D) {
             assert(host_view.m);
             assert(host_view.n);
@@ -425,39 +346,39 @@ typedef struct  device_t
             assert(src_device_view.addr);
             assert(src_device_view.ld);
 
-            ctype = ( src_is_host &&  dst_is_host) ? COMMAND_TYPE_COPY_H2H_2D :
-                    ( src_is_host && !dst_is_host) ? COMMAND_TYPE_COPY_H2D_2D :
-                    (!src_is_host &&  dst_is_host) ? COMMAND_TYPE_COPY_D2H_2D :
-                    (!src_is_host && !dst_is_host) ? COMMAND_TYPE_COPY_D2D_2D :
-                    COMMAND_TYPE_MAX;
+            ctype = ( src_is_host &&  dst_is_host) ? ocg::COMMAND_TYPE_COPY_H2H_2D :
+                    ( src_is_host && !dst_is_host) ? ocg::COMMAND_TYPE_COPY_H2D_2D :
+                    (!src_is_host &&  dst_is_host) ? ocg::COMMAND_TYPE_COPY_D2H_2D :
+                    (!src_is_host && !dst_is_host) ? ocg::COMMAND_TYPE_COPY_D2D_2D :
+                    ocg::COMMAND_TYPE_MAX;
         } else {
             LOGGER_FATAL("Wrong parameters");
         }
 
         /* find the type of queue to use */
-        queue_type_t qtype;
+        command_queue_type_t qtype;
         switch(ctype)
         {
-            case (COMMAND_TYPE_COPY_H2H_1D):
-            case (COMMAND_TYPE_COPY_H2D_1D):
-            case (COMMAND_TYPE_COPY_H2H_2D):
-            case (COMMAND_TYPE_COPY_H2D_2D):
+            case (ocg::COMMAND_TYPE_COPY_H2H_1D):
+            case (ocg::COMMAND_TYPE_COPY_H2D_1D):
+            case (ocg::COMMAND_TYPE_COPY_H2H_2D):
+            case (ocg::COMMAND_TYPE_COPY_H2D_2D):
             {
                qtype = XKRT_QUEUE_TYPE_H2D;
                break ;
             }
 
-            case (COMMAND_TYPE_COPY_D2H_1D):
-            case (COMMAND_TYPE_COPY_D2H_2D):
+            case (ocg::COMMAND_TYPE_COPY_D2H_1D):
+            case (ocg::COMMAND_TYPE_COPY_D2H_2D):
             {
                 qtype = XKRT_QUEUE_TYPE_D2H;
                 break ;
             }
 
-            case (COMMAND_TYPE_COPY_D2D_1D):
-            case (COMMAND_TYPE_COPY_D2D_2D):
+            case (ocg::COMMAND_TYPE_COPY_D2D_1D):
+            case (ocg::COMMAND_TYPE_COPY_D2D_2D):
             {
-                qtype = (src_device_global_id == dst_device_global_id) ? XKRT_QUEUE_TYPE_D2D : XKRT_QUEUE_TYPE_P2P;
+                qtype = (src_device_unique_id == dst_device_unique_id) ? XKRT_QUEUE_TYPE_D2D : XKRT_QUEUE_TYPE_P2P;
                 break ;
             }
 
@@ -470,31 +391,38 @@ typedef struct  device_t
 
         /* create a new command and retrieve its offload queue */
         thread_t * thread;
-        queue_t * queue;
+        command_queue_t * queue;
         command_t * cmd;
-        constexpr bool synchronous = false;
-        this->offloader_queue_command_new<synchronous>(qtype, &thread, &queue, ctype, &cmd);
+        constexpr command_flag_t flags = COMMAND_FLAG_NONE;
+        this->offloader_queue_command_new(qtype, ctype, flags, &thread, &queue, &cmd);
         assert(thread);
         assert(queue);
         assert(cmd);
 
         /* create a new copy command */
-        if constexpr (IS_1D) {
-            cmd->copy_1D.size = host_view;
-            cmd->copy_1D.dst_device_addr  = dst_device_view;
-            cmd->copy_1D.src_device_addr  = src_device_view;
-            XKRT_STATS_INCR(queue->stats.transfered, cmd->copy_1D.size);
-        } else if constexpr (IS_2D) {
-            cmd->copy_2D.m                = host_view.m;
-            cmd->copy_2D.n                = host_view.n;
-            cmd->copy_2D.sizeof_type      = host_view.sizeof_type;
-            cmd->copy_2D.dst_device_view  = dst_device_view;
-            cmd->copy_2D.src_device_view  = src_device_view;
-            XKRT_STATS_INCR(queue->stats.transfered, host_view.m * host_view.n * host_view.sizeof_type);
+        if constexpr (IS_1D)
+        {
+            cmd->copy_1D.src_device_unique_id = src_device_unique_id;
+            cmd->copy_1D.dst_device_unique_id = dst_device_unique_id;
+            cmd->copy_1D.src_device_addr      = src_device_view;
+            cmd->copy_1D.dst_device_addr      = dst_device_view;
+            cmd->copy_1D.size                 = host_view;
+        }
+        else if constexpr (IS_2D)
+        {
+            cmd->copy_2D.src_device_unique_id = src_device_unique_id;
+            cmd->copy_2D.dst_device_unique_id = dst_device_unique_id;
+            cmd->copy_2D.src_addr             = src_device_view.addr;
+            cmd->copy_2D.src_ld               = src_device_view.ld;
+            cmd->copy_2D.dst_addr             = dst_device_view.addr;
+            cmd->copy_2D.dst_ld               = dst_device_view.ld;
+            cmd->copy_2D.m                    = host_view.m;
+            cmd->copy_2D.n                    = host_view.n;
+            cmd->copy_2D.sizeof_type          = host_view.sizeof_type;
         }
 
         if (callback)
-            cmd->push_callback(*callback);
+            cmd->completion_callback_push(*callback);
         this->offloader_queue_command_commit(thread, queue, cmd);
 
         # undef IS_1D

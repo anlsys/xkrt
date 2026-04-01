@@ -55,29 +55,32 @@ class MemoryCoherencyController {
 
     public:
 
-        void
+        inline void
         ref(void)
         {
             _rc.fetch_add(1, std::memory_order_relaxed);
         }
 
-        void
+        inline void
         unref(void)
         {
             if (_rc.fetch_sub(1, std::memory_order_relaxed) == 1)
+            {
+                std::atomic_thread_fence(std::memory_order_acquire);
                 delete this;
+            }
         }
 
     public:
 
         /* returns a bitfield of devices that owns the most bytes of the given access */
-        virtual device_global_id_bitfield_t who_owns(access_t * access) = 0;
+        virtual device_unique_id_bitfield_t who_owns(access_t * access) = 0;
 
         /** all replicates must be invalidated */
         virtual void invalidate(void) = 0;
 
         /* fetch the given access on the given device */
-        virtual void fetch(access_t * access, device_global_id_t device_global_id) = 0;
+        virtual void fetch(access_t * access, device_unique_id_t device_unique_id) = 0;
 
 };
 

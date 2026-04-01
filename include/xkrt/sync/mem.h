@@ -39,7 +39,7 @@
 # define __MEM_H__
 
 /**
- *  Retrieved from xkrt_atomic.h
+ *  Retrieved from kaapi_atomic.h
  */
 
 #if defined(__i386__)|| defined(__x86_64)

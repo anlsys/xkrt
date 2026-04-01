@@ -104,7 +104,7 @@ XKRT_DRIVER_ENTRYPOINT(get_ndevices_max)(void)
 
 static int                                hip_device_count   = 0;
 static int                              * hip_perf_topo      = NULL;
-static device_global_id_bitfield_t * hip_perf_device    = NULL;
+static device_unique_id_bitfield_t * hip_perf_device    = NULL;
 static bool                               hip_use_p2p        = false;
 
 static void
@@ -202,8 +202,8 @@ get_gpu_topo(
     }
 
     // get number of ranks
-    size_t size = hip_device_count * XKRT_DEVICES_PERF_RANK_MAX * sizeof(device_global_id_bitfield_t);
-    hip_perf_device = (device_global_id_bitfield_t *) malloc(size);
+    size_t size = hip_device_count * XKRT_DEVICES_PERF_RANK_MAX * sizeof(device_unique_id_bitfield_t);
+    hip_perf_device = (device_unique_id_bitfield_t *) malloc(size);
     assert(hip_perf_device);
     memset(hip_perf_device, 0, size);
 
@@ -449,7 +449,7 @@ XKRT_DRIVER_ENTRYPOINT(device_destroy)(device_driver_id_t device_driver_id)
 static int
 XKRT_DRIVER_ENTRYPOINT(device_commit)(
     device_driver_id_t device_driver_id,
-    device_global_id_bitfield_t * affinity
+    device_unique_id_bitfield_t * affinity
 ) {
     assert(affinity);
 
@@ -470,7 +470,7 @@ XKRT_DRIVER_ENTRYPOINT(device_commit)(
         /* add device with itself */
         if (device_driver_id == other_device_driver_id)
         {
-            affinity[0] |= (device_global_id_bitfield_t) (1UL << device->inherited.global_id);
+            affinity[0] |= (device_unique_id_bitfield_t) (1UL << device->inherited.unique_id);
         }
         else
         {
@@ -489,19 +489,19 @@ XKRT_DRIVER_ENTRYPOINT(device_commit)(
                         assert(rank > 0);
                         if (hip_perf_device[device_driver_id*XKRT_DEVICES_PERF_RANK_MAX+rank] & (1UL << other_device_driver_id))
                         {
-                            affinity[rank] |= (device_global_id_bitfield_t) (1UL << other_device->inherited.global_id);
+                            affinity[rank] |= (device_unique_id_bitfield_t) (1UL << other_device->inherited.unique_id);
                         }
                     }
                     else
                     {
                         LOGGER_WARN("Could not enable peer from %d to %d",
-                                device->inherited.global_id, other_device->inherited.global_id);
+                                device->inherited.unique_id, other_device->inherited.unique_id);
                     }
                 }
                 else
                 {
                     LOGGER_WARN("GPU peer from %d to %d is not possible",
-                            device->inherited.global_id, other_device->inherited.global_id);
+                            device->inherited.unique_id, other_device->inherited.unique_id);
                 }
             }
             else
@@ -562,9 +562,9 @@ XKRT_DRIVER_ENTRYPOINT(memory_host_deallocate)(
 }
 
 static int
-XKRT_DRIVER_ENTRYPOINT(queue_suggest)(
+XKRT_DRIVER_ENTRYPOINT(command_queue_suggest)(
     device_driver_id_t device_driver_id,
-    queue_type_t qtype
+    command_queue_type_t qtype
 ) {
     (void) device_driver_id;
 
@@ -578,10 +578,10 @@ XKRT_DRIVER_ENTRYPOINT(queue_suggest)(
 }
 
 static int
-XKRT_DRIVER_ENTRYPOINT(queue_command_launch)(
-    queue_t * iqueue,
+XKRT_DRIVER_ENTRYPOINT(command_queue_launch)(
+    command_queue_t * iqueue,
     command_t * cmd,
-    queue_command_list_counter_t idx
+    xkrt_command_queue_list_counter_t idx
 ) {
     queue_hip_t * queue = (queue_hip_t *) iqueue;
     assert(queue);
@@ -591,9 +591,15 @@ XKRT_DRIVER_ENTRYPOINT(queue_command_launch)(
 
     switch (cmd->type)
     {
-        case (COMMAND_TYPE_COPY_H2D_1D):
-        case (COMMAND_TYPE_COPY_D2H_1D):
-        case (COMMAND_TYPE_COPY_D2D_1D):
+        case (ocg::COMMAND_TYPE_PROG):
+        {
+            LOGGER_FATAL("IMPL ME");
+            break ;
+        }
+
+        case (ocg::COMMAND_TYPE_COPY_H2D_1D):
+        case (ocg::COMMAND_TYPE_COPY_D2H_1D):
+        case (ocg::COMMAND_TYPE_COPY_D2D_1D):
         {
             const size_t count  = cmd->copy_1D.size;
             assert(count > 0);
@@ -603,19 +609,19 @@ XKRT_DRIVER_ENTRYPOINT(queue_command_launch)(
 
             switch (cmd->type)
             {
-                case (COMMAND_TYPE_COPY_H2D_1D):
+                case (ocg::COMMAND_TYPE_COPY_H2D_1D):
                 {
                     HIP_SAFE_CALL(hipMemcpyHtoDAsync((hipDeviceptr_t) dst, src, count, handle));
                     break ;
                 }
 
-                case (COMMAND_TYPE_COPY_D2H_1D):
+                case (ocg::COMMAND_TYPE_COPY_D2H_1D):
                 {
                     HIP_SAFE_CALL(hipMemcpyDtoHAsync(dst, (hipDeviceptr_t) src, count, handle));
                     break ;
                 }
 
-                case (COMMAND_TYPE_COPY_D2D_1D):
+                case (ocg::COMMAND_TYPE_COPY_D2D_1D):
                 {
                     HIP_SAFE_CALL(hipMemcpyDtoDAsync((hipDeviceptr_t) dst, (hipDeviceptr_t) src, count, handle));
                     break ;
@@ -632,9 +638,9 @@ XKRT_DRIVER_ENTRYPOINT(queue_command_launch)(
             return EINPROGRESS;
         }
 
-        case (COMMAND_TYPE_COPY_H2D_2D):
-        case (COMMAND_TYPE_COPY_D2H_2D):
-        case (COMMAND_TYPE_COPY_D2D_2D):
+        case (ocg::COMMAND_TYPE_COPY_H2D_2D):
+        case (ocg::COMMAND_TYPE_COPY_D2H_2D):
+        case (ocg::COMMAND_TYPE_COPY_D2D_2D):
         {
             hipDeviceptr_t src_deviceptr, dst_deviceptr;
             hipMemoryType src_type, dst_type;
@@ -645,7 +651,7 @@ XKRT_DRIVER_ENTRYPOINT(queue_command_launch)(
 
             switch (cmd->type)
             {
-                case (COMMAND_TYPE_COPY_H2D_2D):
+                case (ocg::COMMAND_TYPE_COPY_H2D_2D):
                 {
                     src_type = hipMemoryTypeHost;
                     dst_type = hipMemoryTypeDevice;
@@ -659,7 +665,7 @@ XKRT_DRIVER_ENTRYPOINT(queue_command_launch)(
                     break ;
                 }
 
-                case (COMMAND_TYPE_COPY_D2H_2D):
+                case (ocg::COMMAND_TYPE_COPY_D2H_2D):
                 {
                     src_type = hipMemoryTypeDevice;
                     dst_type = hipMemoryTypeHost;
@@ -673,7 +679,7 @@ XKRT_DRIVER_ENTRYPOINT(queue_command_launch)(
                     break ;
                 }
 
-                case (COMMAND_TYPE_COPY_D2D_2D):
+                case (ocg::COMMAND_TYPE_COPY_D2D_2D):
                 {
                     src_type = hipMemoryTypeDevice;
                     dst_type = hipMemoryTypeDevice;
@@ -734,8 +740,8 @@ XKRT_DRIVER_ENTRYPOINT(queue_command_launch)(
 }
 
 static inline int
-XKRT_DRIVER_ENTRYPOINT(queue_commands_wait)(
-    queue_t * iqueue
+XKRT_DRIVER_ENTRYPOINT(command_queue_wait_all)(
+    command_queue_t * iqueue
 ) {
     queue_hip_t * queue = (queue_hip_t *) iqueue;
     assert(queue);
@@ -747,10 +753,10 @@ XKRT_DRIVER_ENTRYPOINT(queue_commands_wait)(
 }
 
 static inline int
-XKRT_DRIVER_ENTRYPOINT(queue_command_wait)(
-    queue_t * iqueue,
+XKRT_DRIVER_ENTRYPOINT(command_queue_wait)(
+    command_queue_t * iqueue,
     command_t * cmd,
-    queue_command_list_counter_t idx
+    xkrt_command_queue_list_counter_t idx
 ) {
     queue_hip_t * queue = (queue_hip_t *) iqueue;
     assert(queue);
@@ -767,26 +773,27 @@ XKRT_DRIVER_ENTRYPOINT(queue_command_wait)(
 }
 
 static int
-XKRT_DRIVER_ENTRYPOINT(queue_commands_progress)(
-    queue_t * iqueue
+XKRT_DRIVER_ENTRYPOINT(command_queue_progress)(
+    command_queue_t * iqueue
 ) {
     assert(iqueue);
     queue_hip_t * queue = (queue_hip_t *) iqueue;
     int r = 0;
 
-    iqueue->pending.progress([&] (command_t * cmd, queue_command_list_counter_t p) {
+    iqueue->progress([&] (command_t * cmd, xkrt_command_queue_list_counter_t p) {
 
         switch (cmd->type)
         {
-            case (COMMAND_TYPE_KERN):
-            case (COMMAND_TYPE_COPY_H2H_1D):
-            case (COMMAND_TYPE_COPY_H2D_1D):
-            case (COMMAND_TYPE_COPY_D2H_1D):
-            case (COMMAND_TYPE_COPY_D2D_1D):
-            case (COMMAND_TYPE_COPY_H2H_2D):
-            case (COMMAND_TYPE_COPY_H2D_2D):
-            case (COMMAND_TYPE_COPY_D2H_2D):
-            case (COMMAND_TYPE_COPY_D2D_2D):
+            case (ocg::COMMAND_TYPE_PROG):
+            case (ocg::COMMAND_TYPE_PROG_LAUNCHER):
+            case (ocg::COMMAND_TYPE_COPY_H2H_1D):
+            case (ocg::COMMAND_TYPE_COPY_H2D_1D):
+            case (ocg::COMMAND_TYPE_COPY_D2H_1D):
+            case (ocg::COMMAND_TYPE_COPY_D2D_1D):
+            case (ocg::COMMAND_TYPE_COPY_H2H_2D):
+            case (ocg::COMMAND_TYPE_COPY_H2D_2D):
+            case (ocg::COMMAND_TYPE_COPY_D2H_2D):
+            case (ocg::COMMAND_TYPE_COPY_D2D_2D):
             {
                 hipEvent_t event = queue->hip.events.buffer[p];
                 hipError_t res = hipEventQuery(event);
@@ -809,11 +816,11 @@ XKRT_DRIVER_ENTRYPOINT(queue_commands_progress)(
     return r;
 }
 
-static queue_t *
-XKRT_DRIVER_ENTRYPOINT(queue_create)(
+static command_queue_t *
+XKRT_DRIVER_ENTRYPOINT(command_queue_create)(
     device_t * device,
-    queue_type_t type,
-    queue_command_list_counter_t capacity
+    command_queue_type_t type,
+    xkrt_command_queue_list_counter_t capacity
 ) {
     assert(device);
     hip_set_context(device->driver_id);
@@ -826,14 +833,14 @@ XKRT_DRIVER_ENTRYPOINT(queue_create)(
     /*************************/
     /* init xkrt queue */
     /*************************/
-    queue_init(
-        (queue_t *) queue,
+    command_queue_init(
+        (command_queue_t *) queue,
         type,
         capacity,
-        XKRT_DRIVER_ENTRYPOINT(queue_command_launch),
-        XKRT_DRIVER_ENTRYPOINT(queue_commands_progress),
-        XKRT_DRIVER_ENTRYPOINT(queue_commands_wait),
-        XKRT_DRIVER_ENTRYPOINT(queue_command_wait)
+        XKRT_DRIVER_ENTRYPOINT(command_queue_launch),
+        XKRT_DRIVER_ENTRYPOINT(command_queue_progress),
+        XKRT_DRIVER_ENTRYPOINT(command_queue_wait_all),
+        XKRT_DRIVER_ENTRYPOINT(command_queue_wait)
     );
 
     /*************************/
@@ -863,12 +870,12 @@ XKRT_DRIVER_ENTRYPOINT(queue_create)(
         queue->hip.blas.handle = 0;
     }
 
-    return (queue_t *) queue;
+    return (command_queue_t *) queue;
 }
 
 static void
-XKRT_DRIVER_ENTRYPOINT(queue_delete)(
-    queue_t * iqueue
+XKRT_DRIVER_ENTRYPOINT(command_queue_delete)(
+    command_queue_t * iqueue
 ) {
     queue_hip_t * queue = (queue_hip_t *) iqueue;
     if (queue->hip.blas.handle)
@@ -896,7 +903,7 @@ XKRT_DRIVER_ENTRYPOINT(device_info)(
 
     snprintf(buffer, size, "%s, cu device: %i, pci: %02x:%02x, %.2f (GB)",
         device->hip.prop.name,
-        device->inherited.global_id,
+        device->inherited.unique_id,
         device->hip.prop.pciBusID,
         device->hip.prop.pciDeviceID,
         ((double)device->hip.prop.mem_total)/1e9
@@ -979,7 +986,7 @@ XKRT_DRIVER_ENTRYPOINT(transfer_d2d)(void * dst, void * src, const size_t size)
 }
 
 int
-XKRT_DRIVER_ENTRYPOINT(transfer_h2d_async)(void * dst, void * src, const size_t size, queue_t * iqueue)
+XKRT_DRIVER_ENTRYPOINT(transfer_h2d_async)(void * dst, void * src, const size_t size, command_queue_t * iqueue)
 {
     queue_hip_t * queue = (queue_hip_t *) iqueue;
     HIP_SAFE_CALL(hipMemcpyAsync(dst, src, size, hipMemcpyHostToDevice, (hipStream_t)(queue->hip.handle.high)));
@@ -987,7 +994,7 @@ XKRT_DRIVER_ENTRYPOINT(transfer_h2d_async)(void * dst, void * src, const size_t 
 }
 
 int
-XKRT_DRIVER_ENTRYPOINT(transfer_d2h_async)(void * dst, void * src, const size_t size, queue_t * iqueue)
+XKRT_DRIVER_ENTRYPOINT(transfer_d2h_async)(void * dst, void * src, const size_t size, command_queue_t * iqueue)
 {
     queue_hip_t * queue = (queue_hip_t *) iqueue;
     HIP_SAFE_CALL(hipMemcpyAsync(dst, src, size, hipMemcpyDeviceToHost, (hipStream_t)(queue->hip.handle.high)));
@@ -995,7 +1002,7 @@ XKRT_DRIVER_ENTRYPOINT(transfer_d2h_async)(void * dst, void * src, const size_t 
 }
 
 int
-XKRT_DRIVER_ENTRYPOINT(transfer_d2d_async)(void * dst, void * src, const size_t size, queue_t * iqueue)
+XKRT_DRIVER_ENTRYPOINT(transfer_d2d_async)(void * dst, void * src, const size_t size, command_queue_t * iqueue)
 {
     queue_hip_t * queue = (queue_hip_t *) iqueue;
     HIP_SAFE_CALL(hipMemcpyAsync(dst, src, size, hipMemcpyDeviceToDevice, (hipStream_t)(queue->hip.handle.high)));
@@ -1041,9 +1048,9 @@ XKRT_DRIVER_ENTRYPOINT(create_driver)(void)
 
     REGISTER(device_cpuset);
 
-    REGISTER(queue_suggest);
-    REGISTER(queue_create);
-    REGISTER(queue_delete);
+    REGISTER(command_queue_suggest);
+    REGISTER(command_queue_create);
+    REGISTER(command_queue_delete);
 
     REGISTER(module_load);
     REGISTER(module_unload);

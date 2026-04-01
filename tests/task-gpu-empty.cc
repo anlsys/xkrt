@@ -89,25 +89,25 @@ main(void)
     int * mem = setup(m, n, ld);
 
     // Create a task
-    # define AC 1
-    static_assert(AC <= TASK_MAX_ACCESSES);
-    constexpr task_flag_bitfield_t flags = TASK_FLAG_DEVICE | TASK_FLAG_DEPENDENT;
-    constexpr size_t task_size = task_compute_size(flags, AC);
+    constexpr task_flag_bitfield_t flags = TASK_FLAG_DEVICE | TASK_FLAG_ACCESSES;
+    constexpr void * args = NULL;
     constexpr size_t args_size = 0;
+    constexpr task_access_counter_t AC = 1;
+    static_assert(AC <= XKRT_TASK_MAX_ACCESSES);
 
-    task_t * task = runtime.task_new(fmtid, flags, task_size + args_size);
+    task_t * task = runtime.task_new(fmtid, flags, args, args_size, AC);
 
     task_dev_info_t * dev = TASK_DEV_INFO(task);
-    new (dev) task_dev_info_t(UNSPECIFIED_DEVICE_GLOBAL_ID, UNSPECIFIED_TASK_ACCESS);
+    new (dev) task_dev_info_t(XKRT_UNSPECIFIED_DEVICE_UNIQUE_ID, XKRT_UNSPECIFIED_TASK_ACCESS);
 
-    task_dep_info_t * dep = TASK_DEP_INFO(task);
-    new (dep) task_dep_info_t(AC);
+    task_acs_info_t * acs = TASK_ACS_INFO(task);
+    new (acs) task_acs_info_t(AC);
 
     // set accesses
     access_t * accesses = TASK_ACCESSES(task);
     new (accesses + 0) access_t(task, MATRIX_COLMAJOR, mem, ld, 0, 0, m, n, sizeof(int), ACCESS_MODE_RW);
 
-    thread->resolve(accesses, AC);
+    runtime.task_accesses_resolve(accesses, AC);
 
     # undef AC
 

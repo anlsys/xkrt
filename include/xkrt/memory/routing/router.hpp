@@ -52,10 +52,10 @@ class Router
          *  Retrieve the source to use for a data transfer to 'dst' where the
          *  valid sources are amongst the 'valid' bitfield
          */
-        virtual device_global_id_t
+        virtual device_unique_id_t
         get_source(
-            const device_global_id_t dst,
-            const device_global_id_bitfield_t valid
+            const device_unique_id_t dst,
+            const device_unique_id_bitfield_t valid
         ) const = 0;
 
 };

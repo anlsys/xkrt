@@ -61,10 +61,7 @@ main(void)
     # endif
 
     // spawn a new task
-    runtime.team_task_spawn<1>(
-
-        // use default host team
-        runtime.team_get(XKRT_DRIVER_TYPE_HOST),
+    runtime.task_spawn<1>(
 
         // set accesses
         [&buffer] (task_t * task, access_t * accesses) {

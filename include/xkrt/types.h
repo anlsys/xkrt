@@ -39,6 +39,7 @@
 # define __XKRT_TYPES_HPP__
 
 # include <atomic>
+# include <functional>
 
 # include <xkrt/consts.h>
 # include <xkrt/driver/driver-module.h>
@@ -61,19 +62,17 @@ XKRT_NAMESPACE_BEGIN
 
 typedef xkrt_task_wait_counter_type_t           task_wait_counter_type_t;
 typedef std::atomic<task_wait_counter_type_t>   task_wait_counter_t;
-typedef xkrt_task_access_counter_type_t         task_access_counter_t;
+typedef xkrt_task_access_counter_t              task_access_counter_t;
 typedef xkrt_task_flags_t                       task_flags_t;
 typedef xkrt_task_state_t                       task_state_t;
 typedef xkrt_task_flag_bitfield_t               task_flag_bitfield_t;
 
 typedef xkrt_device_driver_id_t                 device_driver_id_t;
-typedef xkrt_device_global_id_t                 device_global_id_t;
-typedef xkrt_device_global_id_bitfield_t        device_global_id_bitfield_t;
+typedef xkrt_device_unique_id_t                 device_unique_id_t;
+typedef xkrt_device_unique_id_bitfield_t        device_unique_id_bitfield_t;
 
 typedef xkrt_driver_type_t                      driver_type_t;
 typedef xkrt_driver_type_bitfield_t             driver_type_bitfield_t;
-
-typedef xkrt_command_callback_index_t           command_callback_index_t;
 
 typedef xkrt_access_concurrency_t               access_concurrency_t;
 typedef xkrt_access_mode_t                      access_mode_t;
@@ -87,8 +86,9 @@ typedef xkrt_task_format_id_t                   task_format_id_t;
 typedef xkrt_task_format_func_t                 task_format_func_t;
 typedef xkrt_task_format_target_t               task_format_target_t;
 
-typedef xkrt_queue_type_t                       queue_type_t;
-typedef xkrt_queue_command_list_counter_t       queue_command_list_counter_t;
+typedef xkrt_command_callback_index_t           command_callback_index_t;
+typedef xkrt_command_queue_type_t               command_queue_type_t;
+typedef xkrt_command_queue_list_counter_t       command_queue_list_counter_t;
 
 typedef xkrt_driver_module_fn_t                 driver_module_fn_t;
 typedef xkrt_driver_module_format_t             driver_module_format_t;
@@ -97,7 +97,7 @@ typedef xkrt_driver_module_t                    driver_module_t;
 typedef xkrt_power_counter_t                    power_counter_t;
 typedef xkrt_power_t                            power_t;
 
-typedef xkrt_kernel_launcher_t                  kernel_launcher_t;
+typedef xkrt_prog_launcher_t                    prog_launcher_t;
 
 XKRT_NAMESPACE_END
 

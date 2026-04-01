@@ -62,7 +62,7 @@ XKRT_NAMESPACE_BEGIN
 
     typedef struct  queue_sycl_t
     {
-        queue_t super;
+        command_queue_t super;
 
         struct {
             sycl::queue queue;

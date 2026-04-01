@@ -79,10 +79,10 @@ thread_t::get_tls(void)
     {
         team_t * team = NULL;
         int tid = 0;
-        device_global_id_t device_global_id = HOST_DEVICE_GLOBAL_ID;
+        device_unique_id_t device_unique_id = XKRT_HOST_DEVICE_UNIQUE_ID;
         team_thread_place_t place;
         runtime_t::thread_getaffinity(place);
-        thread_t * thread = new thread_t(team, tid, pthread_self(), device_global_id, place);
+        thread_t * thread = new thread_t(team, tid, pthread_self(), device_unique_id, place);
         assert(thread);
         thread_t::push_tls(thread);
     }
@@ -96,59 +96,10 @@ thread_t::warmup(void)
     // touches every pages to avoid minor page faults later during the execution
     size_t pagesize = (size_t) getpagesize();
     for (uint8_t * ptr = this->memory_stack_ptr ;
-            ptr < this->memory_stack_bottom + THREAD_MAX_MEMORY ;
+            ptr < this->memory_stack_bottom + this->memory_stack_capacity ;
             ptr += pagesize)
         *ptr = 0;
 }
-
-template <bool use_thread_stack>
-task_t *
-runtime_t::task_allocate(const size_t size)
-{
-    thread_t * thread = thread_t::get_tls();
-    assert(thread);
-
-    task_t * task;
-
-    if (use_thread_stack)
-    {
-        // if the task stack is full
-        if (thread->memory_stack_ptr + size > thread->memory_stack_bottom + THREAD_MAX_MEMORY)
-        {
-            LOGGER_INFO("Task stack full! Increase `THREAD_MAX_MEMORY` and recompile to avoid this");
-
-            // wait for all tasks completion
-            this->task_wait();
-
-            // clear all tasks references
-            # if XKRT_SUPPORT_DEBUG
-            thread->tasks.clear();
-            # endif /* XKRT_SUPPORT_DEBUG */
-            this->reset_dependence_controllers();
-
-            // reset the stack
-            this->task_deallocate_all();
-        }
-
-        // else, get a new task
-        task = (task_t *) thread->memory_stack_ptr;
-        thread->memory_stack_ptr += size;
-    }
-    else
-    {
-        // TODO: this task is leaking atm
-        task = (task_t *) malloc(size);
-    }
-
-    # if XKRT_SUPPORT_DEBUG
-    thread->tasks.push_back(task);
-    # endif /* XKRT_SUPPORT_DEBUG */
-
-    return task;
-}
-
-template task_t * runtime_t::task_allocate<true>(const size_t size);
-template task_t * runtime_t::task_allocate<false>(const size_t size);
 
 void
 runtime_t::task_deallocate_all(void)
@@ -216,7 +167,7 @@ typedef struct  team_recursive_args_t
     runtime_t * runtime;
     team_t * team;
     pthread_t pthread;
-    device_global_id_t device_global_id;
+    device_unique_id_t device_unique_id;
     team_thread_place_t place;
     int from;
     int to;
@@ -240,7 +191,7 @@ team_create_get_place(
     runtime_t * runtime,
     team_t * team,
     int tid,
-    device_global_id_t * device_global_id,
+    device_unique_id_t * device_unique_id,
     team_thread_place_t * place
 ) {
     switch (team->desc.binding.mode)
@@ -251,9 +202,9 @@ team_create_get_place(
             {
                 case (XKRT_TEAM_BINDING_PLACES_DEVICE):
                 {
-                    *device_global_id = (team->desc.binding.flags == XKRT_TEAM_BINDING_FLAG_EXCLUDE_HOST) ? (device_global_id_t) (tid + 1) : (device_global_id_t) tid;
+                    *device_unique_id = (team->desc.binding.flags == XKRT_TEAM_BINDING_FLAG_EXCLUDE_HOST) ? (device_unique_id_t) (tid + 1) : (device_unique_id_t) tid;
 
-                    const device_t * device = runtime->device_get(*device_global_id);
+                    const device_t * device = runtime->device_get(*device_unique_id);
                     assert(device);
 
                     assert(device->team->desc.binding.nplaces == 1);
@@ -283,7 +234,7 @@ team_create_get_place(
                     ;
 
                     // this is a host thread
-                    *device_global_id = HOST_DEVICE_GLOBAL_ID;
+                    *device_unique_id = XKRT_HOST_DEVICE_UNIQUE_ID;
 
                     // get linux cpuset
                     int logical_index = tid % hwloc_get_nbobjs_by_type(runtime->topology, type);
@@ -323,7 +274,7 @@ team_create_recursive(void * vargs)
         team_t * team = args->team;
         int tid = args->from;
         thread_t * thread = team->priv.threads + tid;
-        new (thread) thread_t(team, tid, args->pthread, args->device_global_id, args->place);
+        new (thread) thread_t(team, tid, args->pthread, args->device_unique_id, args->place);
         mem_barrier();
         team->priv.threads_state[tid] = XKRT_THREAD_INITIALIZED;
 
@@ -385,9 +336,9 @@ team_create_recursive_fork(
     runtime_t::thread_getaffinity(save_set);
 
     // retrieve cpuset and the global device id
-    device_global_id_t device_global_id;
+    device_unique_id_t device_unique_id;
     team_thread_place_t place;
-    team_create_get_place(runtime, team, tid, &device_global_id, &place);
+    team_create_get_place(runtime, team, tid, &device_unique_id, &place);
 
     // move thread before allocating future thread-private memory
     runtime_t::thread_setaffinity(place);
@@ -396,7 +347,7 @@ team_create_recursive_fork(
     args->runtime = runtime;
     args->team = team;
     args->from = from;
-    args->device_global_id = device_global_id;
+    args->device_unique_id = device_unique_id;
     args->to = to;
     args->place = place;
 
@@ -486,7 +437,8 @@ runtime_t::team_create(team_t * team)
     assert(nthreads >= 0);
 
     // init priv data
-    thread_t * threads = (thread_t *) mmap(nullptr, (sizeof(thread_t) + sizeof(thread_state_t)) * nthreads, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_NORESERVE, -1, 0);
+    const size_t threads_array_size = (sizeof(thread_t) + sizeof(thread_state_t)) * nthreads;
+    thread_t * threads = (thread_t *) mmap(nullptr, threads_array_size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_NORESERVE, -1, 0);
     assert(threads);
     team->priv.threads       = threads;
     team->priv.threads_state = (thread_state_t *) (threads + nthreads);
@@ -527,14 +479,14 @@ runtime_t::team_create(team_t * team)
         {
             // retrieve cpuset and the global device id
             constexpr int tid = 0;
-            device_global_id_t device_global_id;
+            device_unique_id_t device_unique_id;
             team_thread_place_t place;
-            team_create_get_place(this, team, tid, &device_global_id, &place);
+            team_create_get_place(this, team, tid, &device_unique_id, &place);
             team_recursive_args_t args = {
                 .runtime = this,
                 .team = team,
                 .pthread = pthread_self(),
-                .device_global_id = device_global_id,
+                .device_unique_id = device_unique_id,
                 .place = place,
                 .from = 0,
                 .to = team->priv.nthreads - 1
@@ -584,11 +536,8 @@ get_ith_victim(int tid, int i, int n)
 task_t *
 thread_t::worksteal(void)
 {
-    team_t * team = this->team;
-    task_t * task = NULL;
-
     // if the thread is executing within a team, do hierarchical workstealing
-    if (team)
+    if (this->team)
     {
         const int n = team->priv.nthreads;
         const int tid = this->tid;
@@ -596,11 +545,11 @@ thread_t::worksteal(void)
         for (int i = 0 ; i < n ; ++i)
         {
             const int victim_tid = get_ith_victim(tid, i, n);
-            thread_t * victim = team->priv.threads + victim_tid;
-            if (victim->state != XKRT_THREAD_INITIALIZED)
+            if ((volatile thread_state_t) team->priv.threads_state[victim_tid] != XKRT_THREAD_INITIALIZED)
                 continue ;
 
-            task = (victim_tid == tid) ? victim->deque.pop() : victim->deque.steal();
+            thread_t * victim = team->priv.threads + victim_tid;
+            task_t * task = (victim_tid == tid) ? victim->deque.pop() : victim->deque.steal();
             if (task)
             {
                 if (victim_tid != tid)
@@ -609,9 +558,7 @@ thread_t::worksteal(void)
             }
         }
     }
-
-    // else, schedule that thread tasks
-    return this->deque.pop();
+    return NULL;
 }
 
 void
@@ -745,8 +692,8 @@ runtime_t::team_parallel_for(
     // but its rough to implement efficiently and coherently with the rest.
     // We want team capabilities to do fast:
     //  1 - wake up all threads (parallel for)
-    //  2 - wake up 1 thread randomly
-    //  3 - wake up 1 specific thread (after pushing to its queue)
+    //  2 - wake up 1 thread randomly (when pushing a task to a team)
+    //  3 - wake up 1 specific thread (after pushing a command to its queue in XKRT)
     //
     // Futex can do (1) and (2) fast, but not (3)
     // To do (3), currently each thread from implicit device teams sleeps on their own condition
@@ -765,9 +712,14 @@ runtime_t::team_parallel_for(
     ++team->priv.parallel_for.index;
 
     // TODO : within the kernel, this lead to a O(n) with 'n' the number of thread sleeping.
-    // This may be an issue if people wanna to large team of threads.
+    // This may be an issue for large team of threads.
     // Instead, use something hierarchical, with several futexes on small
-    // groups of thread to reduce syscall overhead
+    // groups of thread to reduce syscall overhead ?
+    // Or maybe we dont care, and programers should manage hierarchy themselves
+    // (spawning multiple teams, typically 1 per NUMA)
+
+    // wakeup all threads sleeping on `team->priv.parallel_for.index` if the pointed value changed
+    // (it must has changed, since we just incremented it)
     syscall(
         SYS_futex,
         &team->priv.parallel_for.index,     // uint32_t *uaddr
@@ -778,6 +730,8 @@ runtime_t::team_parallel_for(
         NULL                                // uint32_t val3
     );
 
+    // if `f` is null, it means the programmer wants threads to stop.
+    // Simply return after waking threads
     if (f)
     {
         // if master is member, run the routine
@@ -891,7 +845,8 @@ runtime_t::team_join(team_t * team)
         int r = pthread_join(team->priv.threads[i].pthread, NULL);
         assert(r == 0);
     }
-    munmap(team->priv.threads, sizeof(thread_t) * team->priv.nthreads);
+    const size_t threads_array_size = (sizeof(thread_t) + sizeof(thread_state_t)) * team->priv.nthreads;
+    munmap(team->priv.threads, threads_array_size);
 }
 
 void

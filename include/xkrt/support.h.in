@@ -71,7 +71,7 @@
 /* If the runtime should use heavy debug tests, that may significantly slowdown the execution */
 # define XKRT_SUPPORT_HEAVY_DEBUG       @ENABLE_HEAVY_DEBUG@
 # if XKRT_SUPPORT_HEAVY_DEBUG
-#  define KHP_TREE_ENABLE_COHERENCY_CHECKS 1
+#  define LP_TREE_ENABLE_COHERENCY_CHECKS 1
 # endif
 
 /* Compile the protection for H2D/D2H copies on host segments that may have not

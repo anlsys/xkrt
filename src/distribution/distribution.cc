@@ -194,7 +194,7 @@ distribution2D_init(
 }
 
 extern "C"
-device_global_id_t
+device_unique_id_t
 distribution1D_get(
     distribution_t * d,
     size_t t
@@ -207,15 +207,16 @@ distribution1D_get(
          *  1 2 3 4 1 2 3
          */
         case (XKRT_DISTRIBUTION_TYPE_CYCLIC1D):
-            return 1 + (device_global_id_t) (t % d->count);
+            return 1 + (device_unique_id_t) (t % d->count);
 
         default:
             LOGGER_FATAL("Not implemented");
+            return 0;
     }
 }
 
 extern "C"
-device_global_id_t
+device_unique_id_t
 distribution2D_get(
     distribution_t * d,
     size_t tm, size_t tn
@@ -233,7 +234,7 @@ distribution2D_get(
          *  1 2 3 4
          */
         case (XKRT_DISTRIBUTION_TYPE_CYCLIC2D):
-            return 1 + (device_global_id_t) ((tm * d->nt + tn) % d->count);
+            return 1 + (device_unique_id_t) ((tm * d->nt + tn) % d->count);
 
         /**
          * example on 4 gpus
@@ -243,7 +244,7 @@ distribution2D_get(
          *  3 4 3 4
          */
         case (XKRT_DISTRIBUTION_TYPE_CYCLIC2DBLOCK):
-            return 1 + (device_global_id_t) (
+            return 1 + (device_unique_id_t) (
                     (
                      ((tm / d->blkm) % d->gm) * d->gn +
                       (tn / d->blkn) % d->gn)
@@ -252,5 +253,6 @@ distribution2D_get(
                 ;
         default:
             LOGGER_FATAL("Not implemented");
+            return 0;
     }
 }

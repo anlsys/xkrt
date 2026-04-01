@@ -90,12 +90,12 @@ typedef struct  distribution_t
 }               distribution_t;
 
 extern "C"
-device_global_id_t distribution1D_get(
+device_unique_id_t distribution1D_get(
     distribution_t * d, size_t t
 );
 
 extern "C"
-device_global_id_t distribution2D_get(
+device_unique_id_t distribution2D_get(
     distribution_t * d,
     size_t tm, size_t tn
 );

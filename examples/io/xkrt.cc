@@ -1,3 +1,9 @@
+//  to generate a file:
+//      dd if=/dev/urandom of=/tmp/file-10GB.bin bs=1M count=10240
+//
+//  to measure disk bw:
+//      dd if=/tmp/file-10GB.bin of=/dev/null bs=1G iflag=direct
+
 #include <iostream>
 #include <fstream>
 #include <chrono>
@@ -5,6 +11,8 @@
 #include <unistd.h>
 #include <vector>
 #include <cmath>
+#include <sys/stat.h>
+#include <sys/mman.h>
 
 #include <xkrt/runtime.h>
 
@@ -16,7 +24,7 @@ void stats(const std::vector<double> &v, double &mean, double &stdev) {
     int n = v.size();
     for (double x : v)
     {
-        LOGGER_INFO("%lf", x);
+        printf("%lf\n", x);
         mean += x;
     }
     mean /= n;
@@ -43,32 +51,42 @@ double median(std::vector<double> &nums) {
     }
 }
 
+off_t get_file_size(int fd) {
+    struct stat st;
+
+    if (fstat(fd, &st) == -1) {
+        perror("fstat");
+        return -1;
+    }
+
+    return st.st_size;
+}
+
 int main(int argc, char **argv) {
     if (argc < 3) {
-        std::cerr << "Usage: " << argv[0] << " <filename> [size_in_bytes] [ntasks] \n";
+        std::cerr << "Usage: " << argv[0] << " <filename> [ntasks] [nruns]\n";
         return 1;
     }
 
     const char *filename = argv[1];
-    size_t size = std::stoul(argv[2]);
-    const int runs = 10;
-    int NTASKS = atoi(argv[3]);
-
-    // Allocate page-aligned host buffer
-    void *buffer = nullptr;
-    posix_memalign(&buffer, 4096, size);
-    if (!buffer) {
-        std::cerr << "Failed to allocate host buffer\n";
-        return 1;
-    }
-    memset(buffer, 0, size);
+    const int NTASKS = atoi(argv[2]);
+    const int runs = atoi(argv[3]);
 
     // Open file for reading
-    int fd = open(filename, O_RDONLY);
+    int fd = open(filename, O_RDONLY | O_DIRECT);
     if (fd < 0) {
         perror("open");
         return 1;
     }
+    off_t size = get_file_size(fd);
+    printf("Iterating %d times on a file of size %ldGB\n", runs, size/1024/1024/1024);
+
+    // Allocate page-aligned host buffer
+    void * buffer = mmap(nullptr, size,
+            PROT_READ | PROT_WRITE,
+            MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    assert(buffer);
+    memset(buffer, 0, size);
 
     runtime_t runtime;
     runtime.init();
@@ -78,44 +96,43 @@ int main(int argc, char **argv) {
     // Vectors to store results
     std::vector<double> t_alloc, t_read, t_register, t_memcpy, t_total;
 
-    for (int iter = 0; iter <= runs ; ++iter) {
+    for (int iter = 0; iter < runs ; ++iter) {
 
         // invalidate caches
+        # if 1
         runtime.reset();
+        # endif
+        # if 1
 
-        // allocate device memory
-        area_chunk_t * chunk = runtime.memory_device_allocate(device_global_id, size);
-        assert(chunk);
-        assert(chunk->ptr);
-
-        // --- 1. read ---
+        // reset file for reading
         lseek(fd, 0, SEEK_SET);
-        runtime.file_read_async(fd, buffer, size, NTASKS);
-        // read(fd, buffer, size);
 
-        // --- 2. register ---
-        runtime.memory_register_async(buffer, size, NTASKS);
-        runtime.task_wait();
+        // --- Start total timer ---
         auto t_start_total = std::chrono::high_resolution_clock::now();
 
-        // --- 3. H2D ---
-        const uintptr_t dst_device_addr = (const uintptr_t) chunk->ptr;
-        const uintptr_t src_device_addr = (const uintptr_t) buffer;
-        runtime.memory_copy_async(device_global_id, size, device_global_id, dst_device_addr, HOST_DEVICE_GLOBAL_ID, src_device_addr, NTASKS);
-        runtime.task_wait();
-        auto t_end_total = std::chrono::high_resolution_clock::now();
+        // --- 2. cuMemHostRegister() ---
+        runtime.memory_register_async(buffer, size, NTASKS);
+        # endif
+
+        // --- 3. read() ---
+        # if 1
+        runtime.file_read_async(fd, buffer, size, NTASKS);
+        // read(fd, buffer, size);
+        # endif
+
+        // --- 4. cuMemcpyHtoD() ---
+        # if 1
+        runtime.memory_coherent_async(device_global_id, buffer, size, NTASKS);
+        # endif
 
         // sync
         runtime.task_wait();
 
+        auto t_end_total = std::chrono::high_resolution_clock::now();
+
         // Compute durations
         double total_ms = std::chrono::duration<double, std::milli>(t_end_total - t_start_total).count();
-
         runtime.memory_unregister(buffer, size);
-        runtime.memory_device_deallocate(device_global_id, chunk);
-
-        if (iter == 0)
-            continue ;
 
         // Store times
         t_total.push_back(total_ms);
@@ -127,15 +144,22 @@ int main(int argc, char **argv) {
     stats(t_total, mean_total, stdev_total);
 
     // Print results
-    std::cout << "Benchmark results (size = " << size / (1024.0 * 1024.0) << " MB, "
+    std::cout << "Benchmark results (size = " << size / (1024.0 * 1024.0 * 1024.0) << " GB, "
               << runs << " runs):\n";
     std::cout << "  Total time          : avg = " << mean_total << " ms, stdev = " << stdev_total << " ms\n";
     std::cout << "  Total time          : med = " << median(t_total) <<  " ms\n";
 
+    double gbs = size / (1024.0 * 1024.0 * 1024.0) / (median(t_total) * 1.0e-3);
+    double gbsd = size / (1024.0 * 1024.0 * 1024.0) / ((median(t_total) + stdev_total) * 1.0e-3);
+    double dgbs = gbs - gbsd;
+    std::cout << "  Total GB/s          : avg = " << gbs <<  " GB/s , stdev = " << dgbs << " GB/s\n";
+
     // Cleanup
-    free(buffer);
+    munmap(buffer, size);
     close(fd);
 
     runtime.deinit();
     return 0;
 }
+
+

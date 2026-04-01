@@ -47,13 +47,6 @@ XKRT_NAMESPACE_BEGIN
 ///////////////
 
 /**
- * @brief Submit a ready task to the runtime scheduler
- * @param runtime Pointer to the runtime system
- * @param task Pointer to the task to submit
- */
-void runtime_submit_task(runtime_t * runtime, task_t * task);
-
-/**
  * @brief Register the host capture task format with the runtime
  * @param runtime Pointer to the runtime system
  */
@@ -116,7 +109,7 @@ void task_execute(
 typedef struct  device_team_args_t
 {
     driver_t * driver;                      ///< Pointer to the device driver
-    device_global_id_t device_global_id;    ///< Global device identifier
+    device_unique_id_t device_unique_id;    ///< Global device identifier
     device_driver_id_t device_driver_id;    ///< Driver-specific device identifier
     pthread_barrier_t barrier;              ///< Synchronization barrier for team initialization
 }               device_team_args_t;

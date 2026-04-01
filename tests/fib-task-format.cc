@@ -64,7 +64,6 @@ typedef struct  task_args_t
 }               task_args_t;
 
 constexpr task_flag_bitfield_t flags = TASK_FLAG_ZERO;
-constexpr size_t task_size = task_compute_size(flags, 0);
 constexpr size_t args_size = sizeof(task_args_t);
 
 static inline int
@@ -86,24 +85,24 @@ fib(int n, int depth = 0)
 
         // shared(fn1) firstprivate(n, depth)
         {
-            task_t * task = runtime.task_new(fmtid, flags, task_size + args_size);
-            task_args_t * args = (task_args_t *) TASK_ARGS(task, task_size);
+            task_t * task = runtime.task_new(fmtid, flags, NULL, args_size, 0);
+            task_args_t * args = (task_args_t *) TASK_ARGS(task);
             args->fibn  = &fn1;
             args->n     = n - 1;
             args->depth = depth + 1;
 
-            thread->commit(task, runtime_t::task_thread_enqueue, &runtime, thread);
+            runtime.task_commit(task);
         }
 
         // shared(fn2) firstprivate(n, depth)
         {
-            task_t * task = runtime.task_new(fmtid, flags, task_size + args_size);
-            task_args_t * args = (task_args_t *) TASK_ARGS(task, task_size);
+            task_t * task = runtime.task_new(fmtid, flags, NULL, args_size, 0);
+            task_args_t * args = (task_args_t *) TASK_ARGS(task);
             args->fibn  = &fn2;
             args->n     = n - 2;
             args->depth = depth + 1;
 
-            thread->commit(task, runtime_t::task_thread_enqueue, &runtime, thread);
+            runtime.task_commit(task);
         }
 
         runtime.task_wait();
@@ -114,7 +113,7 @@ fib(int n, int depth = 0)
 static void
 body_host(task_t * task)
 {
-    task_args_t * args = (task_args_t *) TASK_ARGS(task, task_size);
+    task_args_t * args = (task_args_t *) TASK_ARGS(task);
     *(args->fibn) = fib(args->n, args->depth);
 }
 
@@ -148,7 +147,7 @@ int
 main(int argc, char ** argv)
 {
     LOGGER_INFO("Task size is %lu", task_compute_size(TASK_FLAG_ZERO, 0));
-    LOGGER_INFO("Task size is %lu", task_compute_size(TASK_FLAG_DEPENDENT | TASK_FLAG_MOLDABLE, 1));
+    LOGGER_INFO("Task size is %lu", task_compute_size(TASK_FLAG_ACCESSES | TASK_FLAG_MOLDABLE, 1));
     if (argc != 2)
     {
         LOGGER_WARN("usage: %s [n]", argv[0]);

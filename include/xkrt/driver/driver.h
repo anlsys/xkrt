@@ -59,203 +59,264 @@
 
 XKRT_NAMESPACE_BEGIN
 
-    typedef struct  driver_t
+typedef struct  driver_t
+{
+    /* type */
+    driver_type_t type;
+
+    /* driver team */
+    team_t team;
+
+    /* a barrier to synchronize all threads of the team and the main thread */
+    pthread_barrier_t barrier;
+
+    /* devices list */
+    struct {
+
+        /* devices of that driver */
+        device_t * list[XKRT_DEVICES_MAX];
+
+        /* bitfield of devices for that driver */
+        device_unique_id_bitfield_t bitfield;
+
+        /* device global ids of that driver (used for init only, it is redundant with list[_].unique_id after init) */
+        device_unique_id_t unique_ids[XKRT_DEVICES_MAX];
+
+        /* number of devices for that driver */
+        device_driver_id_t n;
+
+        /* devices team */
+        team_t teams[XKRT_DEVICES_MAX];
+
+    } devices;
+
+    /* Return the driver name or null */
+    inline const char *
+    get_name(void)
     {
-        /* type */
-        driver_type_t type;
+        return this->f_get_name ? this->f_get_name() : NULL;
+    }
 
-        /* driver team */
-        team_t team;
+    /////////////////////////////////////
+    //  API TO IMPLEMENT BY THE DRIVER //
+    /////////////////////////////////////
 
-        /* a barrier to synchronize all threads of the team and the main thread */
-        pthread_barrier_t barrier;
+    ///////////////////////
+    //  DRIVER META DATA //
+    ///////////////////////
+    const char   *(*f_get_name)(void);          /* name of the driver (human-readable) */
+    unsigned int (*f_get_ndevices_max)(void);   /* return the number of devices available to the driver */
 
-        /* devices list */
-        struct {
+    ///////////////////////
+    //  DRIVER LIFECYCLE //
+    ///////////////////////
+    int (*f_init)(unsigned int ndevices, bool use_p2p);
+    void (*f_finalize)(void);
 
-            /* devices of that driver */
-            device_t * list[XKRT_DEVICES_MAX];
+    /////////////////////////////////
+    //  DEVICES MANAGEMENT         //
+    /////////////////////////////////
 
-            /* bitfield of devices for that driver */
-            device_global_id_bitfield_t bitfield;
+    /* Create a device for the given driver id */
+    device_t * (*f_device_create)(driver_t * driver, device_driver_id_t device_driver_id);
 
-            /* device global ids of that driver (used for init only, it is redundant with list[_].global_id after init) */
-            device_global_id_t global_ids[XKRT_DEVICES_MAX];
+    /* initialize device */
+    void (*f_device_init)(device_driver_id_t device_driver_id);
 
-            /* number of devices for that driver */
-            device_driver_id_t n;
+    /* commit device (called once all devices of that driver had been initialized) */
+    int (*f_device_commit)(device_driver_id_t device_driver_id, device_unique_id_bitfield_t * affinity);
 
-            /* devices team */
-            team_t teams[XKRT_DEVICES_MAX];
+    /* Release a device */
+    int (*f_device_destroy)(device_driver_id_t device_driver_id);
 
-        } devices;
+    /* get device infos */
+    void (*f_device_info)(device_driver_id_t device_driver_id, char * buffer, size_t size);
 
-        /////////////////////////////////////
-        //  API TO IMPLEMENT BY THE DRIVER //
-        /////////////////////////////////////
+    ////////////////////////////////
+    //  MEMORY MANAGEMENT         //
+    ////////////////////////////////
 
-        ///////////////////////
-        //  DRIVER META DATA //
-        ///////////////////////
-        const char   *(*f_get_name)(void);          /* name of the driver (human-readable) */
-        unsigned int (*f_get_ndevices_max)(void);   /* return the number of devices available to the driver */
+    /* retrieve memory infos */
+    void   (*f_memory_device_info)(device_driver_id_t device_driver_id, device_memory_info_t info[XKRT_DEVICE_MEMORIES_MAX], int * nmemories);
 
-        ///////////////////////
-        //  DRIVER LIFECYCLE //
-        ///////////////////////
-        int (*f_init)(unsigned int ndevices, bool use_p2p);
-        void (*f_finalize)(void);
+    /* allocate device memory */
+    void * (*f_memory_device_allocate)(device_driver_id_t device_driver_id, const size_t size, int area_idx);
+    void   (*f_memory_device_deallocate)(device_driver_id_t device_driver_id, void * ptr, const size_t size, int area_idx);
 
-        /////////////////////////////////
-        //  DEVICES MANAGEMENT         //
-        /////////////////////////////////
+    /* allocate host memory */
+    void * (*f_memory_host_allocate)(device_driver_id_t device_driver_id, const size_t size);
+    void   (*f_memory_host_deallocate)(device_driver_id_t device_driver_id, void * mem, const size_t size);
 
-        /* Create a device for the given driver id */
-        device_t * (*f_device_create)(driver_t * driver, device_driver_id_t device_driver_id);
+    /* allocate unified memory */
+    void * (*f_memory_unified_allocate)(device_driver_id_t device_driver_id, const size_t size);
+    void   (*f_memory_unified_deallocate)(device_driver_id_t device_driver_id, void * mem, const size_t size);
 
-        /* initialize device */
-        void (*f_device_init)(device_driver_id_t device_driver_id);
+    /* register host memory */
+    int    (*f_memory_host_register)(void * mem, uint64_t size);
+    int    (*f_memory_host_unregister)(void * mem, uint64_t size);
 
-        /* commit device (called once all devices of that driver had been initialized) */
-        int (*f_device_commit)(device_driver_id_t device_driver_id, device_global_id_bitfield_t * affinity);
+    /* unified memory prefetch hints */
+    int (*f_memory_unified_advise_device)(const device_driver_id_t device_unique_id, const void * addr, const size_t size);
+    int (*f_memory_unified_advise_host)(const void * addr, const size_t size);
 
-        /* Release a device */
-        int (*f_device_destroy)(device_driver_id_t device_driver_id);
+    /* unified memory prefetch */
+    int (*f_memory_unified_prefetch_device)(const device_driver_id_t device_unique_id, const void * addr, const size_t size);
+    int (*f_memory_unified_prefetch_host)(const void * addr, const size_t size);
 
-        /* get device infos */
-        void (*f_device_info)(device_driver_id_t device_driver_id, char * buffer, size_t size);
+    //////////////////////
+    // MEMORY TRANSFERS //
+    //////////////////////
 
-        ////////////////////////////////
-        //  MEMORY MANAGEMENT         //
-        ////////////////////////////////
+    int (*f_transfer_h2d)(void * dst, void * src, const size_t size);
+    int (*f_transfer_d2h)(void * dst, void * src, const size_t size);
+    int (*f_transfer_d2d)(void * dst, void * src, const size_t size);
+    int (*f_transfer_h2d_async)(void * dst, void * src, const size_t size, command_queue_t * iqueue);
+    int (*f_transfer_d2h_async)(void * dst, void * src, const size_t size, command_queue_t * iqueue);
+    int (*f_transfer_d2d_async)(void * dst, void * src, const size_t size, command_queue_t * iqueue);
 
-        /* retrieve memory infos */
-        void   (*f_memory_device_info)(device_driver_id_t device_driver_id, device_memory_info_t info[XKRT_DEVICE_MEMORIES_MAX], int * nmemories);
+    ///////////////////
+    // KERNEL LAUNCH //
+    ///////////////////
 
-        /* allocate device memory */
-        void * (*f_memory_device_allocate)(device_driver_id_t device_driver_id, const size_t size, int area_idx);
-        void   (*f_memory_device_deallocate)(device_driver_id_t device_driver_id, void * ptr, const size_t size, int area_idx);
+    int (*f_prog_launch)(
+        command_queue_t * iqueue,                       // the queue
+        xkrt_command_queue_list_counter_t idx,            // index of the event associated with the kernel launch
+        const driver_module_fn_t * fn,          // the function
+        const unsigned int gx,                  // grid size
+        const unsigned int gy,
+        const unsigned int gz,
+        const unsigned int bx,                  // block dim
+        const unsigned int by,
+        const unsigned int bz,
+        const unsigned int shared_memory_bytes,
+        void * args,
+        const size_t args_size                  // size of args in bytes
+    );
 
-        /* allocate host memory */
-        void * (*f_memory_host_allocate)(device_driver_id_t device_driver_id, const size_t size);
-        void   (*f_memory_host_deallocate)(device_driver_id_t device_driver_id, void * mem, const size_t size);
+    ///////////////
+    // THREADING //
+    ///////////////
 
-        /* allocate unified memory */
-        void * (*f_memory_unified_allocate)(device_driver_id_t device_driver_id, const size_t size);
-        void   (*f_memory_unified_deallocate)(device_driver_id_t device_driver_id, void * mem, const size_t size);
+    /* Get a cpuset of cpus with the best affinity for the given device */
+    int (*f_device_cpuset)(hwloc_topology_t topology, cpu_set_t * cpuset, device_driver_id_t device_driver_id);
 
-        /* register host memory */
-        int    (*f_memory_host_register)(void * mem, uint64_t size);
-        int    (*f_memory_host_unregister)(void * mem, uint64_t size);
+    ////////////////////////////////
+    // QUEUE MANAGEMENT          //
+    ////////////////////////////////
 
-        /* unified memory prefetch hints */
-        int (*f_memory_unified_advise_device)(const device_driver_id_t device_global_id, const void * addr, const size_t size);
-        int (*f_memory_unified_advise_host)(const void * addr, const size_t size);
+    /* suggest a number of queue to use for the given queue type */
+    int (*f_command_queue_suggest)(device_driver_id_t device_driver_id, command_queue_type_t qtype);
 
-        /* unified memory prefetch */
-        int (*f_memory_unified_prefetch_device)(const device_driver_id_t device_global_id, const void * addr, const size_t size);
-        int (*f_memory_unified_prefetch_host)(const void * addr, const size_t size);
+    /* alllocate and initialize a queue */
+    command_queue_t * (*f_command_queue_create)(device_t * device, command_queue_type_t qtype, xkrt_command_queue_list_counter_t capacity);
 
-        //////////////////////
-        // MEMORY TRANSFERS //
-        //////////////////////
+    /* deallocate a queue */
+    void (*f_command_queue_delete)(command_queue_t * iqueue);
 
-        int (*f_transfer_h2d)(void * dst, void * src, const size_t size);
-        int (*f_transfer_d2h)(void * dst, void * src, const size_t size);
-        int (*f_transfer_d2d)(void * dst, void * src, const size_t size);
-        int (*f_transfer_h2d_async)(void * dst, void * src, const size_t size, queue_t * iqueue);
-        int (*f_transfer_d2h_async)(void * dst, void * src, const size_t size, queue_t * iqueue);
-        int (*f_transfer_d2d_async)(void * dst, void * src, const size_t size, queue_t * iqueue);
+    /* launch a queue command */
+    int (*f_command_queue_launch)(device_driver_id_t device_driver_id, command_queue_t * queue, command_t * cmd, xkrt_command_queue_list_counter_t idx);
 
-        ///////////////////
-        // KERNEL LAUNCH //
-        ///////////////////
+    /* progrtream command */
+    int (*f_command_queue_progress)(command_queue_t * queue);
 
-        int (*f_kernel_launch)(
-            queue_t * iqueue,                       // the queue
-            queue_command_list_counter_t idx,            // index of the event associated with the kernel launch
-            const driver_module_fn_t * fn,          // the function
-            const unsigned int gx,                  // grid size
-            const unsigned int gy,
-            const unsigned int gz,
-            const unsigned int bx,                  // block dim
-            const unsigned int by,
-            const unsigned int bz,
-            const unsigned int shared_memory_bytes,
-            void * args,
-            const size_t args_size                  // size of args in bytes
-        );
+    /* wait commands completion on a queue */
+    int (*f_command_queue_wait_all)(command_queue_t * queue);
 
-        ///////////////
-        // THREADING //
-        ///////////////
+    /* wait commands completion on a queue */
+    int (*f_command_queue_wait)(command_queue_t * queue, command_t * cmd, xkrt_command_queue_list_counter_t idx);
 
-        /* Get a cpuset of cpus with the best affinity for the given device */
-        int (*f_device_cpuset)(hwloc_topology_t topology, cpu_set_t * cpuset, device_driver_id_t device_driver_id);
+    # if 0
+    /////////////////////////
+    // COMMANDS MANAGEMENT //
+    /////////////////////////
 
-        ////////////////////////////////
-        // QUEUE MANAGEMENT          //
-        ////////////////////////////////
+    /* Contract the passed command subgraph to a single BATCH command.
+     * All commands of the subgraph are scheduled on the same device of `driver_id`.
+     * The resulting command must be written to `command` */
+    void * (*f_command_batch_init)(device_driver_id_t device_driver_id, command_batch_t * cmd);
 
-        /* suggest a number of queue to use for the given queue type */
-        int (*f_queue_suggest)(device_driver_id_t device_driver_id, queue_type_t qtype);
+    /* Release driver resources associated with a BATCH command
+     * previously created by f_command_graph_init */
+    void (*f_command_batch_deinit)(device_driver_id_t device_driver_id, const command_batch_t * cmd, void * handle);
+    # endif
 
-        /* alllocate and initialize a queue */
-        queue_t * (*f_queue_create)(device_t * device, queue_type_t qtype, queue_command_list_counter_t capacity);
+    ///////////////////
+    //  P2P ROUTING  //
+    ///////////////////
 
-        /* deallocate a queue */
-        void (*f_queue_delete)(queue_t * iqueue);
+    // TODO
 
-        ///////////////////
-        //  P2P ROUTING  //
-        ///////////////////
+    /////////////
+    // MODULES //
+    /////////////
+    driver_module_t    (*f_module_load)(device_driver_id_t device_driver_id, uint8_t * bin, size_t binsize, driver_module_format_t format);
+    void               (*f_module_unload)(driver_module_t module);
+    driver_module_fn_t (*f_module_get_fn)(driver_module_t module, const char * name);
 
-        // TODO
+    /////////////////////
+    // ENERGY COUNTER  //
+    /////////////////////
 
-        /////////////
-        // MODULES //
-        /////////////
-        driver_module_t    (*f_module_load)(device_driver_id_t device_driver_id, uint8_t * bin, size_t binsize, driver_module_format_t format);
-        void               (*f_module_unload)(driver_module_t module);
-        driver_module_fn_t (*f_module_get_fn)(driver_module_t module, const char * name);
+    /* start power recording on the given device */
+    void (*f_power_start)(device_driver_id_t device_driver_id, power_t * pwr);
 
-        /////////////////////
-        // ENERGY COUNTER  //
-        /////////////////////
+    /* return time elapsed (in s.) and the power (in Watt) since last 'f_energy_power_start' call */
+    void (*f_power_stop)(device_driver_id_t device_driver_id, power_t * pwr);
 
-        /* start power recording on the given device */
-        void (*f_power_start)(device_driver_id_t device_driver_id, power_t * pwr);
+    ///////////////////////
+    // DEVICE MANAGEMENT //
+    ///////////////////////
 
-        /* return time elapsed (in s.) and the power (in Watt) since last 'f_energy_power_start' call */
-        void (*f_power_stop)(device_driver_id_t device_driver_id, power_t * pwr);
+    /* device */
+    void device_offloader_init(device_t * device);
+    void device_offloader_init_thread(device_t * device, int tid);
+    int  device_offloader_wait_random_command(device_t * device, int tid);
 
-    }               driver_t;
+    /* launch ready commands dispatching them in queues of the given type */
+    int device_offloader_launch(device_t * device, int tid, const command_queue_type_t qtype = XKRT_QUEUE_TYPE_ALL);
 
-    extern "C"
-    device_t * driver_device_get(driver_t * driver, device_global_id_t driver_device_id);
+    /* progress pending commands in queues of the given type of the given thread.
+     * If blocking is true, also waits for the completion of pending commands */
+    template <bool blocking = false>
+    int device_offloader_progress(device_t * device, int tid, const command_queue_type_t qtype = XKRT_QUEUE_TYPE_ALL);
 
-    /* one function per task per driver */
-    static_assert((uint8_t)XKRT_DRIVER_TYPE_MAX <= (uint8_t) XKRT_TASK_FORMAT_TARGET_MAX);
+    //////////////////////
+    // QUEUE MANAGEMENT //
+    //////////////////////
 
-    typedef struct  drivers_t
-    {
-        /* list of drivers */
-        driver_t * list[XKRT_DRIVER_TYPE_MAX];
+    /* progress pending commands */
+    int device_command_queue_pending_progress(device_t * device, command_queue_t * queue);
 
-        /* a barrier to synchronize enabled driver (of 'n' + 1 threads) */
-        pthread_barrier_t barrier;
+    /* wait for completion of all pending commands */
+    int device_command_queue_pending_wait(device_t * device, command_queue_t * queue);
 
-        struct {
+}               driver_t;
 
-            /* list of devices */
-            device_t * list[XKRT_DEVICES_MAX];
+extern "C"
+device_t * driver_device_get(driver_t * driver, device_unique_id_t driver_device_id);
 
-            /* number of devices in the list */
-            device_global_id_t n;
+/* one function per task per driver */
+static_assert((uint8_t)XKRT_DRIVER_TYPE_MAX <= (uint8_t) XKRT_TASK_FORMAT_TARGET_MAX);
 
-        } devices;
+typedef struct  drivers_t
+{
+    /* list of drivers */
+    driver_t * list[XKRT_DRIVER_TYPE_MAX];
 
-    }               drivers_t;
+    /* a barrier to synchronize enabled driver (of 'n' + 1 threads) */
+    pthread_barrier_t barrier;
+
+    struct {
+
+        /* list of devices */
+        device_t * list[XKRT_DEVICES_MAX];
+
+        /* number of devices in the list */
+        device_unique_id_t n;
+
+    } devices;
+
+}               drivers_t;
 
 XKRT_NAMESPACE_END
 
