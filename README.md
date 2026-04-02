@@ -1,3 +1,5 @@
+[![Documentation](https://github.com/rpereira-dev/xkrt/actions/workflows/docs.yml/badge.svg)](https://rpereira-dev.github.io/xkrt/)
+
 # XKaapi Runtime (XKRT) - A parallel runtime system for macro-dataflow on multi-devices architectures.
 
 XKRT is a macro-dataflow and tasking runtime system for automating memory management alongside parallel execution. It provides portable abstraction for C, C++, Julia and partial support for BLAS and OpenMP.
