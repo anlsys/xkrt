@@ -1,0 +1,5 @@
+/* Cap images to the content width */
+.contents img {
+    max-width: 100%;
+    height: auto;
+}

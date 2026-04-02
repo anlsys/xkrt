@@ -1,4 +1,5 @@
 build*/
+docs/generated/
 *.cobaltlog
 *.error
 *.output
