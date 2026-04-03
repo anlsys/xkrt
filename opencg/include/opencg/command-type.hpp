@@ -43,7 +43,6 @@ OCG_NAMESPACE_BEGIN
 /* Macro to iterate through all command type */
 # define OCG_FORALL_COMMAND_TYPE(F)                                                 \
     F(COMMAND_TYPE_PROG,            command_prog_t,             "PROG")             \
-    F(COMMAND_TYPE_PROG_LAUNCHER,   command_prog_launcher_t,    "PROG-LAUNCHER")    \
     F(COMMAND_TYPE_COPY_H2H_1D,     command_copy_1D_t,          "COPY-1D-H2H")      \
     F(COMMAND_TYPE_COPY_H2D_1D,     command_copy_1D_t,          "COPY-1D-H2D")      \
     F(COMMAND_TYPE_COPY_D2H_1D,     command_copy_1D_t,          "COPY-1D-D2H")      \

@@ -499,30 +499,13 @@ runtime_t::task_emit_command(
     /* build command */
     builder(cmd);
 
-    /* increment detach counter and push callback to decrement */
-    callback_t callback;
-    callback.func    = __task_detachable_decr;
-    callback.args[0] = this;
-    callback.args[1] = task;
-    assert(XKRT_CALLBACK_ARGS_MAX >= 2);
-
-    this->task_detachable_incr(task);
-    cmd->completion_callback_push(callback);
-
-    device->offloader_queue_command_commit(device_thread, queue, cmd);
-    return 0;
-}
-
-template <bool synchronous>
-void
-runtime_t::task_prog_launch(
-    device_t * device,
-    task_t * task,
-    prog_launcher_t launcher
-) {
-    /* increase detach counter if asynchronous */
-    if constexpr (synchronous == false)
+    if (flags & COMMAND_FLAG_SYNCHRONOUS)
     {
+        // nothing to do
+    }
+    else
+    {
+        /* increment detach counter and push callback to decrement */
         assert(task->flags & TASK_FLAG_DETACHABLE);
         this->task_detachable_incr(task);
 
@@ -533,22 +516,11 @@ runtime_t::task_prog_launch(
         callback.args[1] = task;
         assert(XKRT_CALLBACK_ARGS_MAX >= 2);
 
-        /* submit kernel launch command */
-        device->offloader_queue_command_submit_kernel<COMMAND_FLAG_NONE>(
-            this,
-            task,
-            launcher,
-            callback
-        );
+        cmd->completion_callback_push(callback);
     }
-    /* else if synchronous, no callback or detach counter */
-    else
-    {
-        static_assert(synchronous == true);
-        device->offloader_queue_command_submit_kernel<COMMAND_FLAG_SYNCHRONOUS>(this, task, launcher);
-    }
+
+    device->offloader_queue_command_commit(device_thread, queue, cmd);
+    return 0;
 }
-template void runtime_t::task_prog_launch<true>(device_t * device, task_t * task, prog_launcher_t launcher);
-template void runtime_t::task_prog_launch<false>(device_t * device, task_t * task, prog_launcher_t launcher);
 
 XKRT_NAMESPACE_END

@@ -556,21 +556,6 @@ driver_device_command_queue_launch_ready(
                 break ;
             }
 
-            /* custom kernel launcher commands are launched by the command
-             * itself, not the driver */
-            case (ocg::COMMAND_TYPE_PROG_LAUNCHER):
-            {
-                ((prog_launcher_t) cmd->prog_launcher.launch)(
-                    cmd->prog_launcher.runtime,
-                    cmd->prog_launcher.device,
-                    cmd->prog_launcher.task,
-                    queue,
-                    cmd,
-                    p
-                );
-                break ;
-            }
-
             case (ocg::COMMAND_TYPE_COPY_H2H_1D):
             case (ocg::COMMAND_TYPE_COPY_H2H_2D):
             {
@@ -582,8 +567,22 @@ driver_device_command_queue_launch_ready(
             /* launch commands via driver */
             /******************************/
 
-            case (ocg::COMMAND_TYPE_BATCH):
             case (ocg::COMMAND_TYPE_PROG):
+            {
+                /* If it is a program launcher, just execute the user routine
+                 * on the device's host thread */
+                if (cmd->flags & COMMAND_FLAG_PROG_LAUNCHER)
+                {
+                    prog_launcher_t launch = (prog_launcher_t) cmd->prog.launcher.fixed.fn;
+                    runtime_t * runtime = (runtime_t *) cmd->prog.launcher.fixed.args[0];
+                    task_t * task = (task_t *) cmd->prog.launcher.fixed.args[1];
+                    launch(runtime, device, task, queue, cmd, p);
+                    break ;
+                }
+                /* else, fallthrough so the driver launch the program */
+            }
+
+            case (ocg::COMMAND_TYPE_BATCH):
             case (ocg::COMMAND_TYPE_COPY_H2D_1D):
             case (ocg::COMMAND_TYPE_COPY_D2H_1D):
             case (ocg::COMMAND_TYPE_COPY_D2D_1D):

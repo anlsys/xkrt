@@ -371,10 +371,10 @@ device_t::offloader_queue_command_commit(
     assert(tls);
 
     /* If recording */
-    if (cmd->type != ocg::COMMAND_TYPE_PROG_LAUNCHER)
+    task_t * task = tls->current_task_record;
+    if (task)
     {
-        task_t * task = tls->current_task_record;
-        if (task)
+        if (!(cmd->flags & COMMAND_FLAG_PROG_LAUNCHER))
         {
             assert(task->flags & TASK_FLAG_RECORD);
             assert(
@@ -415,7 +415,6 @@ command_type_to_queue_type(
     switch (ctype)
     {
         case (ocg::COMMAND_TYPE_PROG):
-        case (ocg::COMMAND_TYPE_PROG_LAUNCHER):
         case (ocg::COMMAND_TYPE_BATCH):
             return XKRT_QUEUE_TYPE_KERN;
 

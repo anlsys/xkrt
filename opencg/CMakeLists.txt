@@ -40,7 +40,6 @@ SET(SOURCE_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/src/passes/reduce-edge.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/src/passes/reduce-node.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/src/command-graph.cc
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/command-type.cc
 )
 
 # OpenCG Lib

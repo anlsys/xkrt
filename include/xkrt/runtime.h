@@ -1287,27 +1287,6 @@ struct  runtime_t
      */
     task_format_t * task_format_get(task_format_id_t fmtid);
 
-    /**
-     *  Single kernel launcher.
-     *
-     *  Submit a kernel launch command to the device, then return.
-     *  The 'launch' is executed by a thread of the device implicit team.
-     *  If 'synchronous' is set to true, the runtime the kernel to be executed after returning from the launcher (i.e., synchronous execution).
-     *  Else, it expect the launcher to associate an event to the kernel completion. (i.e., executed asynchronously)
-     *  The task must be detachable, and completion is associated with the command completion.
-     *
-     *  'device' is the targeted device
-     *  'task' is the currently executing task
-     *  'attach_event' if the launcher will attach an event to the command
-     *  'launcher' is the kernel launcher
-     */
-    template <bool synchronous>
-    void task_prog_launch(
-        device_t * device,
-        task_t * task,
-        prog_launcher_t launcher
-    );
-
     ///////////////////////////
     // Task dependency graph //
     ///////////////////////////

@@ -683,7 +683,6 @@ XKRT_DRIVER_ENTRYPOINT(command_queue_progress)(
         switch (cmd->type)
         {
             case (ocg::COMMAND_TYPE_PROG):
-            case (ocg::COMMAND_TYPE_PROG_LAUNCHER):
             case (ocg::COMMAND_TYPE_COPY_H2H_1D):
             case (ocg::COMMAND_TYPE_COPY_H2D_1D):
             case (ocg::COMMAND_TYPE_COPY_D2H_1D):

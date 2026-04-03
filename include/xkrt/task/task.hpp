@@ -739,7 +739,7 @@ TASK_ACS_INFO(const task_t * task, const task_flag_bitfield_t flags)
     return (task_acs_info_t *) (task + 1);
 }
 
-static task_acs_info_t *
+static inline task_acs_info_t *
 TASK_ACS_INFO(const task_t * task)
 {
     return TASK_ACS_INFO(task, task->flags);
@@ -754,7 +754,7 @@ TASK_DET_INFO(const task_t * task, const task_flag_bitfield_t flags)
     return (task_det_info_t *) (task + 1);
 }
 
-static task_det_info_t *
+static inline task_det_info_t *
 TASK_DET_INFO(const task_t * task)
 {
     return TASK_DET_INFO(task, task->flags);
@@ -771,7 +771,7 @@ TASK_DEV_INFO(const task_t * task, const task_flag_bitfield_t flags)
     return (task_dev_info_t *) (task + 1);
 }
 
-static task_dev_info_t *
+static inline task_dev_info_t *
 TASK_DEV_INFO(const task_t * task)
 {
     return TASK_DEV_INFO(task, task->flags);
@@ -790,7 +790,7 @@ TASK_DOM_INFO(const task_t * task, const task_flag_bitfield_t flags)
     return (task_dom_info_t *) (task + 1);
 }
 
-static task_dom_info_t *
+static inline task_dom_info_t *
 TASK_DOM_INFO(const task_t * task)
 {
     return TASK_DOM_INFO(task, task->flags);
@@ -811,7 +811,7 @@ TASK_MOL_INFO(const task_t * task, const task_flag_bitfield_t flags)
     return (task_mol_info_t *) (task + 1);
 }
 
-static task_mol_info_t *
+static inline task_mol_info_t *
 TASK_MOL_INFO(const task_t * task)
 {
     return TASK_MOL_INFO(task, task->flags);
@@ -834,7 +834,7 @@ TASK_GPH_INFO(const task_t * task, const task_flag_bitfield_t flags)
     return (task_gph_info_t *) (task + 1);
 }
 
-static task_gph_info_t *
+static inline task_gph_info_t *
 TASK_GPH_INFO(const task_t * task)
 {
     return TASK_GPH_INFO(task, task->flags);
@@ -859,7 +859,7 @@ TASK_REC_INFO(const task_t * task, const task_flag_bitfield_t flags)
     return (task_rec_info_t *) (task + 1);
 }
 
-static task_rec_info_t *
+static inline task_rec_info_t *
 TASK_REC_INFO(const task_t * task)
 {
     return TASK_REC_INFO(task, task->flags);

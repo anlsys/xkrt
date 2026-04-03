@@ -61,7 +61,10 @@ typedef enum    command_flag_t
 
     /* if the command should be serialized (i.e., so that the thread that
      * emitted it must launch it) */
-    COMMAND_FLAG_SERIALIZED     = (1 << 1)
+    COMMAND_FLAG_SERIALIZED     = (1 << 1),
+
+    /* if the command is a host program launching additional commands */
+    COMMAND_FLAG_PROG_LAUNCHER  = (1 << 2),
 
 }               command_flag_t;
 

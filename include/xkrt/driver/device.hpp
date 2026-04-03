@@ -268,42 +268,6 @@ typedef struct  device_t
         return cmd;
     }
 
-    template <command_flag_t flags>
-    command_t * offloader_queue_command_submit_kernel(
-        void * runtime,
-        task_t * task,
-        prog_launcher_t launch,
-        const std::optional<callback_t> & callback = std::nullopt
-    ) {
-        /* create a new command and retrieve its offload queue */
-        thread_t * thread;
-        command_queue_t * queue;
-        command_t * cmd;
-        this->offloader_queue_command_new(
-            XKRT_QUEUE_TYPE_KERN,
-            ocg::COMMAND_TYPE_PROG_LAUNCHER,
-            flags,
-            &thread,
-            &queue,
-            &cmd
-        );
-        assert(thread);
-        assert(queue);
-        assert(cmd);
-
-        /* create a new kernel command */
-        cmd->prog_launcher.launch  = (void (*)()) launch;
-        cmd->prog_launcher.runtime = runtime;
-        cmd->prog_launcher.device  = this;
-        cmd->prog_launcher.task    = task;
-        if (callback)
-            cmd->completion_callback_push(*callback);
-
-        this->offloader_queue_command_commit(thread, queue, cmd);
-
-        return cmd;
-    }
-
     /* copy */
     template <typename HOST_VIEW_T, typename DEVICE_VIEW_T>
     command_t *

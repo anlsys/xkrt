@@ -706,12 +706,6 @@ xkrt_cuda_driver_command_batch_init(
                     break ;
                 }
 
-                case (ocg::COMMAND_TYPE_PROG_LAUNCHER):
-                {
-                    LOGGER_FATAL("Kernel launcher is not supported for batching with CUDA. You should provide the kernel explicitly via an `ocg::COMMAND_TYPE_PROG` to batch kernel launch.");
-                    break ;
-                }
-
                 case (ocg::COMMAND_TYPE_COPY_H2D_1D):
                 {
                     CUDA_MEMCPY3D cpy = {0};
@@ -1200,7 +1194,6 @@ XKRT_DRIVER_ENTRYPOINT(command_queue_progress)(
         switch (cmd->type)
         {
             case (ocg::COMMAND_TYPE_PROG):
-            case (ocg::COMMAND_TYPE_PROG_LAUNCHER):
             case (ocg::COMMAND_TYPE_COPY_H2H_1D):
             case (ocg::COMMAND_TYPE_COPY_H2D_1D):
             case (ocg::COMMAND_TYPE_COPY_D2H_1D):
