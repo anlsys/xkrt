@@ -128,24 +128,6 @@ struct command_prog_t
     } block;
 };
 
-// TODO: remove prog_launcher, which is XKRT-specific, and implement it as a 'host' program in XKRT
-
-/* to launch progs on a device with a routine opaquely pushing to a queue (cublas...) */
-struct command_prog_launcher_t
-{
-    // arguments are:
-    //   runtime_t * runtime,
-    //   device_t * device,
-    //   task_t * task,
-    //   command_queue_t * iqueue,
-    //   command+t * cmd
-    //   command_list_counter_t idx
-    void (*launch)();
-    void * runtime;     // TODO: this should be known implicitly, currently dupplicating on all prog instr :/
-    void * device;      // TODO: this should be known implicitly, currently dupplicating on all prog instr :/
-    void * task;
-};
-
 /* read/write files */
 struct command_file_t
 {
@@ -155,9 +137,10 @@ struct command_file_t
     size_t offset;
 };
 
+struct command_graph_t;
+
 /* a batch of multiple dependent commands, contracted by a driver into a single
  * opaque executable (e.g. CUgraphExec on CUDA) */
-struct command_graph_t;
 struct command_batch_t
 {
     /* the command graph of that batch */
@@ -165,6 +148,39 @@ struct command_batch_t
 
     /* driver specific handle */
     void * driver_handle;
+};
+
+struct command_graph_node_t;
+
+/* a loop in the command graph */
+struct command_ctrl_loop_t
+{
+    /* where to restart */
+    command_graph_node_t * to;
+
+    /* condition either to restart or pursue */
+    ;   // TODO
+};
+
+/* demuxer bitset */
+typedef int command_ctrl_demux_bitset_t;
+
+/* Maximum number of commands in a demuxer */
+# define OCG_COMMAND_CTRL_DEMUX_SIZE_MAX (8 * sizeof(command_ctrl_demux_bitset_t))
+
+/* demuxer sizes */
+typedef uint8_t command_ctrl_demux_size_t;
+static_assert((1LU << (8 * sizeof(command_ctrl_demux_size_t))) - 1 >= OCG_COMMAND_CTRL_DEMUX_SIZE_MAX);
+
+/* a loop in the command graph */
+struct command_ctrl_demux_t
+{
+    /* list of commands */
+    command_t * commands;
+    command_ctrl_demux_size_t n;
+
+    /* bitflag of commands to executes */
+    command_ctrl_demux_bitset_t bitset;
 };
 
 /* commands */
@@ -177,11 +193,12 @@ struct command_t
     union
     {
         command_prog_t          prog;
-        command_prog_launcher_t prog_launcher;
         command_copy_1D_t       copy_1D;
         command_copy_2D_t       copy_2D;
         command_file_t          file;
         command_batch_t         batch;
+        command_ctrl_loop_t     loop;
+        command_ctrl_demux_t    demux;
     };
 
     command_t(command_type_t type) : type(type) {}
