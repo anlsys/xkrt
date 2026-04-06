@@ -667,13 +667,10 @@ xkrt_cuda_driver_command_batch_init(
 
         if (command == NULL)
         {
-            assert(node->type == ocg::COMMAND_GRAPH_NODE_TYPE_CTRL);
-            assert(node->type != ocg::COMMAND_GRAPH_NODE_TYPE_COMMAND);
             cudaGraphAddEmptyNode(cu_node, handle->graph, deps, ndeps);
         }
         else
         {
-            assert(node->type == ocg::COMMAND_GRAPH_NODE_TYPE_COMMAND);
             switch (command->type)
             {
                 case (ocg::COMMAND_TYPE_PROG):

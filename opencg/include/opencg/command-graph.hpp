@@ -110,9 +110,6 @@ operator|(command_graph_contraction_hint_t a, command_graph_contraction_hint_t b
 /* a node */
 struct command_graph_node_t
 {
-    /* node type */
-    command_graph_node_type_t type;
-
     /* the associated command */
     command_t * command;
 
@@ -133,11 +130,9 @@ struct command_graph_node_t
 
     /* constructor/destructor */
     command_graph_node_t(
-        const command_graph_node_type_t type,
         command_t * command,
         const device_unique_id_t device_unique_id
     ) :
-        type(type),
         command(command),
         device_unique_id(device_unique_id),
         predecessors(),
@@ -248,7 +243,7 @@ struct command_graph_node_t
 
 /* Allocator types */
 typedef command_t * (*command_allocator_t)(command_graph_t * cg, command_type_t type);
-typedef command_graph_node_t * (*command_graph_node_allocator_t)(command_graph_t * cg, const command_graph_node_type_t type, command_t * command, const device_unique_id_t device_unique_id);
+typedef command_graph_node_t * (*command_graph_node_allocator_t)(command_graph_t * cg, command_t * command, const device_unique_id_t device_unique_id);
 typedef command_graph_t * (*command_graph_allocator_t)(command_graph_t * cg);
 
 /**
@@ -283,8 +278,8 @@ struct command_graph_t
         this->command_graph_node_new = command_graph_node_new;
         this->command_graph_new = command_graph_new;
 
-        this->entry = this->command_graph_node_new(this, COMMAND_GRAPH_NODE_TYPE_CTRL, NULL, OCG_UNSPECIFIED_DEVICE_UNIQUE_ID);
-        this->exit  = this->command_graph_node_new(this, COMMAND_GRAPH_NODE_TYPE_CTRL, NULL, OCG_UNSPECIFIED_DEVICE_UNIQUE_ID);
+        this->entry = this->command_graph_node_new(this, NULL, OCG_UNSPECIFIED_DEVICE_UNIQUE_ID);
+        this->exit  = this->command_graph_node_new(this, NULL, OCG_UNSPECIFIED_DEVICE_UNIQUE_ID);
         assert(this->entry);
         assert(this->exit);
         this->entry->precedes(this->exit);
@@ -469,7 +464,7 @@ struct command_graph_t
             else
             {
                 assert(this->command_graph_node_new);
-                command_graph_node_t * w = this->command_graph_node_new(this, COMMAND_GRAPH_NODE_TYPE_CTRL, NULL, OCG_UNSPECIFIED_DEVICE_UNIQUE_ID);
+                command_graph_node_t * w = this->command_graph_node_new(this, NULL, OCG_UNSPECIFIED_DEVICE_UNIQUE_ID);
                 assert(w);
 
                 /* predecessors */
@@ -516,7 +511,7 @@ struct command_graph_t
             else
             {
                 assert(this->command_graph_node_new);
-                command_graph_node_t * w = this->command_graph_node_new(this, COMMAND_GRAPH_NODE_TYPE_CTRL, NULL, OCG_UNSPECIFIED_DEVICE_UNIQUE_ID);
+                command_graph_node_t * w = this->command_graph_node_new(this, NULL, OCG_UNSPECIFIED_DEVICE_UNIQUE_ID);
                 assert(w);
 
                 /* predecessors */
@@ -559,7 +554,7 @@ struct command_graph_t
             else
             {
                 assert(this->command_graph_node_new);
-                command_graph_node_t * w = this->command_graph_node_new(this, COMMAND_GRAPH_NODE_TYPE_CTRL, NULL, OCG_UNSPECIFIED_DEVICE_UNIQUE_ID);
+                command_graph_node_t * w = this->command_graph_node_new(this, NULL, OCG_UNSPECIFIED_DEVICE_UNIQUE_ID);
                 assert(w);
 
                 /* predecessors */

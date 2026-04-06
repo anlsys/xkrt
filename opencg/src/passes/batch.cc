@@ -97,8 +97,8 @@ command_batch_init(
 
     /* create new nodes corresponding to u and v in the new batch command graph */
     assert(cmd->batch.cg->command_graph_node_new);
-    command_graph_node_t * uu = cmd->batch.cg->command_graph_node_new(cmd->batch.cg, COMMAND_GRAPH_NODE_TYPE_COMMAND, cmd_u, u->device_unique_id);
-    command_graph_node_t * vv = cmd->batch.cg->command_graph_node_new(cmd->batch.cg, COMMAND_GRAPH_NODE_TYPE_COMMAND, cmd_v, v->device_unique_id);
+    command_graph_node_t * uu = cmd->batch.cg->command_graph_node_new(cmd->batch.cg, cmd_u, u->device_unique_id);
+    command_graph_node_t * vv = cmd->batch.cg->command_graph_node_new(cmd->batch.cg, cmd_v, v->device_unique_id);
     assert(uu);
     assert(vv);
 
@@ -139,7 +139,6 @@ command_graph_pass_batch_contract_batch_single_node(
 ) {
     assert(u_graph);
     assert(v);
-    assert(v->type == COMMAND_GRAPH_NODE_TYPE_COMMAND);
     assert(v->command);
 
     command_graph_node_t * u_entry = u_graph->node_get_entry();
@@ -226,8 +225,6 @@ command_graph_pass_batch_contract_batch_merge(
     assert(u);
     assert(v);
     assert(u->device_unique_id == v->device_unique_id);
-    assert(u->type == COMMAND_GRAPH_NODE_TYPE_COMMAND);
-    assert(v->type == COMMAND_GRAPH_NODE_TYPE_COMMAND);
     assert(u->command);
     assert(v->command);
     assert(u->command->batch.cg);
@@ -310,51 +307,38 @@ command_graph_pass_batch_contract(
     assert(u->device_unique_id == v->device_unique_id);
 
     /* update commands */
-    if (u->type == v->type)
+    if (u->command && v->command)
     {
-        switch (u->type)
+        if (COMMAND_IS_ATOMIC(u->command) && !COMMAND_IS_ATOMIC(v->command))
         {
-            case (COMMAND_GRAPH_NODE_TYPE_CTRL):
-            {
-                // nothing to do
-                break ;
-            }
-
-            case (COMMAND_GRAPH_NODE_TYPE_COMMAND):
-            {
-                assert(u->command);
-                assert(v->command);
-
-                if (COMMAND_IS_ATOMIC(u->command) && !COMMAND_IS_ATOMIC(v->command))
-                {
 swap_u_v:
-                    if constexpr(hint & COMMAND_GRAPH_CONTRACTION_HINT_U_V_SEQUENCE)
-                        return command_graph_pass_batch_contract<COMMAND_GRAPH_CONTRACTION_HINT_V_U_SEQUENCE>(cg, v, u, nodes);
-                    else if constexpr(hint & COMMAND_GRAPH_CONTRACTION_HINT_V_U_SEQUENCE)
-                        return command_graph_pass_batch_contract<COMMAND_GRAPH_CONTRACTION_HINT_U_V_SEQUENCE>(cg, v, u, nodes);
-                    else
-                    {
-                        static_assert(hint & COMMAND_GRAPH_CONTRACTION_HINT_FALSE_TWINS);
-                        std::swap(u, v);
-                    }
-                }
-                break ;
+            if constexpr(hint & COMMAND_GRAPH_CONTRACTION_HINT_U_V_SEQUENCE)
+                return command_graph_pass_batch_contract<COMMAND_GRAPH_CONTRACTION_HINT_V_U_SEQUENCE>(cg, v, u, nodes);
+            else if constexpr(hint & COMMAND_GRAPH_CONTRACTION_HINT_V_U_SEQUENCE)
+                return command_graph_pass_batch_contract<COMMAND_GRAPH_CONTRACTION_HINT_U_V_SEQUENCE>(cg, v, u, nodes);
+            else
+            {
+                static_assert(hint & COMMAND_GRAPH_CONTRACTION_HINT_FALSE_TWINS);
+                std::swap(u, v);
             }
-        }
-    }
-    else
-    {
-        assert(u->type == COMMAND_GRAPH_NODE_TYPE_COMMAND || v->type == COMMAND_GRAPH_NODE_TYPE_COMMAND);
-        if (u->type == COMMAND_GRAPH_NODE_TYPE_COMMAND)
-        {
-            // nothing to do
-            assert(v->type == COMMAND_GRAPH_NODE_TYPE_CTRL);
         }
         else
         {
-            assert(v->type == COMMAND_GRAPH_NODE_TYPE_COMMAND);
-            goto swap_u_v;
+            // nothing to do
         }
+    }
+    else if (u->command && !v->command)
+    {
+        // nothing to do
+    }
+    else if (!u->command && v->command)
+    {
+        goto swap_u_v;
+    }
+    else
+    {
+        assert(!u->command && !v->command);
+        // nothing to do
     }
 
     /* always contract in place */
@@ -382,15 +366,13 @@ swap_u_v:
     nodes[v->iterator_index].data.contracted = true;
 
     /* Initialize the command of 'w' */
-    if (u->type == COMMAND_GRAPH_NODE_TYPE_CTRL)
+    if (!u->command)
     {
         // nothing to do - (a)
-        assert(v->type == COMMAND_GRAPH_NODE_TYPE_CTRL);
     }
     else
     {
-        assert(u->type == COMMAND_GRAPH_NODE_TYPE_COMMAND);
-        if (v->type == COMMAND_GRAPH_NODE_TYPE_CTRL)
+        if (!v->command)
         {
             // nothing to do - (b)
         }

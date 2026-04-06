@@ -54,12 +54,11 @@ command_new(
 static command_graph_node_t *
 command_graph_node_new(
     command_graph_t * cg,
-    const ocg::command_graph_node_type_t type,
     command_t * command,
     const ocg::device_unique_id_t device_unique_id
 ) {
     static_assert(sizeof(command_graph_node_t) <= sizeof(command_graph_node_t));
-    return cg->nodes.put(type, command, device_unique_id);
+    return cg->nodes.put(command, device_unique_id);
 }
 
 void command_graph_init(command_graph_t * cg);
@@ -138,10 +137,10 @@ runtime_t::command_graph_from_task_dependency_graph(
         //  6)  commands N6i emitted after completion, for prefetching
         //  7) empty node N7 that depends on all N5i (sink of the task cg)
 
-        command_graph_node_t * N1 = command_graph_node_new(cg, ocg::COMMAND_GRAPH_NODE_TYPE_CTRL, NULL, device_unique_id);
-        command_graph_node_t * N3 = command_graph_node_new(cg, ocg::COMMAND_GRAPH_NODE_TYPE_CTRL, NULL, device_unique_id);
-        command_graph_node_t * N5 = command_graph_node_new(cg, ocg::COMMAND_GRAPH_NODE_TYPE_CTRL, NULL, device_unique_id);
-        command_graph_node_t * N7 = command_graph_node_new(cg, ocg::COMMAND_GRAPH_NODE_TYPE_CTRL, NULL, device_unique_id);
+        command_graph_node_t * N1 = command_graph_node_new(cg, NULL, device_unique_id);
+        command_graph_node_t * N3 = command_graph_node_new(cg, NULL, device_unique_id);
+        command_graph_node_t * N5 = command_graph_node_new(cg, NULL, device_unique_id);
+        command_graph_node_t * N7 = command_graph_node_new(cg, NULL, device_unique_id);
 
         assert(taskrec->index < ntasks);
         control_nodes[taskrec->index * N_CONTROL_NODES_PER_TASK + 0] = N1;
@@ -209,7 +208,7 @@ runtime_t::command_graph_from_task_dependency_graph(
             }
 
             // Create a node
-            command_graph_node_t * N = command_graph_node_new(cg, ocg::COMMAND_GRAPH_NODE_TYPE_COMMAND, &rec.command, cmd_device_unique_id);
+            command_graph_node_t * N = command_graph_node_new(cg, &rec.command, cmd_device_unique_id);
             assert(N);
 
             // link it in the command graph

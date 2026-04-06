@@ -60,7 +60,7 @@ command_graph_t::pass_copy_normalize(void)
         assert(u);
 
         /* for each command */
-        if (u->type == COMMAND_GRAPH_NODE_TYPE_COMMAND && u->command)
+        if (u->command)
         {
             /**
              * if it is a 2D copy,

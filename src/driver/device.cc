@@ -440,7 +440,6 @@ command_type_to_queue_type(
         case (ocg::COMMAND_TYPE_FD_WRITE):
             return XKRT_QUEUE_TYPE_FD_WRITE;
 
-        case (ocg::COMMAND_TYPE_EMPTY):
         default:
             LOGGER_FATAL("I don't know what queue I should use for that command!");
             return XKRT_QUEUE_TYPE_ALL;
@@ -454,11 +453,9 @@ device_t::command_submit(command_t * cmd)
     // thread, which returns on the command completion
     if (cmd->flags & COMMAND_FLAG_SERIALIZED)
     {
-        assert(cmd->type == ocg::COMMAND_TYPE_EMPTY || cmd->type == ocg::COMMAND_TYPE_PROG);
+        assert(cmd->type == ocg::COMMAND_TYPE_PROG);
         assert(cmd->flags & COMMAND_FLAG_SYNCHRONOUS);
-        if (cmd->type == ocg::COMMAND_TYPE_EMPTY)
-            cmd->completion_callback_raise();
-        else if (cmd->type == ocg::COMMAND_TYPE_PROG)
+        if (cmd->type == ocg::COMMAND_TYPE_PROG)
         {
             if (this->unique_id == XKRT_HOST_DEVICE_UNIQUE_ID)
                 cmd->prog.launcher.fixed.fn(cmd->prog.launcher.fixed.args);

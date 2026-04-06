@@ -52,11 +52,10 @@ command_new(
 static command_graph_node_t *
 command_graph_node_new(
     command_graph_t * cg,
-    const command_graph_node_type_t type,
     command_t * command,
     const device_unique_id_t device_unique_id
 ) {
-    return new command_graph_node_t(type, command, device_unique_id);
+    return new command_graph_node_t(command, device_unique_id);
 }
 
 static command_graph_t *

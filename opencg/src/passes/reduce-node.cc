@@ -74,10 +74,8 @@ command_graph_t::pass_reduce_node(void)
         # endif
 
         /* remove control nodes that do not simplifies the graph complexity */
-        if (u->type == COMMAND_GRAPH_NODE_TYPE_CTRL)
+        if (!u->command)
         {
-            assert(u->command == NULL);
-
             command_graph_node_index_t m = u->predecessors.size();
             command_graph_node_index_t n = u->successors.size();
 

@@ -81,7 +81,7 @@ main(void)
         command->copy_1D.size                   = bs;
 
         // add node to CG
-        command_graph_node_t * node = command_graph_node_new(cg, COMMAND_GRAPH_NODE_TYPE_COMMAND, command, device_unique_id);
+        command_graph_node_t * node = command_graph_node_new(cg, command, device_unique_id);
         assert(node);
         entry->precedes(node);
         node->precedes(exit);

@@ -155,11 +155,10 @@ struct command_graph_node_t : ocg::command_graph_node_t
 
     /* constructor/destructor */
     command_graph_node_t(
-        const ocg::command_graph_node_type_t type,
         ocg::command_t * command,
         const ocg::device_unique_id_t device_unique_id
     ) :
-        ocg::command_graph_node_t(type, command, device_unique_id),
+        ocg::command_graph_node_t(command, device_unique_id),
         rc(0),
         wc(0),
         state(COMMAND_GRAPH_NODE_STATE_INIT),

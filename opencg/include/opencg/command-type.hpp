@@ -54,7 +54,8 @@ OCG_NAMESPACE_BEGIN
     F(COMMAND_TYPE_FD_READ,         command_file_t,             "FD-READ")          \
     F(COMMAND_TYPE_FD_WRITE,        command_file_t,             "FD-WRITE")         \
     F(COMMAND_TYPE_BATCH,           command_batch_t,            "BATCH")            \
-    F(COMMAND_TYPE_EMPTY,           command_empty_t,            "EMPTY")
+    F(COMMAND_TYPE_CTRL_LOOP,       command_ctrl_loop_t,        "CTRL-LOOP")        \
+    F(COMMAND_TYPE_CTRL_DEMUX,      command_ctrl_demux_t,       "CTRL-DEMUX")
 
 enum command_type_t
 {
@@ -76,13 +77,6 @@ command_type_to_str(command_type_t type)
             return "(null)";
     }
 }
-
-/* node types */
-enum command_graph_node_type_t
-{
-    COMMAND_GRAPH_NODE_TYPE_CTRL,
-    COMMAND_GRAPH_NODE_TYPE_COMMAND
-};
 
 OCG_NAMESPACE_END
 

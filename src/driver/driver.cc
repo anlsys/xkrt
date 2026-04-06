@@ -551,11 +551,6 @@ driver_device_command_queue_launch_ready(
         switch (cmd->type)
         {
             /* Empty commands need not to execute anything */
-            case (ocg::COMMAND_TYPE_EMPTY):
-            {
-                break ;
-            }
-
             case (ocg::COMMAND_TYPE_COPY_H2H_1D):
             case (ocg::COMMAND_TYPE_COPY_H2H_2D):
             {

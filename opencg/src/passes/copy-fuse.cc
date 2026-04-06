@@ -64,8 +64,8 @@ command_graph_pass_batch_try_fuse_copy(
     # define MUST(T) if (!(T)) return false;
     MUST(u != v);
     MUST(cg->are_false_twins(u, v));
-    MUST(u->type == COMMAND_GRAPH_NODE_TYPE_COMMAND && u->command);
-    MUST(v->type == COMMAND_GRAPH_NODE_TYPE_COMMAND && v->command);
+    MUST(u->command);
+    MUST(v->command);
 
     /* Try merge */
     switch (u->command->type)

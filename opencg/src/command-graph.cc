@@ -43,18 +43,6 @@ OCG_NAMESPACE_USE;
 //  DUMP //
 ///////////
 
-/* convert node type to string */
-static const char *
-command_graph_node_type_to_str(command_graph_node_type_t type)
-{
-    switch (type)
-    {
-        case (COMMAND_GRAPH_NODE_TYPE_CTRL):    return "ctrl";
-        case (COMMAND_GRAPH_NODE_TYPE_COMMAND): return "command";
-        default:                                return "unknown";
-    }
-}
-
 static inline void
 command_graph_dump_interior(
     command_graph_t * cg,
@@ -70,13 +58,12 @@ command_graph_dump_interior(
         command_graph_node_t * node = nodes[i].node;
         assert(node);
         /* print the node */
-        if (node->type == COMMAND_GRAPH_NODE_TYPE_CTRL)
+        if (node->command == NULL)
         {
             fprintf(f, "  \"%p\" [label=\"node %lu\\ndev=%u\"] ;\n", node, node->iterator_index, node->device_unique_id);
         }
         else
         {
-            assert(node->type == COMMAND_GRAPH_NODE_TYPE_COMMAND);
             assert(node->command);
             if (node->command->type == COMMAND_TYPE_BATCH && node->command->batch.cg)
             {
@@ -98,9 +85,9 @@ command_graph_dump_interior(
         node->foreach_successor([&] (command_graph_node_t * succ)
         {
             fprintf(f, "  \"%p\" -> \"%p\"", node, succ);
-            if (node->type == COMMAND_GRAPH_NODE_TYPE_COMMAND && node->command->type == COMMAND_TYPE_BATCH)
+            if (node->command && node->command->type == COMMAND_TYPE_BATCH)
                 fprintf(f, " [ltail=cluster_%p]", node);
-            if (succ->type == COMMAND_GRAPH_NODE_TYPE_COMMAND && succ->command->type == COMMAND_TYPE_BATCH)
+            if (succ->command && succ->command->type == COMMAND_TYPE_BATCH)
                 fprintf(f, " [lhead=cluster_%p]", succ);
             fprintf(f, " ;\n");
         });
