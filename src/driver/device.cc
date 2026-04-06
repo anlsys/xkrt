@@ -337,10 +337,10 @@ device_t::offloader_queue_command_new(
     const command_flag_t flags,         /* IN  */
     thread_t ** pthread,                /* OUT */
     command_queue_t ** pqueue,          /* OUT */
-    command_t ** pcmd                   /* OUT */
+    command_t ** pcommand                   /* OUT */
 ) {
     assert(pqueue);
-    assert(pcmd);
+    assert(pcommand);
 
     /* retrieve native queue */
     this->offloader_queue_next(qtype, pthread, pqueue);
@@ -351,8 +351,8 @@ device_t::offloader_queue_command_new(
     /* allocate the command */
     do {
         SPINLOCK_LOCK((*pqueue)->spinlock);
-        (*pcmd) = (*pqueue)->command_new(ctype, flags);
-        if (*pcmd)
+        (*pcommand) = (*pqueue)->command_new(ctype, flags);
+        if (*pcommand)
             break ; /* will be unlock during 'commit' */
         SPINLOCK_UNLOCK((*pqueue)->spinlock);
         LOGGER_FATAL("Stream is full, increase 'XKRT_OFFLOADER_CAPACITY' or implement support for full-queue management yourself :-) (sorry)");
@@ -364,7 +364,7 @@ void
 device_t::offloader_queue_command_commit(
     thread_t * thread,          /* thread that will execute the command */
     command_queue_t * queue,    /* queue of that thread */
-    command_t * cmd             /* the command */
+    command_t * command             /* the command */
 ) {
     /* If the current task is recording */
     thread_t * tls = thread_t::get_tls();
@@ -374,7 +374,7 @@ device_t::offloader_queue_command_commit(
     task_t * task = tls->current_task_record;
     if (task)
     {
-        if (!(cmd->flags & COMMAND_FLAG_PROG_LAUNCHER))
+        if (!(command->flags & COMMAND_FLAG_PROG_LAUNCHER))
         {
             assert(task->flags & TASK_FLAG_RECORD);
             assert(
@@ -385,15 +385,15 @@ device_t::offloader_queue_command_commit(
             assert(task->parent);
             assert(task->parent->flags & TASK_FLAG_GRAPH);
 
-            command_t * cmdrec = task_put_command_record(task);
-            memcpy(cmdrec, cmd, sizeof(command_t));
-            cmdrec->completion_callback_clear();
+            command_t * commandrec = task_put_command_record(task);
+            memcpy(commandrec, command, sizeof(command_t));
+            commandrec->completion_callback_clear();
 
             // if skipping command execution
             if (!(task->parent->flags & TASK_FLAG_GRAPH_EXECUTE_COMMAND))
             {
                 // complete it now and return
-                cmd->completion_callback_raise();
+                command->completion_callback_raise();
                 SPINLOCK_UNLOCK(queue->spinlock);
                 return ;
             }
@@ -401,86 +401,9 @@ device_t::offloader_queue_command_commit(
     }
 
     /* commit command to the queue */
-    queue->commit(cmd);
+    queue->commit(command);
     SPINLOCK_UNLOCK(queue->spinlock);
 
     /* wakeup device worker thread */
     thread->wakeup();
-}
-
-static inline command_queue_type_t
-command_type_to_queue_type(
-    ocg::command_type_t ctype
-) {
-    switch (ctype)
-    {
-        case (ocg::COMMAND_TYPE_PROG):
-        case (ocg::COMMAND_TYPE_BATCH):
-            return XKRT_QUEUE_TYPE_KERN;
-
-        case (ocg::COMMAND_TYPE_COPY_H2H_1D):
-        case (ocg::COMMAND_TYPE_COPY_H2H_2D):
-            return XKRT_QUEUE_TYPE_H2D;
-
-        case (ocg::COMMAND_TYPE_COPY_H2D_1D):
-        case (ocg::COMMAND_TYPE_COPY_H2D_2D):
-            return XKRT_QUEUE_TYPE_H2D;
-
-        case (ocg::COMMAND_TYPE_COPY_D2H_1D):
-        case (ocg::COMMAND_TYPE_COPY_D2H_2D):
-            return XKRT_QUEUE_TYPE_D2H;
-
-        case (ocg::COMMAND_TYPE_COPY_D2D_1D):
-        case (ocg::COMMAND_TYPE_COPY_D2D_2D):
-            return XKRT_QUEUE_TYPE_D2D;
-
-        case (ocg::COMMAND_TYPE_FD_READ):
-            return XKRT_QUEUE_TYPE_FD_READ;
-
-        case (ocg::COMMAND_TYPE_FD_WRITE):
-            return XKRT_QUEUE_TYPE_FD_WRITE;
-
-        default:
-            LOGGER_FATAL("I don't know what queue I should use for that command!");
-            return XKRT_QUEUE_TYPE_ALL;
-    }
-}
-
-int
-device_t::command_submit(command_t * cmd)
-{
-    // command is serialized: it must be launched serially on the calling
-    // thread, which returns on the command completion
-    if (cmd->flags & COMMAND_FLAG_SERIALIZED)
-    {
-        assert(cmd->type == ocg::COMMAND_TYPE_PROG);
-        assert(cmd->flags & COMMAND_FLAG_SYNCHRONOUS);
-        if (cmd->type == ocg::COMMAND_TYPE_PROG)
-        {
-            if (this->unique_id == XKRT_HOST_DEVICE_UNIQUE_ID)
-                cmd->prog.launcher.fixed.fn(cmd->prog.launcher.fixed.args);
-            else
-                LOGGER_FATAL("Unsupported command");
-        }
-    }
-    // else, push to a queue
-    else
-    {
-        command_queue_type_t qtype = command_type_to_queue_type(cmd->type);
-
-        thread_t * thread;
-        command_queue_t * queue;
-        this->offloader_queue_next(qtype, &thread, &queue);
-        assert(thread);
-        assert(queue);
-
-        SPINLOCK_LOCK(queue->spinlock);
-        queue->emplace(cmd);
-        queue->commit(cmd);
-        SPINLOCK_UNLOCK(queue->spinlock);
-
-        thread->wakeup();
-    }
-
-    return 0;
 }

@@ -204,9 +204,6 @@ typedef struct  device_t
         command_queue_t ** pqueue           /* OUT */
     );
 
-    /* submit a command to the device */
-    int command_submit(command_t * command);
-
     /* create a new command */
     void offloader_queue_command_new(
         const command_queue_type_t qtype,   /* IN  */

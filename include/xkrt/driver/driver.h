@@ -36,8 +36,8 @@
 ** knowledge of the CeCILL-C license and that you accept its terms.
 **/
 
-#ifndef __DRIVER_H__
-# define __DRIVER_H__
+#ifndef __XKRT_DRIVER_H__
+# define __XKRT_DRIVER_H__
 
 # ifndef _GNU_SOURCE
 #  define _GNU_SOURCE
@@ -167,6 +167,8 @@ typedef struct  driver_t
     // MEMORY TRANSFERS //
     //////////////////////
 
+    // DEPRECATED: use command_execute instead
+
     int (*f_transfer_h2d)(void * dst, void * src, const size_t size);
     int (*f_transfer_d2h)(void * dst, void * src, const size_t size);
     int (*f_transfer_d2d)(void * dst, void * src, const size_t size);
@@ -174,24 +176,11 @@ typedef struct  driver_t
     int (*f_transfer_d2h_async)(void * dst, void * src, const size_t size, command_queue_t * iqueue);
     int (*f_transfer_d2d_async)(void * dst, void * src, const size_t size, command_queue_t * iqueue);
 
-    ///////////////////
-    // KERNEL LAUNCH //
-    ///////////////////
+    ///////////////////////////////////////////////
+    // SERIALIZED+SYNCHRONOUS COMMAND SUBMISSION //
+    ///////////////////////////////////////////////
 
-    int (*f_prog_launch)(
-        command_queue_t * iqueue,                       // the queue
-        xkrt_command_queue_list_counter_t idx,            // index of the event associated with the kernel launch
-        const driver_module_fn_t * fn,          // the function
-        const unsigned int gx,                  // grid size
-        const unsigned int gy,
-        const unsigned int gz,
-        const unsigned int bx,                  // block dim
-        const unsigned int by,
-        const unsigned int bz,
-        const unsigned int shared_memory_bytes,
-        void * args,
-        const size_t args_size                  // size of args in bytes
-    );
+    int (*f_command_execute)(device_driver_id_t device_driver_id, command_t * command);
 
     ///////////////
     // THREADING //
@@ -200,9 +189,9 @@ typedef struct  driver_t
     /* Get a cpuset of cpus with the best affinity for the given device */
     int (*f_device_cpuset)(hwloc_topology_t topology, cpu_set_t * cpuset, device_driver_id_t device_driver_id);
 
-    ////////////////////////////////
-    // QUEUE MANAGEMENT          //
-    ////////////////////////////////
+    //////////////////////
+    // QUEUE MANAGEMENT //
+    //////////////////////
 
     /* suggest a number of queue to use for the given queue type */
     int (*f_command_queue_suggest)(device_driver_id_t device_driver_id, command_queue_type_t qtype);
@@ -320,4 +309,4 @@ typedef struct  drivers_t
 
 XKRT_NAMESPACE_END
 
-#endif /* __DRIVER_H__ */
+#endif /* __XKRT_DRIVER_H__ */

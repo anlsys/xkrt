@@ -65,3 +65,110 @@ runtime_t::devices_get(const driver_type_t type)
     assert(driver);
     return driver->devices.bitfield;
 }
+
+static inline command_queue_type_t
+command_type_to_queue_type(
+    ocg::command_type_t ctype
+) {
+    switch (ctype)
+    {
+        case (ocg::COMMAND_TYPE_PROG):
+        case (ocg::COMMAND_TYPE_BATCH):
+            return XKRT_QUEUE_TYPE_KERN;
+
+        case (ocg::COMMAND_TYPE_COPY_H2H_1D):
+        case (ocg::COMMAND_TYPE_COPY_H2H_2D):
+            return XKRT_QUEUE_TYPE_H2D;
+
+        case (ocg::COMMAND_TYPE_COPY_H2D_1D):
+        case (ocg::COMMAND_TYPE_COPY_H2D_2D):
+            return XKRT_QUEUE_TYPE_H2D;
+
+        case (ocg::COMMAND_TYPE_COPY_D2H_1D):
+        case (ocg::COMMAND_TYPE_COPY_D2H_2D):
+            return XKRT_QUEUE_TYPE_D2H;
+
+        case (ocg::COMMAND_TYPE_COPY_D2D_1D):
+        case (ocg::COMMAND_TYPE_COPY_D2D_2D):
+            return XKRT_QUEUE_TYPE_D2D;
+
+        case (ocg::COMMAND_TYPE_FD_READ):
+            return XKRT_QUEUE_TYPE_FD_READ;
+
+        case (ocg::COMMAND_TYPE_FD_WRITE):
+            return XKRT_QUEUE_TYPE_FD_WRITE;
+
+        default:
+            LOGGER_FATAL("I don't know what queue I should use for that command!");
+            return XKRT_QUEUE_TYPE_ALL;
+    }
+}
+
+int
+runtime_t::command_submit(
+    const device_unique_id_t device_unique_id,
+    command_t * command
+) {
+    device_t * device = this->device_get(device_unique_id);
+    assert(device);
+
+    // command is serialized: it must be launched serially on the calling
+    // thread, which returns on the command completion
+    if (command->flags & COMMAND_FLAG_SERIALIZED)
+    {
+        // currently only support both serialized and synchronous
+        assert(command->flags & COMMAND_FLAG_SYNCHRONOUS);
+
+        switch (command->type)
+        {
+            case (ocg::COMMAND_TYPE_PROG):
+            {
+                if (device_unique_id == XKRT_HOST_DEVICE_UNIQUE_ID)
+                    command->prog.launcher.fixed.fn(command->prog.launcher.fixed.args);
+                else
+                    LOGGER_FATAL("Unsupported command for non-host device");
+                break ;
+            }
+
+            case (ocg::COMMAND_TYPE_COPY_H2D_1D):
+            case (ocg::COMMAND_TYPE_COPY_D2H_1D):
+            case (ocg::COMMAND_TYPE_COPY_D2D_1D):
+            case (ocg::COMMAND_TYPE_COPY_H2H_2D):
+            case (ocg::COMMAND_TYPE_COPY_H2D_2D):
+            case (ocg::COMMAND_TYPE_COPY_D2H_2D):
+            case (ocg::COMMAND_TYPE_COPY_D2D_2D):
+            {
+                driver_t * driver = this->driver_get(device->driver_type);
+                assert(driver);
+
+                if (driver->f_command_execute == NULL)
+                    LOGGER_FATAL("Not supported");
+                driver->f_command_execute(device->driver_id, command);
+                break ;
+            }
+
+            default:
+                LOGGER_FATAL("Unsupported command");
+        }
+    }
+    // else, push to a queue
+    else
+    {
+        command_queue_type_t qtype = command_type_to_queue_type(command->type);
+
+        thread_t * thread;
+        command_queue_t * queue;
+        device->offloader_queue_next(qtype, &thread, &queue);
+        assert(thread);
+        assert(queue);
+
+        SPINLOCK_LOCK(queue->spinlock);
+        queue->emplace(command);
+        queue->commit(command);
+        SPINLOCK_UNLOCK(queue->spinlock);
+
+        thread->wakeup();
+    }
+
+    return 0;
+}

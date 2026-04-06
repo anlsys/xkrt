@@ -159,8 +159,7 @@ struct  runtime_t
      *  It increases the current task detach counter by 1.
      *  Once the command completed, it decrements the detact counter by 1.
      */
-    int
-    task_emit_command(
+    int task_emit_command(
         const device_unique_id_t device_unique_id,
         const command_queue_type_t qtype,
         const ocg::command_type_t ctype,

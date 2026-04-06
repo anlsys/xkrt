@@ -371,8 +371,7 @@ command_graph_replay_process_node(
         {
             assert(node->device_unique_id != XKRT_UNSPECIFIED_DEVICE_UNIQUE_ID);
             assert(node->state == COMMAND_GRAPH_NODE_STATE_INIT);
-            device_t * device = runtime->device_get(node->device_unique_id);
-            device->command_submit((command_t *) node->command);
+            runtime->command_submit(node->device_unique_id, (command_t *) node->command);
         }
         // else, submit its descendence
         else

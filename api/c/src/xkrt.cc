@@ -992,53 +992,6 @@ xkrt_driver_transfer_d2d_async(
 
 // KERNEL LAUNCH
 
-int
-xkrt_driver_prog_launch(
-    xkrt_driver_t * driver,
-    xkrt_command_queue_t * queue,
-    xkrt_command_queue_list_counter_t idx,
-    const xkrt_driver_module_fn_t * fn,
-    const unsigned int gx,
-    const unsigned int gy,
-    const unsigned int gz,
-    const unsigned int bx,
-    const unsigned int by,
-    const unsigned int bz,
-    const unsigned int shared_memory_bytes,
-    void * args,
-    const size_t args_size
-) {
-    assert(driver);
-    driver_t * drv = (driver_t *) driver;
-    return drv->f_prog_launch((command_queue_t *) queue, idx, fn, gx, gy, gz, bx, by, bz, shared_memory_bytes, args, args_size);
-}
-
-int
-xkrt_device_prog_launch(
-    xkrt_runtime_t * runtime,
-    xkrt_device_t * device,
-    xkrt_command_queue_t * queue,
-    xkrt_command_queue_list_counter_t idx,
-    const xkrt_driver_module_fn_t * fn,
-    const unsigned int gx,
-    const unsigned int gy,
-    const unsigned int gz,
-    const unsigned int bx,
-    const unsigned int by,
-    const unsigned int bz,
-    const unsigned int shared_memory_bytes,
-    void * args,
-    const size_t args_size
-) {
-    assert(runtime);
-    assert(device);
-
-    runtime_t *  rt = (runtime_t *) runtime;
-    device_t  * dev = (device_t  *) device;
-    driver_t  * drv = rt->driver_get(dev->driver_type);
-    return xkrt_driver_prog_launch((xkrt_driver_t *) drv, queue, idx, fn, gx, gy, gz, bx, by, bz, shared_memory_bytes, args, args_size);
-}
-
 void
 xkrt_task_prog_launch(
     xkrt_runtime_t * runtime,
