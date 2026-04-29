@@ -348,11 +348,6 @@ __task_complete(
     SPINLOCK_UNLOCK(task->state.lock);
     assert(task->parent);
 
-    // TODO: instead, can we have a counter per thread, to reduce the number of
-    // updates on the 'parent' counter ?
-    XKRT_STATS_INCR(runtime->stats.tasks[task->fmtid].completed, 1);
-    task->parent->cc.fetch_sub(1, std::memory_order_relaxed);
-
     // if the task has successors, that dependency is now satisfied
     if (task->flags & TASK_FLAG_ACCESSES)
     {
@@ -460,6 +455,11 @@ __task_complete(
             } /* for each successor */
         } /* for each access */
     }
+
+    // TODO: instead, can we have a counter per thread, to reduce the number of
+    // updates on the 'parent' counter ?
+    XKRT_STATS_INCR(runtime->stats.tasks[task->fmtid].completed, 1);
+    task->parent->cc.fetch_sub(1, std::memory_order_relaxed);
 }
 
 /* decrease detachable ref counter by 1, and complete the task if it reached 0 */

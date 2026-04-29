@@ -116,6 +116,9 @@ runtime_t::command_submit(
     // thread, which returns on the command completion
     if (command->flags & COMMAND_FLAG_SERIALIZED)
     {
+        LOGGER_DEBUG("Submitting a serialized command of type `%s`",
+                command_type_to_str(command->type));
+
         // currently only support both serialized and synchronous
         assert(command->flags & COMMAND_FLAG_SYNCHRONOUS);
 
@@ -124,12 +127,12 @@ runtime_t::command_submit(
             case (ocg::COMMAND_TYPE_PROG):
             {
                 if (device_unique_id == XKRT_HOST_DEVICE_UNIQUE_ID)
+                {
                     command->prog.launcher.fixed.fn(command->prog.launcher.fixed.args);
-                else
-                    LOGGER_FATAL("Unsupported command for non-host device");
-                break ;
+                    break ;
+                }
+                // intentionally fallthrough
             }
-
             case (ocg::COMMAND_TYPE_COPY_H2D_1D):
             case (ocg::COMMAND_TYPE_COPY_D2H_1D):
             case (ocg::COMMAND_TYPE_COPY_D2D_1D):
