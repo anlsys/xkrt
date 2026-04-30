@@ -43,8 +43,8 @@
 #  include <xkrt/support.h>
 #  include <xkrt/sync/spinlock.h>
 #  include <xkrt/task/task.hpp>
-#  include <xkrt/thread/deque.hpp>
-#  include <xkrt/thread/naive-queue.hpp>
+// #  include <xkrt/thread/deque.hpp>
+#  include <xkrt/thread/naive-deque.hpp>
 #  include <xkrt/thread/team-thread-place.h>
 
 #  include <pthread.h>
@@ -117,8 +117,7 @@ struct alignas(xkrt_pagesize) thread_t
         device_unique_id_t device_unique_id;
 
         /* the thread deque */
-        //deque_t<task_t *, 4096> deque;
-        NaiveQueue<task_t *> deque;
+        deque_t<task_t *, XKRT_THREAD_DEQUE_CAPACITY> deque;
 
         /* tasks stack */
         uint8_t * memory_stack_bottom;

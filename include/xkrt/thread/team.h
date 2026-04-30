@@ -44,7 +44,6 @@
 #  include <xkrt/sync/spinlock.h>
 #  include <xkrt/task/task.hpp>
 #  include <xkrt/thread/deque.hpp>
-#  include <xkrt/thread/naive-queue.hpp>
 #  include <xkrt/thread/team-thread-place.h>
 
 #  include <pthread.h>
@@ -158,7 +157,8 @@ struct  team_desc_t
         routine(NULL),
         args(NULL),
         nthreads(0),
-        binding()
+        binding(),
+        master_is_member(true)
     {}
 
     // routine that will be executed by each thread

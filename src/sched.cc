@@ -423,7 +423,13 @@ runtime_t::task_thread_enqueue(
     thread_t * thread,
     task_t * task
 ) {
-    thread->deque.push(task);
+    thread_t * tls = thread_t::get_tls();
+    assert(tls);
+
+    // pushing to my own queue or another thread ?
+    int r = (tls == thread) ? thread->deque.push(task) : thread->deque.give(task);
+    if (r)
+        LOGGER_FATAL("Queue is full, what to do????");
 
     // TODO: this is quite ugly, but the thread may be sleeping in three places:
     //  - within its condition

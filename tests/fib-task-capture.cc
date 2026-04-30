@@ -80,7 +80,6 @@ fib(int n, int depth = 0)
                 fn2 = fib(n - 2, depth + 1);
             }
         );
-
         runtime.task_wait();
     }
     return fn1 + fn2;
@@ -89,6 +88,7 @@ fib(int n, int depth = 0)
 static void *
 main_team(runtime_t * rt, team_t * team, thread_t * thread)
 {
+    # if 0
     // warmup
     if (thread->tid == 0)
     {
@@ -96,6 +96,7 @@ main_team(runtime_t * rt, team_t * team, thread_t * thread)
         runtime.task_wait();
     }
     runtime.team_barrier<true>(team, thread);
+    # endif
 
     // run
     if (thread->tid == 0)
@@ -128,7 +129,9 @@ main(int argc, char ** argv)
     assert(runtime.init() == 0);
 
     team_t team;
+    team.desc.nthreads = 1;
     team.desc.routine = (team_routine_t) main_team;
+    team.desc.master_is_member = false;
 
     runtime.team_create(&team);
     runtime.team_join(&team);

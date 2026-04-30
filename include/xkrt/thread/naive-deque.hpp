@@ -35,11 +35,10 @@
 ** knowledge of the CeCILL-C license and that you accept its terms.
 **/
 
-#ifndef __DEQUE_HPP__
-# define __DEQUE_HPP__
+#ifndef __XKRT_DEQUE_HPP__
+# define __XKRT_DEQUE_HPP__
 
 # include <xkrt/sync/spinlock.h>
-# include <xkrt/driver/iqueue.hpp>
 
 # include <atomic>
 # include <assert.h>
@@ -50,52 +49,87 @@
  *  of the lock-free list
  */
 
-template<typename T>
-class NaiveQueue : IQueue<T>
+template<typename T, int C_UNUSED>
+struct deque_t
 {
-    public:
+    std::list<T> list;
+    volatile spinlock_t lock;
 
-        NaiveQueue() : list(), lock() {}
-        ~NaiveQueue() {}
+    deque_t() : list(), lock() {}
+    ~deque_t() {}
 
-        void
-        push(const T & t)
+    int
+    push(T const & t)
+    {
+        SPINLOCK_LOCK(this->lock);
         {
-            SPINLOCK_LOCK(this->lock);
-            {
-                this->list.push_back(t);
-            }
+            this->list.push_back(t);
+        }
+        SPINLOCK_UNLOCK(this->lock);
+        return 0;
+    }
+
+    int
+    push(T const * ts, int n)
+    {
+        SPINLOCK_LOCK(this->lock);
+        {
+            for (int i = 0 ; i < n ; ++i)
+                this->list.push_back(ts[i]);
+        }
+        SPINLOCK_UNLOCK(this->lock);
+        return 0;
+    }
+
+    int
+    give(T const & t)
+    {
+        return this->push(t);
+    }
+
+    T
+    pop(void)
+    {
+        SPINLOCK_LOCK(this->lock);
+
+        if (this->list.empty())
+        {
             SPINLOCK_UNLOCK(this->lock);
+            return nullptr;
         }
 
-        T
-        pop(void)
+        T t = this->list.back();
+        this->list.pop_back();
+
+        SPINLOCK_UNLOCK(this->lock);
+
+        return t;
+    }
+
+    int
+    steal(T ** ts, int * n)
+    {
+        SPINLOCK_LOCK(this->lock);
+        if (this->list.empty())
         {
-            SPINLOCK_LOCK(this->lock);
-
-            if (this->list.empty())
-            {
-                SPINLOCK_UNLOCK(this->lock);
-                return nullptr;
-            }
-
-            T t = this->list.back();
-            this->list.pop_back();
-
             SPINLOCK_UNLOCK(this->lock);
-
-            return t;
+            return 1;
         }
 
-        T
-        steal(void)
-        {
-            return this->pop();
-        }
+        *ts = &this->list.front();
+        *n  = 1;
 
-    private:
-        std::list<T> list;
-        volatile spinlock_t lock;
+        return 0;
+    }
+
+    void
+    stolen(T ** ts, int * n)
+    {
+        assert(*n);
+        this->list.pop_front();
+        SPINLOCK_UNLOCK(this->lock);
+    }
+
 };
 
-#endif /* __DEQUE_HPP__ */
+#endif /* __XKRT_DEQUE_HPP__ */

@@ -71,6 +71,9 @@ xkstatic_assert(XKRT_HOST_DEVICE_UNIQUE_ID != XKRT_UNSPECIFIED_DEVICE_UNIQUE_ID)
 /* a bitmask that represents all devices */
 # define XKRT_DEVICES_MASK_ALL (~((xkrt_device_unique_id_bitfield_t)0))
 
+/* capacity of the circular deque of tasks per thread */
+# define XKRT_THREAD_DEQUE_CAPACITY 4096
+
 /* maximum number of threads per device */
 # define XKRT_MAX_THREADS_PER_DEVICE (16)
 
