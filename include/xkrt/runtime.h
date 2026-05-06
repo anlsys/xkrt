@@ -1359,10 +1359,15 @@ struct  runtime_t
      */
     struct {
         struct {
-            stats_int_t submitted;   ///< Number of tasks submitted
-            stats_int_t commited;    ///< Number of tasks committed
-            stats_int_t completed;   ///< Number of tasks completed
+            stats_int_t submitted;      ///< Number of tasks submitted
+            stats_int_t commited;       ///< Number of tasks committed
+            stats_int_t completed;      ///< Number of tasks completed
         } tasks[XKRT_TASK_FORMAT_MAX];
+
+        struct {
+            stats_int_t skipped;        ///< Number of edges skipped
+            stats_int_t set;            ///< Number of edges set
+        } edges;
 
         struct {
             stats_int_t registered;     ///< Memory regions registered

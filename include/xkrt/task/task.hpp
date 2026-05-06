@@ -926,8 +926,8 @@ TASK_ARGS(task_t * task)
 ///////////////////////////////////
 
 # define XKRT_TASK_DEPENDENCE_ALREADY_SET   0
-# define XKRT_TASK_DEPENDENCE_SET           1
-# define XKRT_TASK_DEPENDENCE_SKIPPED       2
+# define XKRT_TASK_DEPENDENCE_SKIPPED       1
+# define XKRT_TASK_DEPENDENCE_SET           2
 
 /* pred precedes succ - call 'F(args)' if 'pred' isnt completed yet in a lock region */
 template <typename... Args>
