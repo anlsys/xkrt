@@ -526,7 +526,7 @@ conf_t::init(void)
     this->report_stats_on_deinit                = 0;
     this->device.ngpus                          = (uint8_t)-1;
     this->device.memory_allocator_type          = XKRT_MEMORY_ALLOCATOR_TYPE_FREELIST;
-    this->device.memory_size_initial.amount     = (memory_size_type_t) (0.90 * (double)MEMORY_SIZE_TYPE_MAX);
+    this->device.memory_size_initial.amount     = (memory_size_type_t) 90;
     this->device.memory_size_initial.unit       = XKRT_MEMORY_SIZE_UNIT_RELATIVE;
     this->device.memory_size_resize.amount      = 0;
     this->device.memory_size_resize.unit        = XKRT_MEMORY_SIZE_UNIT_ABSOLUTE;
