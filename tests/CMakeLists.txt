@@ -14,6 +14,7 @@ set(TEST_SOURCES
     fib-task-format.cc
     file-read.cc
     init.cc
+    memory-allocator.cc
     memory-register-assisted-async-depend.cc
     memory-register-assisted-async.cc
     memory-register-assisted-unregister.cc

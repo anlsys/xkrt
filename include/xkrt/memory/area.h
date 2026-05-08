@@ -39,6 +39,7 @@
 # define __XKRT_AREA_H__
 
 # include <xkrt/sync/mutex.h>
+# include <stdint.h>
 
 ///////////////////////////
 // Driver devices memory //
@@ -73,7 +74,6 @@ typedef struct  xkrt_area_chunk_t
 typedef struct  xkrt_area_t
 {
     xkrt_mutex_t lock;
-    xkrt_area_chunk_t chunk0;
     xkrt_area_chunk_t * free_chunk_list;
 
 }               xkrt_area_t;

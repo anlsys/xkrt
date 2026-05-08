@@ -49,35 +49,6 @@
 
 XKRT_NAMESPACE_BEGIN
 
-void
-runtime_t::memory_device_preallocate_ensure(
-    const device_unique_id_t device_unique_id,
-    const int memory_id
-) {
-    device_t * device = this->device_get(device_unique_id);
-    if ((volatile bool) device->memories[memory_id].allocated == false)
-    {
-        driver_t * driver = this->driver_get(device->driver_type);
-
-        XKRT_MUTEX_LOCK(device->memories[memory_id].area.lock);
-        {
-            if ((volatile bool) device->memories[memory_id].allocated == false)
-            {
-                const double percent = 90.0;
-                const size_t size = (size_t) ((double)device->memories[memory_id].capacity * (double)(percent / 100.0));
-                assert(driver->f_memory_device_allocate);
-                const void * device_ptr = driver->f_memory_device_allocate(device->driver_id, size, memory_id);
-                if (device_ptr == NULL)
-                    LOGGER_FATAL("Out of GPU memory");
-                assert(device_ptr);
-                device->memory_set_chunk0((uintptr_t) device_ptr, size, memory_id);
-                device->memories[memory_id].allocated = 1;
-            }
-        }
-        XKRT_MUTEX_UNLOCK(device->memories[memory_id].area.lock);
-    }
-}
-
 area_chunk_t *
 runtime_t::memory_device_allocate_on(
     const device_unique_id_t device_unique_id,
@@ -85,7 +56,6 @@ runtime_t::memory_device_allocate_on(
     const int memory_id
 ) {
     device_t * device = this->device_get(device_unique_id);
-    this->memory_device_preallocate_ensure(device_unique_id, memory_id);
     return device->memory_allocate_on(size, memory_id);
 }
 
