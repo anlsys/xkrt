@@ -49,15 +49,6 @@ XKRT_NAMESPACE_USE;
 ///////////////////////////
 
 /* static */ size_t
-buddy_allocator_t::_compute_size(const memory_size_t & ms, size_t capacity)
-{
-    if (ms.unit == XKRT_MEMORY_SIZE_UNIT_RELATIVE)
-        return (size_t) ((double)capacity * (double)ms.amount / (double)MEMORY_SIZE_TYPE_MAX);
-    else
-        return ms.amount;
-}
-
-/* static */ size_t
 buddy_allocator_t::_next_power_of_two(size_t v)
 {
     if (v == 0)
@@ -266,7 +257,7 @@ buddy_allocator_t::_lazy_init(int area_idx)
     {
         if (ba->alloc_size == 0)
         {
-            size_t size = _compute_size(this->_memory_size_initial, this->_capacities[area_idx]);
+            size_t size = memory_size_compute(this->_memory_size_initial, this->_capacities[area_idx]);
             assert(this->_f_alloc);
 
             /* try to allocate device memory, halving the size on failure */

@@ -45,15 +45,6 @@
 
 XKRT_NAMESPACE_USE;
 
-/* static */ size_t
-freelist_allocator_t::_compute_size(const memory_size_t & ms, size_t capacity)
-{
-    if (ms.unit == XKRT_MEMORY_SIZE_UNIT_RELATIVE)
-        return (size_t) ((double)capacity * (double)ms.amount / (double)MEMORY_SIZE_TYPE_MAX);
-    else
-        return ms.amount;
-}
-
 freelist_allocator_t::freelist_allocator_t(
     memory_size_t                    memory_size_initial,
     memory_size_t                    memory_size_resize,
@@ -92,7 +83,7 @@ freelist_allocator_t::_add_backing_region(int area_idx)
         ? this->_memory_size_initial
         : this->_memory_size_resize;
 
-    size_t size = _compute_size(ms, this->_capacities[area_idx]);
+    size_t size = memory_size_compute(ms, this->_capacities[area_idx]);
     if (size == 0)
         return false;
 

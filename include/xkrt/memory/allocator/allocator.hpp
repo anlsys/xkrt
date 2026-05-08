@@ -108,6 +108,15 @@ class allocator_t
 
         virtual ~allocator_t() {}
 
+        static size_t
+        memory_size_compute(const memory_size_t & ms, size_t capacity)
+        {
+            if (ms.unit == XKRT_MEMORY_SIZE_UNIT_RELATIVE)
+                return (size_t) ((double)capacity * (double)ms.amount / (double)100.0);
+            else
+                return ms.amount;
+        }
+
         /**
          *  Allocate a chunk of at least 'size' bytes from the given area.
          *  On first call for a given area, lazily allocates backing device
