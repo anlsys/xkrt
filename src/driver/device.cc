@@ -48,13 +48,8 @@ XKRT_NAMESPACE_USE;
 void
 device_t::memory_reset_on(int area_idx)
 {
-    area_t * area = &(this->memories[area_idx].area);
-
-    # pragma message(TODO "This is leaking")
-    area_chunk_t * chunk0 = (area_chunk_t *) malloc(sizeof(area_chunk_t));
-    assert(chunk0);
-    memcpy(chunk0, &(area->chunk0), sizeof(area_chunk_t));
-    area->free_chunk_list = chunk0;
+    assert(this->allocator);
+    this->allocator->reset_on(area_idx);
 
     XKRT_STATS_INCR(this->stats.memory.freed, this->stats.memory.allocated.currently);
     XKRT_STATS_SET (this->stats.memory.allocated.currently, 0);
@@ -63,27 +58,11 @@ device_t::memory_reset_on(int area_idx)
 void
 device_t::memory_reset(void)
 {
-    for (int i = 0 ; i < this->nmemories ; ++i)
-        this->memory_reset_on(i);
-}
+    assert(this->allocator);
+    this->allocator->reset();
 
-void
-device_t::memory_set_chunk0(
-    uintptr_t ptr,
-    size_t size,
-    int area_idx
-) {
-    area_t * area = &(this->memories[area_idx].area);
-
-    area->chunk0.ptr         = ptr;
-    area->chunk0.size        = size;
-    area->chunk0.state       = XKRT_ALLOC_CHUNK_STATE_FREE;
-    area->chunk0.prev        = NULL;
-    area->chunk0.next        = NULL;
-    area->chunk0.freelink    = NULL;
-    area->chunk0.use_counter = 0;
-
-    this->memory_reset_on(area_idx);
+    XKRT_STATS_INCR(this->stats.memory.freed, this->stats.memory.allocated.currently);
+    XKRT_STATS_SET (this->stats.memory.allocated.currently, 0);
 }
 
 void
@@ -97,175 +76,32 @@ device_t::memory_deallocate_on(area_chunk_t * chunk, int area_idx)
 {
     assert(chunk->area_idx >= 0);
     assert(chunk->area_idx < this->nmemories);
-    area_t * area = &(this->memories[area_idx].area);
+    assert(this->allocator);
 
-    bool delete_chunk = false;
-    XKRT_MUTEX_LOCK(area->lock);
-    {
-        chunk->state = XKRT_ALLOC_CHUNK_STATE_FREE;
-        chunk->use_counter = 0;
+    size_t chunk_size = chunk->size;
+    this->allocator->deallocate_on(chunk, area_idx);
 
-        /* can we merge chunk into next_chunk ? */
-        area_chunk_t * next_chunk = chunk->next;
-        if (next_chunk && next_chunk->state == XKRT_ALLOC_CHUNK_STATE_FREE)
-        {
-            next_chunk->prev = chunk->prev;
-            if (chunk->prev)
-                chunk->prev->next = next_chunk;
-            next_chunk->size += chunk->size;
-            assert(next_chunk->ptr > chunk->ptr);
-            next_chunk->ptr = chunk->ptr;
-            delete_chunk = true;
-        }
-
-        area_chunk_t * prev_chunk = chunk->prev;
-        if (prev_chunk)
-        {
-            /*  if prev_chunk is a free chunk and 'delete_chunk' is true,
-             *  then we have to merge prev and next */
-            if (prev_chunk->state == XKRT_ALLOC_CHUNK_STATE_FREE)
-            {
-                if (delete_chunk)
-                {
-                    assert(prev_chunk->ptr < chunk->ptr);
-                    assert(prev_chunk->ptr < next_chunk->ptr);
-
-                    prev_chunk->size += next_chunk->size;
-                    prev_chunk->next = next_chunk->next;
-                    if (next_chunk->next)
-                        next_chunk->next->prev = prev_chunk;
-                    prev_chunk->freelink = next_chunk->freelink;
-                    free(next_chunk);
-                }
-                else
-                {
-                    /* merge chunk into prev_chunk */
-                    assert(prev_chunk->ptr < chunk->ptr);
-                    prev_chunk->next = chunk->next;
-                    if (chunk->next)
-                        chunk->next->prev = prev_chunk;
-                    prev_chunk->size += chunk->size;
-                    delete_chunk = true;
-                }
-            }
-            else if (!delete_chunk)
-            {
-                /* free_chunk_list is ordered by increasing adress: search form prev the previous bloc */
-                while (prev_chunk && prev_chunk->state != XKRT_ALLOC_CHUNK_STATE_FREE)
-                    prev_chunk = prev_chunk->prev;
-
-                if (!prev_chunk)
-                {
-                    chunk->freelink = area->free_chunk_list;
-                    area->free_chunk_list = chunk;
-                }
-                else
-                {
-                    chunk->freelink = prev_chunk->freelink;
-                    prev_chunk->freelink = chunk;
-                }
-            }
-        }
-        else if (!delete_chunk)
-        {
-            chunk->freelink = area->free_chunk_list;
-            area->free_chunk_list = chunk;
-        }
-    }
-    XKRT_MUTEX_UNLOCK(area->lock);
-
-    XKRT_STATS_INCR(this->stats.memory.freed, chunk->size);
-    XKRT_STATS_DECR(this->stats.memory.allocated.currently, chunk->size);
-
-    if (delete_chunk)
-        free(chunk);
+    XKRT_STATS_INCR(this->stats.memory.freed, chunk_size);
+    XKRT_STATS_DECR(this->stats.memory.allocated.currently, chunk_size);
 }
 
 area_chunk_t *
 device_t::memory_allocate_on(const size_t user_size, int area_idx)
 {
-    /* retrieve area */
     assert(area_idx >= 0);
     assert(area_idx < this->nmemories);
-    area_t * area = &(this->memories[area_idx].area);
+    assert(this->allocator);
 
-    /* align data */
     const size_t size = (user_size + 7UL) & ~7UL;
-    area_chunk_t * curr;
-
-    XKRT_MUTEX_LOCK(area->lock);
-    {
-        /* best fit strategy */
-        curr = area->free_chunk_list;
-
-        area_chunk_t * prevfree = NULL;
-        size_t min_size = 0;
-        area_chunk_t * min_size_curr = NULL;
-        area_chunk_t * min_size_prevfree = NULL;
-
-        while (curr)
-        {
-            size_t curr_size = curr->size;
-            if (curr_size >= size)
-            {
-                if ((min_size_curr == 0) || (min_size > curr_size))
-                {
-                    min_size = curr_size;
-                    min_size_curr = curr;
-                    min_size_prevfree = prevfree;
-                }
-            }
-            prevfree = curr;
-            curr = curr->freelink;
-        }
-
-        /* and the winner is min_size_curr ! */
-        curr = min_size_curr;
-        prevfree = min_size_prevfree;
-
-        /* split chunk */
-        if ((curr != NULL) && (min_size - size >= (size_t)(0.5*(double)size)))
-        {
-            size_t curr_size = curr->size;
-            area_chunk_t * remainder = (area_chunk_t *) malloc(sizeof(area_chunk_t));
-            remainder->ptr         = size + curr->ptr;
-            remainder->size        = (curr_size - size);
-            remainder->state       = XKRT_ALLOC_CHUNK_STATE_FREE;
-            remainder->use_counter = 0;
-            remainder->prev        = curr;
-            remainder->next        = curr->next;
-            remainder->freelink    = curr->freelink;
-
-            /* link remainder segment after curr */
-            if (curr->next)
-                curr->next->prev = remainder;
-            curr->next = remainder;
-            curr->size = size;
-            curr->freelink = remainder;
-        }
-
-        if (curr != NULL)
-        {
-            if (prevfree)
-                prevfree->freelink = curr->freelink;
-            else
-                area->free_chunk_list = curr->freelink;
-            curr->state = XKRT_ALLOC_CHUNK_STATE_ALLOCATED;
-            curr->freelink = NULL;
-        }
-    }
-
-    XKRT_MUTEX_UNLOCK(area->lock);
+    area_chunk_t * curr = this->allocator->allocate_on(user_size, area_idx);
 
     if (curr)
     {
-        curr->area_idx = area_idx;
         XKRT_STATS_INCR(this->stats.memory.allocated.total,       size);
         XKRT_STATS_INCR(this->stats.memory.allocated.currently,   size);
     }
 
     return curr;
-
 }
 
 area_chunk_t *

@@ -383,14 +383,6 @@ struct  runtime_t
     ///////////////////////
 
     /**
-     * @brief Ensure chunk0 is preallocated on the device
-     *
-     * @param device_unique_id Global device identifier
-     * @param memory_id Device memory index
-     */
-    void memory_device_preallocate_ensure(const device_unique_id_t device_unique_id, const int memory_id);
-
-    /**
      * @brief Allocate memory on a specific device memory bank
      *
      * @param device_unique_id Global device identifier
