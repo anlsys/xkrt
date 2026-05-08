@@ -106,11 +106,6 @@ class freelist_allocator_t : public allocator_t
          */
         void _free_area_chunks(int area_idx);
 
-        /**
-         *  Compute the byte size for a memory_size_t relative to a given capacity.
-         */
-        static size_t _compute_size(const memory_size_t & ms, size_t capacity);
-
     public:
         freelist_allocator_t(
             memory_size_t                    memory_size_initial,

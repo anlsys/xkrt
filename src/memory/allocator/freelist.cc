@@ -429,7 +429,7 @@ freelist_allocator_t::allocate_on(const size_t user_size, int area_idx)
         prevfree = min_size_prevfree;
 
         /* split chunk */
-        if ((curr != NULL) && (min_size - size >= (size_t)(0.5*(double)size)))
+        if ((curr != NULL) && (min_size - size >= size / 2))
         {
             size_t curr_size = curr->size;
             area_chunk_t * remainder = (area_chunk_t *) malloc(sizeof(area_chunk_t));

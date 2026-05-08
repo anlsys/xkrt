@@ -133,11 +133,6 @@ class buddy_allocator_t : public allocator_t
         void _free_bitmaps(int area_idx);
 
         /**
-         *  Compute the byte size for a memory_size_t relative to a given capacity.
-         */
-        static size_t _compute_size(const memory_size_t & ms, size_t capacity);
-
-        /**
          *  Round up to the next power of two.
          */
         static size_t _next_power_of_two(size_t v);
