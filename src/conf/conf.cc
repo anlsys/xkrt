@@ -40,10 +40,141 @@
 # include <xkrt/logger/logger.h>
 
 # include <assert.h>
+# include <ctype.h>
+# include <stdbool.h>
+# include <stdint.h>
+# include <stdio.h>
 # include <stdlib.h>
+# include <stdlib.h>
+# include <string.h>
 # include <string.h>
 
 XKRT_NAMESPACE_USE;
+
+typedef enum    xkrt_parse_status_t
+{
+    XKRT_PARSE_STATUS_SUCCESS = 0,
+    XKRT_PARSE_STATUS_ERROR_INVALID_FORMAT,
+    XKRT_PARSE_STATUS_ERROR_OUT_OF_RANGE,
+    XKRT_PARSE_STATUS_ERROR_OVERFLOW
+}               xkrt_parse_status_t;
+
+/**
+ * @brief Parses XKRT memory configuration strings.
+ * Supports absolute (e.g., "123mb", "2G", "1024") and relative ("50%").
+ * Units are case-insensitive.
+ */
+static xkrt_parse_status_t
+xkrt_parse_memory_size(
+    const char * str,
+    xkrt_memory_size_t * size
+) {
+    if (!str || !size)
+        return XKRT_PARSE_STATUS_ERROR_INVALID_FORMAT;
+
+    // 1. Skip leading whitespace
+    while (isspace((unsigned char)*str)) str++;
+    if (*str == '\0')
+        return XKRT_PARSE_STATUS_ERROR_INVALID_FORMAT;
+
+    char *endptr;
+
+    // 2. Relative Path Check
+    if (strchr(str, '%'))
+    {
+        double p = strtod(str, &endptr);
+        while (isspace((unsigned char)*endptr)) endptr++;
+        if (*endptr != '%') return XKRT_PARSE_STATUS_ERROR_INVALID_FORMAT;
+
+        // Constraint: p in [0..100]
+        if (p < 0.0 || p > 100.0) return XKRT_PARSE_STATUS_ERROR_OUT_OF_RANGE;
+
+        size->amount = (xkrt_memory_size_type_t) p;
+        size->unit = XKRT_MEMORY_SIZE_UNIT_RELATIVE;
+        return XKRT_PARSE_STATUS_SUCCESS;
+    }
+
+    // 3. Absolute Path
+    unsigned long long v = strtoull(str, &endptr, 10);
+    while (isspace((unsigned char)*endptr)) endptr++;
+
+    uint64_t multiplier = 1;
+    if (*endptr != '\0')
+    {
+        char u1 = (char)toupper((unsigned char)endptr[0]);
+        char u2 = (endptr[0] != '\0') ? (char)toupper((unsigned char)endptr[1]) : '\0';
+
+        switch (u1) {
+            case 'K': multiplier = 1024ULL; break;
+            case 'M': multiplier = 1024ULL * 1024; break;
+            case 'G': multiplier = 1024ULL * 1024 * 1024; break;
+            case 'T': multiplier = 1024ULL * 1024 * 1024 * 1024; break;
+            case 'B': multiplier = 1ULL; break;
+            default: return XKRT_PARSE_STATUS_ERROR_INVALID_FORMAT;
+        }
+
+        // Validate suffix: allows 'K' or 'KB', but not 'KX'
+        if (u2 != '\0' && !isspace((unsigned char)u2)) {
+            if (u2 != 'B') return XKRT_PARSE_STATUS_ERROR_INVALID_FORMAT;
+            // Check if there is a 3rd character that shouldn't be there (e.g., "GBX")
+            if (endptr[2] != '\0' && !isspace((unsigned char)endptr[2]))
+                return XKRT_PARSE_STATUS_ERROR_INVALID_FORMAT;
+        }
+    }
+
+    // 4. Overflow Check
+    if (multiplier > 0 && v > (uint64_t)-1 / multiplier)
+        return XKRT_PARSE_STATUS_ERROR_OVERFLOW;
+
+    size->amount = (xkrt_memory_size_type_t)(v * multiplier);
+    size->unit = XKRT_MEMORY_SIZE_UNIT_ABSOLUTE;
+    return XKRT_PARSE_STATUS_SUCCESS;
+}
+
+static void
+__parse_memory_size(
+    const char * str,
+    xkrt_memory_size_t * size
+) {
+    xkrt_parse_status_t status = xkrt_parse_memory_size(str, size);
+    switch (status)
+    {
+        case (XKRT_PARSE_STATUS_ERROR_INVALID_FORMAT):
+        {
+            LOGGER_FATAL("Memory size invalid format: %s", str);
+            break ;
+        }
+
+        case (XKRT_PARSE_STATUS_ERROR_OUT_OF_RANGE):
+        {
+            LOGGER_FATAL("Memory size out of range: %s", str);
+            break ;
+        }
+
+        case (XKRT_PARSE_STATUS_ERROR_OVERFLOW):
+        {
+            LOGGER_FATAL("Memory size overflows: %s", str);
+            break ;
+        }
+
+        default:
+            break ;
+    }
+}
+
+static void
+__parse_allocator_chunk_initial(conf_t * conf, char const * value)
+{
+    if (value)
+        __parse_memory_size(value, &conf->device.memory_size_initial);
+}
+
+static void
+__parse_allocator_chunk_resize(conf_t * conf, char const * value)
+{
+    if (value)
+        __parse_memory_size(value, &conf->device.memory_size_resize);
+}
 
 static void
 __parse_verbose(conf_t * conf, char const * value)
@@ -272,35 +403,37 @@ typedef struct  conf_parse_t
 
 // variables are parsed in-order
 static conf_parse_t CONF_PARSE[] = {
-    {"CACHE_LIMIT",                      NULL,                       NULL},
-    {"D2H_PER_QUEUE",                   __parse_d2h_per_queue,       "Number of concurrent copies per D2H queue before throttling device-thread"},
-    {"D2D_PER_QUEUE",                   __parse_d2d_per_queue,       "Number of concurrent copies per D2D queue before throttling device-thread"},
-    {"P2P_PER_QUEUE",                   __parse_p2p_per_queue,       "Number of concurrent copies per P2P queue before throttling device-thread"},
-    {"DEFAULT_MATH",                     NULL,                       NULL},
-    {"DRIVERS",                          __parse_drivers,            "Exemple: 'cuda,4;hip,2;host,3' - will enable drivers cuda, hip and host respectively with 4, 2, and 3 threads per device."},
-    {"GPU_MEM_PERCENT",                  __parse_gpu_mem_percent,    "%% of total memory to allocate initially per GPU (in ]0..100["},
-    {"H2D_PER_QUEUE",                   __parse_h2d_per_queue,     "Number of concurrent copies per H2D queue before throttling device-thread"},
-    {"HELP",                             __parse_help,               "Show this helper"},
-    {"KERN_PER_QUEUE",                  __parse_kern_per_queue,    "Number of concurrent kernels per KERN queue before throttling device-thread"},
-    {"MERGE_TRANSFERS",                  __parse_merge_transfers,    "Merge memory transfers over continuous virtual memory"},
-    {"NGPUS",                            __parse_ngpus,              "Number of gpus to use"},
-    {"MEMORY_REGISTER_PROTECT_OVERFLOW", __parse_register_overflow,  "Split memory transfers to avoid overflow over registered/unregistered memory that causes cuda to crash"},
-    {"PAUSE_PROGRESSION_THREADS",        __parse_pause_progress_th,  "When progression threads have nothing else to do but poll pending commands, put it to sleep until the completion of a random command of a random steam."},
-    {"BUSY_POLLING",                     __parse_busy_polling,       "Whether progression threads should pause when there is no tasks and no ready/pending commands"},
-    {"TASK_PREFETCH",                    __parse_task_prefetch,      "If enabled, after completing a task, initiate data transfers for all its WaR successors that place of execution is already known (else, transfers only starts once the successor is ready)."},
-    {"NQUEUES_D2H",                     __parse_nqueues_d2h,       "Number of D2H queues per device"},
-    {"NQUEUES_H2D",                     __parse_nqueues_h2d,       "Number of H2D queues per device"},
-    {"NQUEUES_D2D",                     __parse_nqueues_d2d,       "Number of D2D queues per device"},
-    {"NQUEUES_P2P",                     __parse_nqueues_p2p,       "Number of P2P queues per device"},
-    {"NQUEUES_KERN",                    __parse_nqueues_kern,      "Number of KERN queues per device"},
-    {"NQUEUES_FR",                      __parse_nqueues_fr,        "Number of FR queues per device"},
-    {"NQUEUES_FW",                      __parse_nqueues_fw,        "Number of FW queues per device"},
-    {"OFFLOADER_CAPACITY",              __parse_offloader_capacity, "Maximum number of pending commands per queue"},
-    {"PRECISION",                       NULL,                       NULL},
-    {"STATS",                           __parse_stats,              "Boolean to dump stats on deinit"},
-    {"USE_P2P",                         __parse_p2p,                "Boolean to enable/disable the use of p2p transfers"},
-    {"WARMUP",                          __parse_warmup,             "Boolean to enable/disable threads/devices warmup on runtime initialization"},
-    {"VERBOSE",                         __parse_verbose,            "Verbosity level (the higher the most)"},
+    {"CACHE_LIMIT",                      NULL,                              NULL},
+    {"D2H_PER_QUEUE",                    __parse_d2h_per_queue,             "Number of concurrent copies per D2H queue before throttling device-thread"},
+    {"D2D_PER_QUEUE",                    __parse_d2d_per_queue,             "Number of concurrent copies per D2D queue before throttling device-thread"},
+    {"P2P_PER_QUEUE",                    __parse_p2p_per_queue,             "Number of concurrent copies per P2P queue before throttling device-thread"},
+    {"DEFAULT_MATH",                     NULL,                              NULL},
+    {"DRIVERS",                          __parse_drivers,                   "Exemple: 'cuda,4;hip,2;host,3' - will enable drivers cuda, hip and host respectively with 4, 2, and 3 threads per device."},
+    {"GPU_MEM_PERCENT",                  __parse_gpu_mem_percent,           "%% of total memory to allocate initially per GPU (in ]0..100["},
+    {"ALLOCATOR_CHUNK_INITIAL",          __parse_allocator_chunk_initial,   "Size of the initial chunk of driver's memory for the allocator."},
+    {"ALLOCATOR_CHUNK_RESIZE",           __parse_allocator_chunk_resize,    "Size of chunks to use when re-allocating driver's memory."},
+    {"H2D_PER_QUEUE",                    __parse_h2d_per_queue,             "Number of concurrent copies per H2D queue before throttling device-thread"},
+    {"HELP",                             __parse_help,                      "Show this helper"},
+    {"KERN_PER_QUEUE",                   __parse_kern_per_queue,            "Number of concurrent kernels per KERN queue before throttling device-thread"},
+    {"MERGE_TRANSFERS",                  __parse_merge_transfers,           "Merge memory transfers over continuous virtual memory"},
+    {"NGPUS",                            __parse_ngpus,                     "Number of gpus to use"},
+    {"MEMORY_REGISTER_PROTECT_OVERFLOW", __parse_register_overflow,         "Split memory transfers to avoid overflow over registered/unregistered memory that causes cuda to crash"},
+    {"PAUSE_PROGRESSION_THREADS",        __parse_pause_progress_th,         "When progression threads have nothing else to do but poll pending commands, put it to sleep until the completion of a random command of a random steam."},
+    {"BUSY_POLLING",                     __parse_busy_polling,              "Whether progression threads should pause when there is no tasks and no ready/pending commands"},
+    {"TASK_PREFETCH",                    __parse_task_prefetch,           "If enabled, after completing a task, initiate data transfers for all its WaR successors that place of execution is already known (else, transfers only starts once the successor is ready)."},
+    {"NQUEUES_D2H",                      __parse_nqueues_d2h,               "Number of D2H queues per device"},
+    {"NQUEUES_H2D",                      __parse_nqueues_h2d,               "Number of H2D queues per device"},
+    {"NQUEUES_D2D",                      __parse_nqueues_d2d,               "Number of D2D queues per device"},
+    {"NQUEUES_P2P",                      __parse_nqueues_p2p,               "Number of P2P queues per device"},
+    {"NQUEUES_KERN",                     __parse_nqueues_kern,              "Number of KERN queues per device"},
+    {"NQUEUES_FR",                       __parse_nqueues_fr,                "Number of FR queues per device"},
+    {"NQUEUES_FW",                       __parse_nqueues_fw,                "Number of FW queues per device"},
+    {"OFFLOADER_CAPACITY",               __parse_offloader_capacity,        "Maximum number of pending commands per queue"},
+    {"PRECISION",                        NULL,                              NULL},
+    {"STATS",                            __parse_stats,                     "Boolean to dump stats on deinit"},
+    {"USE_P2P",                          __parse_p2p,                       "Boolean to enable/disable the use of p2p transfers"},
+    {"WARMUP",                           __parse_warmup,                    "Boolean to enable/disable threads/devices warmup on runtime initialization"},
+    {"VERBOSE",                          __parse_verbose,                   "Verbosity level (the higher the most)"},
     {NULL, NULL, NULL}
 };
 
@@ -367,7 +500,10 @@ conf_t::init(void)
     // set default conf
     this->report_stats_on_deinit                = 0;
     this->device.ngpus                          = (uint8_t)-1;
-    this->device.gpu_mem_percent                = (float) 90.0;
+    this->device.memory_size_initial.amount     = (memory_size_type_t) (0.90 * (double)MEMORY_SIZE_TYPE_MAX);
+    this->device.memory_size_initial.unit       = XKRT_MEMORY_SIZE_UNIT_RELATIVE;
+    this->device.memory_size_resize.amount      = 0;
+    this->device.memory_size_resize.unit        = XKRT_MEMORY_SIZE_UNIT_ABSOLUTE;
     this->device.use_p2p                        = true;
     this->merge_transfers                       = false;
     this->protect_registered_memory_overflow    = true;
@@ -390,6 +526,7 @@ conf_t::init(void)
     //////////////////
     //  KERNEL CONF //
     //////////////////
+
     this->device.offloader.capacity = 512;
 
     // set to -1 so the driver's queue-suggest API fills these values if not

@@ -48,6 +48,7 @@
 # include <xkrt/driver/queue-command-list-counter.h>
 # include <xkrt/driver/queue-type.h>
 # include <xkrt/driver/driver-type.h>
+# include <xkrt/memory/size.h>
 # include <xkrt/memory/access/blas/matrix-storage.h>
 # include <xkrt/memory/access/concurrency.h>
 # include <xkrt/memory/access/mode.h>
@@ -98,6 +99,10 @@ typedef xkrt_power_counter_t                    power_counter_t;
 typedef xkrt_power_t                            power_t;
 
 typedef xkrt_prog_launcher_t                    prog_launcher_t;
+
+typedef xkrt_memory_size_t                      memory_size_t;
+typedef xkrt_memory_size_unit_t                 memory_size_unit_t;
+typedef xkrt_memory_size_type_t                 memory_size_type_t;
 
 XKRT_NAMESPACE_END
 

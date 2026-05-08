@@ -72,10 +72,12 @@ typedef struct  conf_offloader_t
 
 typedef struct  conf_device_t
 {
-    float gpu_mem_percent;      /* % of gpu memory to allocate initially */
-    device_unique_id_t ngpus;   /* number of GPU for this node */
-    bool use_p2p;               /* enable/disable p2p */
-    conf_offloader_t offloader; /* offloader conf */
+    float gpu_mem_percent;              /* (deprecated) % of gpu memory to allocate initially */
+    device_unique_id_t ngpus;           /* number of gpus to use */
+    bool use_p2p;                       /* enable/disable p2p */
+    conf_offloader_t offloader;         /* offloader conf */
+    memory_size_t memory_size_initial;
+    memory_size_t memory_size_resize;
 }               conf_device_t;
 
 typedef struct  conf_driver_t
