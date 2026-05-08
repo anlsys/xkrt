@@ -63,7 +63,8 @@ runtime_t::memory_device_preallocate_ensure(
         {
             if ((volatile bool) device->memories[memory_id].allocated == false)
             {
-                const size_t size = (size_t) ((double)device->memories[memory_id].capacity * (double)(this->conf.device.gpu_mem_percent / 100.0));
+                const double percent = 90.0;
+                const size_t size = (size_t) ((double)device->memories[memory_id].capacity * (double)(percent / 100.0));
                 assert(driver->f_memory_device_allocate);
                 const void * device_ptr = driver->f_memory_device_allocate(device->driver_id, size, memory_id);
                 if (device_ptr == NULL)

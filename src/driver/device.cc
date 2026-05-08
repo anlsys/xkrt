@@ -75,13 +75,13 @@ device_t::memory_set_chunk0(
 ) {
     area_t * area = &(this->memories[area_idx].area);
 
-    area->chunk0.ptr            = ptr;
-    area->chunk0.size           = size;
-    area->chunk0.state          = XKRT_ALLOC_CHUNK_STATE_FREE;
-    area->chunk0.prev           = NULL;
-    area->chunk0.next           = NULL;
-    area->chunk0.freelink       = NULL;
-    area->chunk0.use_counter    = 0;
+    area->chunk0.ptr         = ptr;
+    area->chunk0.size        = size;
+    area->chunk0.state       = XKRT_ALLOC_CHUNK_STATE_FREE;
+    area->chunk0.prev        = NULL;
+    area->chunk0.next        = NULL;
+    area->chunk0.freelink    = NULL;
+    area->chunk0.use_counter = 0;
 
     this->memory_reset_on(area_idx);
 }

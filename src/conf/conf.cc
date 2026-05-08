@@ -314,13 +314,6 @@ __parse_ngpus(conf_t * conf, char const * value)
 }
 
 static void
-__parse_gpu_mem_percent(conf_t * conf, char const * value)
-{
-    if (value)
-        conf->device.gpu_mem_percent = (float) atof(value);
-}
-
-static void
 __parse_offloader_capacity(conf_t * conf, char const * value)
 {
     if (value)
@@ -441,7 +434,6 @@ static conf_parse_t CONF_PARSE[] = {
     {"P2P_PER_QUEUE",                    __parse_p2p_per_queue,             "Number of concurrent copies per P2P queue before throttling device-thread"},
     {"DEFAULT_MATH",                     NULL,                              NULL},
     {"DRIVERS",                          __parse_drivers,                   "Exemple: 'cuda,4;hip,2;host,3' - will enable drivers cuda, hip and host respectively with 4, 2, and 3 threads per device."},
-    {"GPU_MEM_PERCENT",                  __parse_gpu_mem_percent,           "%% of total memory to allocate initially per GPU (in ]0..100["},
     {"ALLOCATOR_TYPE",                   __parse_allocator_type,            "Either 'buddy' or 'freelist'"},
     {"ALLOCATOR_CHUNK_INITIAL",          __parse_allocator_chunk_initial,   "Size of the initial chunk of driver's memory for the allocator."},
     {"ALLOCATOR_CHUNK_RESIZE",           __parse_allocator_chunk_resize,    "Size of chunks to use when re-allocating driver's memory."},
