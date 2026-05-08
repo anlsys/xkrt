@@ -49,30 +49,6 @@
 
 XKRT_NAMESPACE_BEGIN
 
-/**
- *  XKRT allocators are overlay to driver's allocator.
- *  It can be seen as a memory pooling mechanism portable across vendors.
- *
- *  Internally, it allocates large chunks of virtual memory, and makes it resident.
- *  Then, it allocates sub-chunks in it, returned to the user.
- *
- *  You may configure the allocator through environment variables:
- *      `XKRT_ALLOCATOR_CHUNK_INITIAL=<chunk-size>` define the size of the initial memory chunk allocated.
- *      `XKRT_ALLOCATOR_CHUNK_RESIZE=<chunk-size>`  define the size to use when allocating new chunks.
- *
- *  with the following grammar
- *      <chunk-size> |= <integer> [ <unit> ]
- *      <unit>       |= "B" | "KB" | "MB" | "GB" | "TB" | "%"
- *
- *  Example
- *      XKRT_ALLOCATOR_CHUNK_INITIAL="1024"     # <=> 1 KB
- *      XKRT_ALLOCATOR_CHUNK_INITIAL="50%"      # 50% of the memory total capacity
- *      XKRT_ALLOCATOR_CHUNK_INITIAL="2GB"      # 2GB
- *
- *  If the driver allocation of a chunk fails, the size if reduced until finding an allocation that passes.
- *  If there is no sufficient memory, an OOM termination occurs.
- */
-
 void
 runtime_t::memory_device_preallocate_ensure(
     const device_unique_id_t device_unique_id,

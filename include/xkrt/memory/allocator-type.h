@@ -35,47 +35,14 @@
 ** knowledge of the CeCILL-C license and that you accept its terms.
 **/
 
-#ifndef __XKRT_AREA_H__
-# define __XKRT_AREA_H__
+#ifndef __XKRT_MEMORY_ALLOCATOR_TYPE_HPP__
+# define __XKRT_MEMORY_ALLOCATOR_TYPE_HPP__
 
-# include <xkrt/sync/mutex.h>
-
-///////////////////////////
-// Driver devices memory //
-///////////////////////////
-
-typedef enum    xkrt_area_chunk_state_t
+typedef enum    xkrt_memory_allocator_type_t
 {
-    XKRT_ALLOC_CHUNK_STATE_FREE       = 0,
-    XKRT_ALLOC_CHUNK_STATE_ALLOCATED  = 1,
+    XKRT_MEMORY_ALLOCATOR_TYPE_BUDDY,
+    XKRT_MEMORY_ALLOCATOR_TYPE_FREELIST
 
-}               xkrt_area_chunk_state_t;
+}               xkrt_memory_allocator_type_t;
 
-/**
- * Represent a segment of memory in device memory (used by custom allocator)
- * It is placed in two chained list:
- *  - the list of all chunk in device memory
- *  - the list of free chunk in device memory
-*/
-typedef struct  xkrt_area_chunk_t
-{
-    uintptr_t ptr;                          /* position of memory in device */
-    size_t size;                            /* size of the segment in byte */
-    int state;                              /* state of the chunk */
-    struct xkrt_area_chunk_t * prev;        /* previous chunk in double chained list */
-    struct xkrt_area_chunk_t * next;        /* next chunk in double chained list */
-    struct xkrt_area_chunk_t * freelink;    /* next freechunk in the chained list */
-    int use_counter;                        /* used in the memory-tree to count how many blocks relies on that allocation chunk */
-    int area_idx;                           /* memory area index in the device (TODO: bad design) */
-}               xkrt_area_chunk_t;
-
-/* The device memory with allocation information */
-typedef struct  xkrt_area_t
-{
-    xkrt_mutex_t lock;
-    xkrt_area_chunk_t chunk0;
-    xkrt_area_chunk_t * free_chunk_list;
-
-}               xkrt_area_t;
-
-#endif /* __XKRT_AREA_H__ */
+# endif /* __XKRT_MEMORY_ALLOCATOR_TYPE_HPP__ */

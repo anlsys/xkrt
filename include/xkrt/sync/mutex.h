@@ -35,24 +35,19 @@
 ** knowledge of the CeCILL-C license and that you accept its terms.
 **/
 
-#ifndef __MUTEX_H__
-# define __MUTEX_H__
+#ifndef __XKRT_MUTEX_H__
+# define __XKRT_MUTEX_H__
 
 # include <pthread.h>
 
-XKRT_NAMESPACE_BEGIN
-
-    typedef struct  mutex_t
-    {
-        pthread_mutex_t _pthread_mutex;
-
-    }               mutex_t;
-
-XKRT_NAMESPACE_END
+typedef struct  xkrt_mutex_t
+{
+    pthread_mutex_t _pthread_mutex;
+}               xkrt_mutex_t;
 
 # define XKRT_MUTEX_INITIALIZER { ._pthread_mutex=PTHREAD_MUTEX_INITIALIZER }
 # define XKRT_MUTEX_INIT(L) { L._pthread_mutex=PTHREAD_MUTEX_INITIALIZER; }
 # define XKRT_MUTEX_LOCK(L)   pthread_mutex_lock(&(L._pthread_mutex))
 # define XKRT_MUTEX_UNLOCK(L) pthread_mutex_unlock(&(L._pthread_mutex))
 
-#endif /* __MUTEX_H__ */
+#endif /* __XKRT_MUTEX_H__ */

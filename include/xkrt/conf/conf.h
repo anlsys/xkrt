@@ -76,8 +76,11 @@ typedef struct  conf_device_t
     device_unique_id_t ngpus;           /* number of gpus to use */
     bool use_p2p;                       /* enable/disable p2p */
     conf_offloader_t offloader;         /* offloader conf */
+
+    memory_allocator_type_t memory_allocator_type;
     memory_size_t memory_size_initial;
     memory_size_t memory_size_resize;
+
 }               conf_device_t;
 
 typedef struct  conf_driver_t

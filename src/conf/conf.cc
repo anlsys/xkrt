@@ -60,9 +60,27 @@ typedef enum    xkrt_parse_status_t
 }               xkrt_parse_status_t;
 
 /**
- * @brief Parses XKRT memory configuration strings.
- * Supports absolute (e.g., "123mb", "2G", "1024") and relative ("50%").
- * Units are case-insensitive.
+ *  XKRT allocators are overlay to driver's allocator.
+ *  It can be seen as a memory pooling mechanism portable across vendors.
+ *
+ *  Internally, it allocates large chunks of virtual memory, and makes it resident.
+ *  Then, it allocates sub-chunks in it, returned to the user.
+ *
+ *  You may configure the allocator through environment variables:
+ *      `XKRT_ALLOCATOR_CHUNK_INITIAL=<chunk-size>` define the size of the initial memory chunk allocated.
+ *      `XKRT_ALLOCATOR_CHUNK_RESIZE=<chunk-size>`  define the size to use when allocating new chunks.
+ *
+ *  with the following grammar
+ *      <chunk-size> |= <integer> [ <unit> ]
+ *      <unit>       |= "B" | "KB" | "MB" | "GB" | "TB" | "%"
+ *
+ *  Example
+ *      XKRT_ALLOCATOR_CHUNK_INITIAL="1024"     # <=> 1 KB
+ *      XKRT_ALLOCATOR_CHUNK_INITIAL="50%"      # 50% of the memory total capacity
+ *      XKRT_ALLOCATOR_CHUNK_INITIAL="2GB"      # 2GB
+ *
+ *  If the driver allocation of a chunk fails, the size if reduced until finding an allocation that passes.
+ *  If there is no sufficient memory, an OOM termination occurs.
  */
 static xkrt_parse_status_t
 xkrt_parse_memory_size(
@@ -174,6 +192,20 @@ __parse_allocator_chunk_resize(conf_t * conf, char const * value)
 {
     if (value)
         __parse_memory_size(value, &conf->device.memory_size_resize);
+}
+
+static void
+__parse_allocator_type(conf_t * conf, char const * value)
+{
+    if (value)
+    {
+        if (strcmp(value, "buddy") == 0)
+            conf->device.memory_allocator_type = XKRT_MEMORY_ALLOCATOR_TYPE_BUDDY;
+        else if (strcmp(value, "freelist") == 0)
+            conf->device.memory_allocator_type = XKRT_MEMORY_ALLOCATOR_TYPE_FREELIST;
+        else
+            LOGGER_FATAL("Invalid allocator type: %s", value);
+    }
 }
 
 static void
@@ -410,6 +442,7 @@ static conf_parse_t CONF_PARSE[] = {
     {"DEFAULT_MATH",                     NULL,                              NULL},
     {"DRIVERS",                          __parse_drivers,                   "Exemple: 'cuda,4;hip,2;host,3' - will enable drivers cuda, hip and host respectively with 4, 2, and 3 threads per device."},
     {"GPU_MEM_PERCENT",                  __parse_gpu_mem_percent,           "%% of total memory to allocate initially per GPU (in ]0..100["},
+    {"ALLOCATOR_TYPE",                   __parse_allocator_type,            "Either 'buddy' or 'freelist'"},
     {"ALLOCATOR_CHUNK_INITIAL",          __parse_allocator_chunk_initial,   "Size of the initial chunk of driver's memory for the allocator."},
     {"ALLOCATOR_CHUNK_RESIZE",           __parse_allocator_chunk_resize,    "Size of chunks to use when re-allocating driver's memory."},
     {"H2D_PER_QUEUE",                    __parse_h2d_per_queue,             "Number of concurrent copies per H2D queue before throttling device-thread"},
@@ -500,6 +533,7 @@ conf_t::init(void)
     // set default conf
     this->report_stats_on_deinit                = 0;
     this->device.ngpus                          = (uint8_t)-1;
+    this->device.memory_allocator_type          = XKRT_MEMORY_ALLOCATOR_TYPE_FREELIST;
     this->device.memory_size_initial.amount     = (memory_size_type_t) (0.90 * (double)MEMORY_SIZE_TYPE_MAX);
     this->device.memory_size_initial.unit       = XKRT_MEMORY_SIZE_UNIT_RELATIVE;
     this->device.memory_size_resize.amount      = 0;
