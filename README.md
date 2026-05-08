@@ -1,16 +1,19 @@
+[![Documentation](https://github.com/rpereira-dev/xkrt/actions/workflows/docs.yml/badge.svg)](https://rpereira-dev.github.io/xkrt/)
+
 # XKaapi Runtime (XKRT) - A parallel runtime system for macro-dataflow on multi-devices architectures.
 
-XKRT is a macro-dataflow and tasking runtime system for automating memory management alongside parallel execution. It provides portable abstraction for C, C++, Julia and partial support for BLAS and OpenMP.
+XKRT is a macro-dataflow and tasking runtime system for automating memory management alongside parallel execution.
+It provides portable abstraction for C, C++, Julia and partial support for BLAS and OpenMP.
 
 Please open any issue at https://github.com/rpereira-dev/xkrt
 
 # Related Projects
 This repository hosts the XKRT runtime system.    
 Other repository hosts specialization layers built on top of the runtime:
+- [Drava](https://github.com/anlsys/drava) is an event-driven programming model and runtime system, for real-time high-throughput data processing.
+- [XK.jl](https://github.com/anlsys/XK.jl) Julia bindings of XKRT and XKBlas
 - [XKBlas](https://gitlab.inria.fr/xkblas/dev/-/tree/v2.0) is a multi-gpu BLAS implementation that allows the tiling and composition of kernels, with asynchronous overlap of computation/transfers.
 - [XKOMP](https://github.com/anlsys/xkomp) is an experimental OpenMP runtime built on top of XKRT.
-- [XKBlas.jl](https://github.com/anlsys/XKBlas.jl) Julia bindings of XKBlas
-- [XKBM](https://github.com/anlsys/xkbm) is a suite of benchmark for measuring multi-gpu architectures performances, to assist in the design of runtime systems.
 
 [![XKRT software stack](docs/software-stack.png)](docs/software-stack.pdf)
 

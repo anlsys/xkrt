@@ -1,0 +1,91 @@
+# Doxyfile for XKRT Documentation
+# Run with: doxygen docs/Doxyfile
+
+PROJECT_NAME           = "XKRT"
+PROJECT_BRIEF          = "A parallel runtime system for macro-dataflow on multi-device architectures"
+PROJECT_NUMBER         =
+
+OUTPUT_DIRECTORY       = docs/generated
+CREATE_SUBDIRS         = NO
+
+# Use the repository README as the main page
+USE_MDFILE_AS_MAINPAGE = README.md
+
+# Input sources
+INPUT                  = README.md \
+                         docs/examples.md \
+                         docs/architecture.md \
+                         docs/building.md \
+                         include/xkrt/runtime.h \
+                         include/xkrt/consts.h \
+                         include/xkrt/types.h \
+                         include/xkrt/task/flag.h \
+                         include/xkrt/task/format.h \
+                         include/xkrt/task/state.h \
+                         include/xkrt/memory/access/mode.h \
+                         include/xkrt/memory/access/concurrency.h \
+                         include/xkrt/memory/access/scope.h \
+                         include/xkrt/memory/access/type.h \
+                         include/xkrt/driver/driver.h \
+                         include/xkrt/driver/driver-type.h \
+                         include/xkrt/distribution/distribution.h \
+                         api/c/include/xkrt/xkrt.h
+
+RECURSIVE              = NO
+FILE_PATTERNS          = *.h *.hpp *.md *.cc
+
+# Extraction settings
+EXTRACT_ALL            = YES
+EXTRACT_PRIVATE        = NO
+EXTRACT_STATIC         = YES
+
+# Markdown support
+MARKDOWN_SUPPORT       = YES
+AUTOLINK_SUPPORT       = YES
+
+# Output formats
+GENERATE_HTML          = YES
+GENERATE_LATEX         = NO
+GENERATE_MAN           = NO
+GENERATE_XML           = NO
+
+# HTML settings
+HTML_OUTPUT            = html
+HTML_EXTRA_FILES       = docs/software-stack.pdf \
+                         docs/software-stack.png
+HTML_EXTRA_STYLESHEET  = docs/custom.css
+IMAGE_PATH             = docs/ .
+HTML_COLORSTYLE_HUE    = 220
+HTML_COLORSTYLE_SAT    = 100
+HTML_COLORSTYLE_GAMMA  = 80
+HTML_DYNAMIC_SECTIONS  = YES
+DISABLE_INDEX          = NO
+GENERATE_TREEVIEW      = YES
+TREEVIEW_WIDTH         = 280
+
+# Source browsing
+SOURCE_BROWSER         = YES
+INLINE_SOURCES         = NO
+REFERENCED_BY_RELATION = YES
+REFERENCES_RELATION    = YES
+
+# Graph settings
+HAVE_DOT               = NO
+CLASS_DIAGRAMS         = YES
+
+# Preprocessing
+ENABLE_PREPROCESSING   = YES
+MACRO_EXPANSION        = YES
+PREDEFINED             = XKRT_NAMESPACE_BEGIN="namespace xkrt {" \
+                         XKRT_NAMESPACE_END="}" \
+                         XKRT_NAMESPACE_USE="using namespace xkrt;" \
+                         XKRT_SUPPORT_STATS=1 \
+                         XKRT_MEMORY_REGISTER_OVERFLOW_PROTECTION=1 \
+                         XKRT_MEMORY_REGISTER_ASSISTED=1
+
+# Warnings
+WARN_IF_UNDOCUMENTED   = NO
+WARN_IF_DOC_ERROR      = YES
+
+# Aliases for extra markdown pages
+ALIASES                =
