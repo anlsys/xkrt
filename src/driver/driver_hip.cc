@@ -646,8 +646,8 @@ XKRT_DRIVER_ENTRYPOINT(command_queue_launch)(
             hipMemoryType src_type, dst_type;
             void * src_host, * dst_host;
 
-            void * src = (void *) cmd->copy_2D.src_device_view.addr;
-            void * dst = (void *) cmd->copy_2D.dst_device_view.addr;
+            void * src = (void *) cmd->copy_2D.src_addr;
+            void * dst = (void *) cmd->copy_2D.dst_addr;
 
             switch (cmd->type)
             {
@@ -700,8 +700,8 @@ XKRT_DRIVER_ENTRYPOINT(command_queue_launch)(
                 }
             }
 
-            const size_t dpitch = cmd->copy_2D.dst_device_view.ld * cmd->copy_2D.sizeof_type;
-            const size_t spitch = cmd->copy_2D.src_device_view.ld * cmd->copy_2D.sizeof_type;
+            const size_t dpitch = cmd->copy_2D.dst_ld * cmd->copy_2D.sizeof_type;
+            const size_t spitch = cmd->copy_2D.src_ld * cmd->copy_2D.sizeof_type;
 
             const size_t width  = cmd->copy_2D.m * cmd->copy_2D.sizeof_type;
             const size_t height = cmd->copy_2D.n;
@@ -836,11 +836,7 @@ XKRT_DRIVER_ENTRYPOINT(command_queue_create)(
     command_queue_init(
         (command_queue_t *) queue,
         type,
-        capacity,
-        XKRT_DRIVER_ENTRYPOINT(command_queue_launch),
-        XKRT_DRIVER_ENTRYPOINT(command_queue_progress),
-        XKRT_DRIVER_ENTRYPOINT(command_queue_wait_all),
-        XKRT_DRIVER_ENTRYPOINT(command_queue_wait)
+        capacity
     );
 
     /*************************/
