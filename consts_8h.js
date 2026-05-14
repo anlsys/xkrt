@@ -1,0 +1,25 @@
+var consts_8h =
+[
+    [ "XKRT_COMMAND_CALLBACKS_MAX", "consts_8h.html#a406cefc2eef443d81de64b641e86d430", null ],
+    [ "XKRT_DEVICE_MEMORIES_MAX", "consts_8h.html#a6ec50d702241d793dba18dcca440d169", null ],
+    [ "XKRT_DEVICES_MASK_ALL", "consts_8h.html#ae084e38b901f799b81cda23d80bbee78", null ],
+    [ "XKRT_DEVICES_MAX", "consts_8h.html#a3b9b4350b6fc859cb2e801220b971357", null ],
+    [ "XKRT_DEVICES_PERF_RANK_MAX", "consts_8h.html#a9972d6748c63b59d24f11e57b7919baf", null ],
+    [ "XKRT_HOST_DEVICE_UNIQUE_ID", "consts_8h.html#a6334652f6015f04c9a783c0e3c10f1c3", null ],
+    [ "XKRT_IO_URING_DEPTH", "consts_8h.html#a57705918aa7c1297fe1b5cd4c9e38db6", null ],
+    [ "XKRT_MAX_THREADS_PER_DEVICE", "consts_8h.html#a5e6669aea0610344ed975fffd1660cf6", null ],
+    [ "XKRT_TASK_MAX_ACCESSES", "consts_8h.html#a10946f0fd956994fd881f173bb699c8b", null ],
+    [ "XKRT_TASK_RECORD_COMMAND_POOL_CHUNK_CAPACITY", "consts_8h.html#a900fd1cd192faccd4fe4bc8aedd7b7f1", null ],
+    [ "XKRT_TEAM_HIERARCHY_GROUP_SIZE", "consts_8h.html#acb01ebd7546879a5dcb51590cdfabe39", null ],
+    [ "XKRT_TEAM_MAX_THREADS", "consts_8h.html#a37dabb9e69b2508ad4b67b998382b95e", null ],
+    [ "XKRT_THREAD_MAX_MEMORY", "consts_8h.html#a183621680b764210661b39f0f9787a98", null ],
+    [ "XKRT_UNSPECIFIED_DEVICE_UNIQUE_ID", "consts_8h.html#af2cd8f3ada38f7b176dddecf63605ba1", null ],
+    [ "XKRT_UNSPECIFIED_TASK_ACCESS", "consts_8h.html#a00c5b3a42ffb2e7de9f3bc9960acafc9", null ],
+    [ "xkstatic_assert", "consts_8h.html#a7185ad36c9696600d2a335606a080528", null ],
+    [ "xkrt_command_callback_index_t", "consts_8h.html#a2839f1fff922b754fc3cc3857aa828c2", null ],
+    [ "xkrt_device_driver_id_t", "consts_8h.html#a098121d4ee40a66dd8dd6549fae6b791", null ],
+    [ "xkrt_device_unique_id_bitfield_t", "consts_8h.html#a5c42ea9c097e002433e9e5e0d38ed51a", null ],
+    [ "xkrt_device_unique_id_t", "consts_8h.html#a97ec6ee320a7dbcdf3b10fc83c6389b5", null ],
+    [ "xkrt_task_access_counter_t", "consts_8h.html#aae5f5d4f5dc21c5d08fcc17bb89f428f", null ],
+    [ "xkrt_task_wait_counter_type_t", "consts_8h.html#a26bb2955f2b3f3faa251f32f4dedcb16", null ]
+];

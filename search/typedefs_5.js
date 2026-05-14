@@ -1,0 +1,19 @@
+var searchData=
+[
+  ['task_5faccess_5fcounter_5ft_0',['task_access_counter_t',['../namespacexkrt.html#a7535f08cfb7c45101bc9f2eec32e6acc',1,'xkrt']]],
+  ['task_5faccesses_5fsetter_5ft_1',['task_accesses_setter_t',['../structxkrt_1_1runtime__t.html#a3c65166cb6913648afcc9eba67fcc46f',1,'xkrt::runtime_t']]],
+  ['task_5fflag_5fbitfield_5ft_2',['task_flag_bitfield_t',['../namespacexkrt.html#ad90aebe39bc0ce74286eefec4d60a52b',1,'xkrt']]],
+  ['task_5fflags_5ft_3',['task_flags_t',['../namespacexkrt.html#a37e2c7de5ef6749da77788c28bd21245',1,'xkrt']]],
+  ['task_5fformat_5ffunc_5ft_4',['task_format_func_t',['../namespacexkrt.html#af882df2d5daca214a1ee0ff469faba0b',1,'xkrt']]],
+  ['task_5fformat_5fid_5ft_5',['task_format_id_t',['../namespacexkrt.html#ac5665904139b045ce9567f00b2a5f341',1,'xkrt']]],
+  ['task_5fformat_5ft_6',['task_format_t',['../namespacexkrt.html#a0cc4de05d9ae3319a2f568a81d9f47a5',1,'xkrt']]],
+  ['task_5fformat_5ftarget_5ft_7',['task_format_target_t',['../namespacexkrt.html#a3cbdfc451bd31c7a842765dc8d63cd9a',1,'xkrt']]],
+  ['task_5fformats_5ft_8',['task_formats_t',['../namespacexkrt.html#a1cdb9f33008e46d69626a97c0813c88f',1,'xkrt']]],
+  ['task_5froutine_5ft_9',['task_routine_t',['../structxkrt_1_1runtime__t.html#aedaf8ce21fd9faa551e305e54980f22b',1,'xkrt::runtime_t']]],
+  ['task_5fsplit_5fcondition_5ft_10',['task_split_condition_t',['../structxkrt_1_1runtime__t.html#a3790fd79b1e3de2aecd41507626e4522',1,'xkrt::runtime_t']]],
+  ['task_5fstate_5ft_11',['task_state_t',['../namespacexkrt.html#afa77649ffa18ee246917a4f49aba82a7',1,'xkrt']]],
+  ['task_5fwait_5fcounter_5ft_12',['task_wait_counter_t',['../namespacexkrt.html#a947d96507f4781eb3d26a5d307125d79',1,'xkrt']]],
+  ['task_5fwait_5fcounter_5ftype_5ft_13',['task_wait_counter_type_t',['../namespacexkrt.html#acd6ba601068492c492b7e880a2c9c9bf',1,'xkrt']]],
+  ['team_5fparallel_5ffor_5ffunc_5ft_14',['team_parallel_for_func_t',['../structxkrt_1_1runtime__t.html#a46724d62978b9310f2bc26aee79819f1',1,'xkrt::runtime_t']]],
+  ['team_5fparallel_5ffor_5fi_5ffunc_5ft_15',['team_parallel_for_i_func_t',['../structxkrt_1_1runtime__t.html#ad8a3aa144b983f349ef9aa8b18c5b6cd',1,'xkrt::runtime_t']]]
+];

@@ -1,0 +1,23 @@
+var searchData=
+[
+  ['xkrt_5fcommand_5fcallbacks_5fmax_0',['XKRT_COMMAND_CALLBACKS_MAX',['../consts_8h.html#a406cefc2eef443d81de64b641e86d430',1,'consts.h']]],
+  ['xkrt_5fdevice_5fmemories_5fmax_1',['XKRT_DEVICE_MEMORIES_MAX',['../consts_8h.html#a6ec50d702241d793dba18dcca440d169',1,'consts.h']]],
+  ['xkrt_5fdevices_5fmask_5fall_2',['XKRT_DEVICES_MASK_ALL',['../consts_8h.html#ae084e38b901f799b81cda23d80bbee78',1,'consts.h']]],
+  ['xkrt_5fdevices_5fmax_3',['XKRT_DEVICES_MAX',['../consts_8h.html#a3b9b4350b6fc859cb2e801220b971357',1,'consts.h']]],
+  ['xkrt_5fdevices_5fperf_5frank_5fmax_4',['XKRT_DEVICES_PERF_RANK_MAX',['../consts_8h.html#a9972d6748c63b59d24f11e57b7919baf',1,'consts.h']]],
+  ['xkrt_5fhost_5fdevice_5funique_5fid_5',['XKRT_HOST_DEVICE_UNIQUE_ID',['../consts_8h.html#a6334652f6015f04c9a783c0e3c10f1c3',1,'consts.h']]],
+  ['xkrt_5fio_5furing_5fdepth_6',['XKRT_IO_URING_DEPTH',['../consts_8h.html#a57705918aa7c1297fe1b5cd4c9e38db6',1,'consts.h']]],
+  ['xkrt_5fmax_5fthreads_5fper_5fdevice_7',['XKRT_MAX_THREADS_PER_DEVICE',['../consts_8h.html#a5e6669aea0610344ed975fffd1660cf6',1,'consts.h']]],
+  ['xkrt_5ftask_5fformat_5fmax_8',['XKRT_TASK_FORMAT_MAX',['../format_8h.html#a320e2fc97d3ccd2438dd1f07660fbacc',1,'format.h']]],
+  ['xkrt_5ftask_5fformat_5fnull_9',['XKRT_TASK_FORMAT_NULL',['../format_8h.html#a6d33b3b1e6d474fdce883bc15e7aba5b',1,'format.h']]],
+  ['xkrt_5ftask_5fformat_5ftarget_5fno_5fsuggest_10',['XKRT_TASK_FORMAT_TARGET_NO_SUGGEST',['../format_8h.html#a0ec6c17568c7d5a853f8bdc064c150a8',1,'format.h']]],
+  ['xkrt_5ftask_5fmax_5faccesses_11',['XKRT_TASK_MAX_ACCESSES',['../consts_8h.html#a10946f0fd956994fd881f173bb699c8b',1,'consts.h']]],
+  ['xkrt_5ftask_5frecord_5fcommand_5fpool_5fchunk_5fcapacity_12',['XKRT_TASK_RECORD_COMMAND_POOL_CHUNK_CAPACITY',['../consts_8h.html#a900fd1cd192faccd4fe4bc8aedd7b7f1',1,'consts.h']]],
+  ['xkrt_5fteam_5fhierarchy_5fgroup_5fsize_13',['XKRT_TEAM_HIERARCHY_GROUP_SIZE',['../consts_8h.html#acb01ebd7546879a5dcb51590cdfabe39',1,'consts.h']]],
+  ['xkrt_5fteam_5fmax_5fthreads_14',['XKRT_TEAM_MAX_THREADS',['../consts_8h.html#a37dabb9e69b2508ad4b67b998382b95e',1,'consts.h']]],
+  ['xkrt_5fteam_5froutine_5fparallel_5ffor_15',['XKRT_TEAM_ROUTINE_PARALLEL_FOR',['../runtime_8h.html#aa26a233462efd5babbdb780d085fd0ae',1,'runtime.h']]],
+  ['xkrt_5fthread_5fmax_5fmemory_16',['XKRT_THREAD_MAX_MEMORY',['../consts_8h.html#a183621680b764210661b39f0f9787a98',1,'consts.h']]],
+  ['xkrt_5funspecified_5fdevice_5funique_5fid_17',['XKRT_UNSPECIFIED_DEVICE_UNIQUE_ID',['../consts_8h.html#af2cd8f3ada38f7b176dddecf63605ba1',1,'consts.h']]],
+  ['xkrt_5funspecified_5ftask_5faccess_18',['XKRT_UNSPECIFIED_TASK_ACCESS',['../consts_8h.html#a00c5b3a42ffb2e7de9f3bc9960acafc9',1,'consts.h']]],
+  ['xkstatic_5fassert_19',['xkstatic_assert',['../consts_8h.html#a7185ad36c9696600d2a335606a080528',1,'consts.h']]]
+];

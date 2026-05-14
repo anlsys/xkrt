@@ -1,0 +1,20 @@
+var searchData=
+[
+  ['xkrt_5fdistribution_5ftype_5fcyclic1d_0',['XKRT_DISTRIBUTION_TYPE_CYCLIC1D',['../namespacexkrt.html#a4ffa74150286e0bf3cc14aeef0c20991a92af16ce43434c9f03a9a436d5e65a45',1,'xkrt']]],
+  ['xkrt_5fdistribution_5ftype_5fcyclic2d_1',['XKRT_DISTRIBUTION_TYPE_CYCLIC2D',['../namespacexkrt.html#a4ffa74150286e0bf3cc14aeef0c20991a9a51e09e5eb952c37990f075c49f0e03',1,'xkrt']]],
+  ['xkrt_5fdistribution_5ftype_5fcyclic2dblock_2',['XKRT_DISTRIBUTION_TYPE_CYCLIC2DBLOCK',['../namespacexkrt.html#a4ffa74150286e0bf3cc14aeef0c20991aa4ea8046c92cab6b68fdb1f49330b944',1,'xkrt']]],
+  ['xkrt_5fdriver_5ftype_5fcl_3',['XKRT_DRIVER_TYPE_CL',['../driver-type_8h.html#af236039d4eac12c454238e2651925dcba764de9527023b26a426e440c94a418ae',1,'driver-type.h']]],
+  ['xkrt_5fdriver_5ftype_5fcuda_4',['XKRT_DRIVER_TYPE_CUDA',['../driver-type_8h.html#af236039d4eac12c454238e2651925dcba64d0d94b0c3020695310064af2d8d833',1,'driver-type.h']]],
+  ['xkrt_5fdriver_5ftype_5fhip_5',['XKRT_DRIVER_TYPE_HIP',['../driver-type_8h.html#af236039d4eac12c454238e2651925dcbad1971f13a324c28eeb34138730a2b568',1,'driver-type.h']]],
+  ['xkrt_5fdriver_5ftype_5fhost_6',['XKRT_DRIVER_TYPE_HOST',['../driver-type_8h.html#af236039d4eac12c454238e2651925dcbace5b893983926c762b4b08be215ed2b1',1,'driver-type.h']]],
+  ['xkrt_5fdriver_5ftype_5fmax_7',['XKRT_DRIVER_TYPE_MAX',['../driver-type_8h.html#af236039d4eac12c454238e2651925dcbaf09fce94afed2573c90f68ada96aa16d',1,'driver-type.h']]],
+  ['xkrt_5fdriver_5ftype_5fsycl_8',['XKRT_DRIVER_TYPE_SYCL',['../driver-type_8h.html#af236039d4eac12c454238e2651925dcbaa4eee0e51ecbf07026b7b2ab97c5fc50',1,'driver-type.h']]],
+  ['xkrt_5fdriver_5ftype_5fze_9',['XKRT_DRIVER_TYPE_ZE',['../driver-type_8h.html#af236039d4eac12c454238e2651925dcbadcf47e0e07675af929e1466227db08c8',1,'driver-type.h']]],
+  ['xkrt_5ftask_5fformat_5ftarget_5fcl_10',['XKRT_TASK_FORMAT_TARGET_CL',['../format_8h.html#aa43a211f50b205f8445e18ec09f4266eabcdcca1941d0b6aa65c244ab6fe82942',1,'format.h']]],
+  ['xkrt_5ftask_5fformat_5ftarget_5fcuda_11',['XKRT_TASK_FORMAT_TARGET_CUDA',['../format_8h.html#aa43a211f50b205f8445e18ec09f4266eae665cc27248b6c2a4f6d2a3a4f244452',1,'format.h']]],
+  ['xkrt_5ftask_5fformat_5ftarget_5fhip_12',['XKRT_TASK_FORMAT_TARGET_HIP',['../format_8h.html#aa43a211f50b205f8445e18ec09f4266ea88fa82c07a16c53e5ab6b42cb168da4f',1,'format.h']]],
+  ['xkrt_5ftask_5fformat_5ftarget_5fhost_13',['XKRT_TASK_FORMAT_TARGET_HOST',['../format_8h.html#aa43a211f50b205f8445e18ec09f4266ea5497dca7e49a9516348d54d72306b40c',1,'format.h']]],
+  ['xkrt_5ftask_5fformat_5ftarget_5fmax_14',['XKRT_TASK_FORMAT_TARGET_MAX',['../format_8h.html#aa43a211f50b205f8445e18ec09f4266ea1d37fdb431cd423b684f2021ac327dd6',1,'format.h']]],
+  ['xkrt_5ftask_5fformat_5ftarget_5fsycl_15',['XKRT_TASK_FORMAT_TARGET_SYCL',['../format_8h.html#aa43a211f50b205f8445e18ec09f4266ea55058e9dc26fbec44979f9f8c741d5d3',1,'format.h']]],
+  ['xkrt_5ftask_5fformat_5ftarget_5fze_16',['XKRT_TASK_FORMAT_TARGET_ZE',['../format_8h.html#aa43a211f50b205f8445e18ec09f4266ea79fea822e54f359f462c243193dbc768',1,'format.h']]]
+];
