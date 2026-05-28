@@ -128,12 +128,12 @@ set(XKRT_TARGETS ${XKRT})
 
 # OpenCG
 
-# find_package(OpenCG REQUIRED)
-# target_link_libraries(${XKRT} PRIVATE OpenCG::opencg)
+find_package(OpenCG REQUIRED)
+target_link_libraries(${XKRT} PUBLIC OpenCG::opencg)
 
-add_subdirectory(opencg/)
-target_link_libraries(${XKRT} PUBLIC opencg)
-include_directories(${CMAKE_SOURCE_DIR}/opencg/include/)
+# add_subdirectory(opencg/)
+# target_link_libraries(${XKRT} PUBLIC opencg)
+# include_directories(${CMAKE_SOURCE_DIR}/opencg/include/)
 
 # PTHREAD
 set(THREADS_PREFER_PTHREAD_FLAG ON)
