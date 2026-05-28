@@ -621,7 +621,7 @@ runtime_t::task_wait(void)
         task_t * task = thread->worksteal();
         if (task)
         {
-            task_execute(this, NULL, task);
+            task_fetch_execute(this, NULL, task);
             backoff = initial_backoff;
             continue ;
         }
@@ -661,7 +661,7 @@ runtime_t::team_barrier(
                 task_t * task = thread->worksteal();
                 if (task)
                 {
-                    task_execute(this, NULL, task);
+                    task_fetch_execute(this, NULL, task);
                     continue ;
                 }
             }

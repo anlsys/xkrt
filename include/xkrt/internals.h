@@ -103,6 +103,12 @@ void task_execute(
     task_t * task
 );
 
+void task_fetch_execute(
+    runtime_t * runtime,
+    device_t * device,
+    task_t * task
+);
+
 /**
  * @brief Arguments passed to device team threads during creation
  */
