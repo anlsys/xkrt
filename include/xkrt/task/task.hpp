@@ -121,6 +121,11 @@ typedef struct  task_t
 typedef struct  task_acs_info_t
 {
     /*
+     * The team that spawned this task, so it can be pushed to it when ready
+     */
+    void * spawning_thread;
+
+    /*
      * wait counter
      * - if dependent task, it may be scheduled once it reached 0
      * - if detachable task, it is completed when it reached 2
@@ -131,7 +136,8 @@ typedef struct  task_acs_info_t
     task_access_counter_t ac;
 
     /* constructor, wc is initially '1' as task must be commited */
-    task_acs_info_t(task_access_counter_t ac) : wc(1), ac(ac) {}
+    task_acs_info_t(void * thread, task_access_counter_t ac) : spawning_thread(thread), wc(1), ac(ac) {}
+    task_acs_info_t(task_access_counter_t ac) : task_acs_info_t(NULL, ac) {}
 
 }               task_acs_info_t;
 

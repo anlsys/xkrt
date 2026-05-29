@@ -109,27 +109,6 @@ task_format_target_to_driver_type(task_format_target_t fmt)
 /////////////////////
 
 static inline void
-runtime_task_enqueue_host(
-    runtime_t * runtime,
-    task_t * task
-) {
-    thread_t * tls = thread_t::get_tls();
-    assert(tls);
-
-    // tls->team == NULL means it come from a user-thread, unknown to kaapi
-    // tls->device_unique_id != XKRT_DRIVER_TYPE_HOST means it is a kaapi thread, but not a host thread
-    if (tls->team == NULL || tls->device_unique_id != XKRT_HOST_DEVICE_UNIQUE_ID)
-    {
-        device_t * device = runtime->device_get(XKRT_HOST_DEVICE_UNIQUE_ID);
-        runtime->task_team_enqueue(device->team, task);
-    }
-    else
-    {
-        runtime->task_thread_enqueue(tls, task);
-    }
-}
-
-static inline void
 runtime_task_enqueue_device(
     runtime_t * runtime,
     task_t * task
@@ -246,10 +225,25 @@ runtime_task_enqueue(
 
     /* if the task is flagged, then schedule it onto an implicit team of threads */
     if (task->flags & TASK_FLAG_DEVICE)
-        runtime_task_enqueue_device(runtime, task);
-    /* else, submit it whether to the host implicit team, or to the currently executing team */
-    else
-        runtime_task_enqueue_host(runtime, task);
+        return runtime_task_enqueue_device(runtime, task);
+
+    /* If the task has accesses, maybe it became ready from the completion of one of its predecessor.
+     * Then, check if the task had a team assigned, and scheduled to it in such case */
+    if (task->flags & TASK_FLAG_ACCESSES)
+    {
+        task_acs_info_t * acs = TASK_ACS_INFO(task);
+        assert(acs);
+        if (acs->spawning_thread)
+        {
+            team_t * team = ((thread_t *) acs->spawning_thread)->team;
+            return runtime->task_team_enqueue(team, task);
+        }
+    }
+
+    /* else, enqueue to the current thread */
+    thread_t * tls = thread_t::get_tls();
+    assert(tls);
+    return runtime->task_thread_enqueue(tls, task);
 }
 
 /**
@@ -261,8 +255,6 @@ runtime_t::task_enqueue(task_t * task)
 {
     runtime_task_enqueue(this, task);
 }
-
-
 
 static inline
 device_unique_id_t
