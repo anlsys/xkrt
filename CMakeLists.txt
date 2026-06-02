@@ -83,6 +83,7 @@ SET(SOURCE_FILES
     ${CMAKE_SOURCE_DIR}/src/memory.cc
     ${CMAKE_SOURCE_DIR}/src/memory/access.cc
     ${CMAKE_SOURCE_DIR}/src/memory/access/handle/dependency-map.cc
+    ${CMAKE_SOURCE_DIR}/src/memory/access/interval/dependency-tree.cc
     ${CMAKE_SOURCE_DIR}/src/memory/allocator/buddy.cc
     ${CMAKE_SOURCE_DIR}/src/memory/allocator/freelist.cc
     ${CMAKE_SOURCE_DIR}/src/memory/coherent.cc
