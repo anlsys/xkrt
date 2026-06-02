@@ -235,7 +235,7 @@ IntervalDependencyTree::on_insert(
                 node->last_seq_write = search.access;
             }
         }
-        else if (search.access->mode == ACCESS_MODE_R)
+        else if (search.access->mode & ACCESS_MODE_R)
             node->last_seq_reads.push_back(search.access);
     }
 }
