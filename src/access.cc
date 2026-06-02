@@ -274,7 +274,7 @@ task_dependency_resolve_do(
                     dom->deps.interval = new IntervalDependencyTree();
 
                 if constexpr (action == LINK)
-                    ((IntervalDependencyTree *) dom->deps.interval)->link(access);
+                    ((IntervalDependencyTree *) dom->deps.interval)->link(runtime, access);
                 else if constexpr(action == PUT)
                     ((IntervalDependencyTree *) dom->deps.interval)->put(access);
 

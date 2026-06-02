@@ -50,8 +50,8 @@ IntervalDependencyTreeNode::IntervalDependencyTreeNode(
     const Color color
 ) :
     Base(h, k, color),
-    last_reads(),
-    last_write(),
+    last_seq_reads(),
+    last_seq_write(),
     nwrites(0)
 {}
 
@@ -62,18 +62,19 @@ IntervalDependencyTreeNode::IntervalDependencyTreeNode(
     const Node * inherit
 ) :
     Base(h, k, color),
-    last_reads(),
-    last_write(),
+    last_seq_reads(),
+    last_seq_write(),
     nwrites(0)
 {
-    this->last_write = inherit->last_write;
-    this->last_reads.insert(inherit->last_reads);
+    this->last_seq_write = inherit->last_seq_write;
+    this->last_seq_reads.insert(inherit->last_seq_reads);
+    this->last_conc_writes.insert(inherit->last_conc_writes);
 }
 
 void
 IntervalDependencyTreeNode::update_includes_nwrites(void)
 {
-    this->nwrites = this->last_write ? 1 : 0;
+    this->nwrites = (this->last_seq_write ? 1 : 0) + this->last_conc_writes.size();
     FOREACH_CHILD_BEGIN(this, child, k, dir)
     {
         this->nwrites += child->nwrites;
@@ -92,7 +93,10 @@ void
 IntervalDependencyTreeNode::dump_str(FILE * f) const
 {
     Base::dump_str(f);
-    fprintf(f, "\\nreads=%d\\nwrites=%d", this->last_reads.size(), this->last_write->task ? 1 : 0);
+    fprintf(f, "\\nreads=%d\\nseq_write=%d\\nconc_writes=%d",
+        this->last_seq_reads.size(),
+        this->last_seq_write ? 1 : 0,
+        this->last_conc_writes.size());
 }
 
 void
@@ -100,10 +104,13 @@ IntervalDependencyTreeNode::dump_hyperrect_str(FILE * f) const
 {
     Base::dump_hyperrect_str(f);
 
-    fprintf(f, "\\\\ reads=%d \\\\ writes=%d", this->last_reads.size(), this->last_write->task ? 1 : 0);
+    fprintf(f, "\\\\ reads=%d \\\\ seq_write=%d \\\\ conc_writes=%d",
+        this->last_seq_reads.size(),
+        this->last_seq_write ? 1 : 0,
+        this->last_conc_writes.size());
     fprintf(f, "\\\\ nwrites = %d ", this->nwrites);
     fprintf(f, "\\\\ reads = [ ");
-    for (const access_t * access : this->last_reads)
+    for (const access_t * access : this->last_seq_reads)
         fprintf(f, "%p ", access->task);
     fprintf(f, "]");
 }
@@ -111,6 +118,97 @@ IntervalDependencyTreeNode::dump_hyperrect_str(FILE * f) const
 ///////////////////////////////////////
 // IntervalDependencyTree            //
 ///////////////////////////////////////
+
+static inline void
+insert_empty_write(
+    IntervalDependencyTree * tree,
+    runtime_t * runtime,
+    access_t * access
+) {
+    // create the empty task node
+    thread_t * thread = thread_t::get_tls();
+    assert(thread);
+
+    constexpr task_format_id_t fmtid = XKRT_TASK_FORMAT_NULL;
+    constexpr task_flag_bitfield_t flags = TASK_FLAG_ACCESSES;
+    constexpr void * args = NULL;
+    constexpr size_t args_size = 0;
+    constexpr int AC = 1;
+
+    task_t * extra = runtime->task_new(fmtid, flags, args, args_size, AC);
+
+    task_acs_info_t * acs = TASK_ACS_INFO(extra);
+    assert(acs);
+    new (acs) task_acs_info_t(AC);
+
+    # if XKRT_SUPPORT_DEBUG
+    snprintf(extra->label, sizeof(extra->label), "cw-empty-node");
+    # endif
+
+    access_t * accesses = TASK_ACCESSES(extra);
+    assert(accesses);
+    {
+        constexpr access_mode_t         mode        = ACCESS_MODE_VW;
+        constexpr access_concurrency_t  concurrency = ACCESS_CONCURRENCY_SEQUENTIAL;
+        constexpr access_scope_t        scope       = ACCESS_SCOPE_NONUNIFIED;
+        new (accesses + 0) access_t(
+            extra,
+            (uintptr_t) access->host_view.addr,
+            (uintptr_t) access->host_view.addr + access->host_view.m,
+            mode, concurrency, scope
+        );
+    }
+
+    // TODO : bellow are really ugly implementation hacks
+    // maybe refactor the code to go through the traditionnal runtime routines
+    tree->link(runtime, accesses + 0);
+
+    if (acs->wc.fetch_sub(1, std::memory_order_seq_cst) == 1)
+    {
+        // all predecessors completed already, we can skip that empty node
+    }
+    else
+    {
+        assert(thread->current_task);
+        extra->parent = thread->current_task;
+        ++thread->current_task->cc;
+
+        tree->put(accesses + 0);
+    }
+}
+
+# if XKRT_SUPPORT_STATS
+static inline int
+__dependency_tree_access_precedes(
+    runtime_t * runtime,
+    access_t * pred,
+    access_t * succ
+) {
+    int r = __access_precedes(pred, succ);
+
+    switch (r)
+    {
+        case (XKRT_TASK_DEPENDENCE_ALREADY_SET):
+        case (XKRT_TASK_DEPENDENCE_SKIPPED):
+        {
+            XKRT_STATS_INCR(runtime->stats.edges.skipped, 1);
+            break ;
+        }
+
+        case (XKRT_TASK_DEPENDENCE_SET):
+        {
+            XKRT_STATS_INCR(runtime->stats.edges.set, 1);
+            break ;
+        }
+
+        default:
+            break ;
+    }
+    return r;
+}
+# else /* XKRT_SUPPORT_STATS */
+#  define __dependency_tree_access_precedes(runtime, pred, succ) __access_precedes(pred, succ)
+# endif /* XKRT_SUPPORT_STATS */
 
 void
 IntervalDependencyTree::on_insert(
@@ -126,11 +224,19 @@ IntervalDependencyTree::on_insert(
     {
         if (search.access->mode & ACCESS_MODE_W)
         {
-            node->last_reads.clear();
-            node->last_write = search.access;
+            if (search.access->concurrency == ACCESS_CONCURRENCY_CONCURRENT)
+            {
+                node->last_conc_writes.push_back(search.access);
+            }
+            else
+            {
+                node->last_seq_reads.clear();
+                node->last_conc_writes.clear();
+                node->last_seq_write = search.access;
+            }
         }
         else if (search.access->mode == ACCESS_MODE_R)
-            node->last_reads.push_back(search.access);
+            node->last_seq_reads.push_back(search.access);
     }
 }
 
@@ -180,7 +286,20 @@ IntervalDependencyTree::intersect_stop_test(
     assert(node);
 
     assert(search.access);
-    return (search.access->mode == ACCESS_MODE_R) && (node->nwrites == 0);
+
+    switch (search.type)
+    {
+        case (Search::Type::SEARCH_TYPE_RESOLVE):
+            return (search.access->mode == ACCESS_MODE_R) && (node->nwrites == 0);
+
+        case (Search::Type::SEARCH_TYPE_NEEDS_EMPTY_WRITE):
+            // stop early if we already found a node that needs the empty write
+            return search.needs_empty_write;
+
+        default:
+            assert(0);
+            return false;
+    }
 }
 
 void
@@ -199,11 +318,65 @@ IntervalDependencyTree::on_intersect(
     {
         case (Search::Type::SEARCH_TYPE_RESOLVE):
         {
-            if ((search.access->mode & ACCESS_MODE_W) && node->last_reads.size())
-                for (access_t * pred : node->last_reads)
-                    __access_precedes(pred, search.access);
-            else if (node->last_write)
-                __access_precedes(node->last_write, search.access);
+            runtime_t * runtime = search.runtime;
+            access_t * access = search.access;
+
+            //  access type         depend on
+            //  SEQ-R               SEQ-W, CNC-W
+            //  CNC-W               SEQ-R, SEQ-W
+            //  SEQ-W               SEQ-R, SEQ-W, CNC-W
+
+            // the access depends on previous SEQ-R
+            if (node->last_seq_reads.size() && (access->mode & ACCESS_MODE_W))
+            {
+                for (access_t * pred : node->last_seq_reads)
+                    __dependency_tree_access_precedes(runtime, pred, access);
+            }
+
+            // the access depends on previous CNC-W
+            if (node->last_conc_writes.size() && access->concurrency != ACCESS_CONCURRENCY_CONCURRENT)
+            {
+                for (access_t * pred : node->last_conc_writes)
+                    __dependency_tree_access_precedes(runtime, pred, access);
+            }
+
+            // the access depends on previous SEQ-W
+            if (node->last_seq_write)
+            {
+                // if we already set edges from SEQ-R or CNC-W, the edge
+                // from SEQ-W is already transitively covered when the
+                // access is a SEQ-W; but for SEQ-R and CNC-W, we still
+                // need the direct edge
+                bool seq_w_edge_transitive =
+                    (access->mode & ACCESS_MODE_W) &&
+                    (access->concurrency != ACCESS_CONCURRENCY_CONCURRENT) &&
+                    (node->last_seq_reads.size() || node->last_conc_writes.size());
+
+                if (!seq_w_edge_transitive)
+                    __dependency_tree_access_precedes(runtime, node->last_seq_write, access);
+            }
+
+            break ;
+        }
+
+        case (Search::Type::SEARCH_TYPE_NEEDS_EMPTY_WRITE):
+        {
+            access_t * access = search.access;
+
+            // CNC-W following SEQ-R: needs empty write
+            if ((access->mode & ACCESS_MODE_W) &&
+                access->concurrency == ACCESS_CONCURRENCY_CONCURRENT &&
+                node->last_seq_reads.size())
+            {
+                search.needs_empty_write = true;
+            }
+
+            // SEQ-R following CNC-W: needs empty write
+            if ((access->mode & ACCESS_MODE_R) &&
+                node->last_conc_writes.size())
+            {
+                search.needs_empty_write = true;
+            }
 
             break ;
         }
@@ -216,11 +389,48 @@ IntervalDependencyTree::on_intersect(
     }
 }
 
+//  access type         depend on
+//  SEQ-R               SEQ-W, CNC-W
+//  CNC-W               SEQ-R, SEQ-W
+//  COM-W               SEQ-R, SEQ-W, (COM-W), CNC-W
+//  SEQ-W               SEQ-R, SEQ-W,  CNC-W
+
 void
-IntervalDependencyTree::link(access_t * access)
+IntervalDependencyTree::link(runtime_t * runtime, access_t * access)
 {
+    // When a concurrent writer follows sequential readers, or
+    // when a sequential reader follows concurrent writers,
+    // insert an empty sequential write node in-between to
+    // reduce the graph complexity from O(n*m) to O(n+m) edges.
+
+    bool needs_empty_write =
+        ((access->mode & ACCESS_MODE_W) && access->concurrency == ACCESS_CONCURRENCY_CONCURRENT) ||
+        (access->mode == ACCESS_MODE_R);
+
+    if (needs_empty_write)
+    {
+        // Detection pass: check if any overlapping tree node has a
+        // conflicting concurrency state that requires an empty write
+        Search search;
+        search.prepare_needs_empty_write(access);
+        Base::intersect(search, access->region.interval.segment);
+
+        if (search.needs_empty_write)
+        {
+            /**
+             * seq-r :        O O O          conc-w:        O O O
+             *                 \|/                           \|/
+             * seq-w:           X            seq-w:           X
+             *                 / \                           / \
+             * conc-w:        O   O          seq-r:         O   O
+             */
+            insert_empty_write(this, runtime, access);
+        }
+    }
+
+    // Normal resolve pass: set dependency edges
     Search search;
-    search.prepare_resolve(access);
+    search.prepare_resolve(runtime, access);
     Base::intersect(search, access->region.interval.segment);
 }
 
@@ -228,7 +438,7 @@ void
 IntervalDependencyTree::put(access_t * access)
 {
     Search search;
-    search.prepare_resolve(access);
+    search.prepare_resolve(nullptr, access);
     Base::insert(search, access->region.interval.segment);
 
     this->accesses.push_front(access);

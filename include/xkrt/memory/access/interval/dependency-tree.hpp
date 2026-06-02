@@ -40,6 +40,7 @@
 # include <xkrt/data-structures/small-vector.h>
 # include <xkrt/memory/access/common/lp-tree.hpp>
 # include <xkrt/memory/access/dependency-domain.hpp>
+# include <xkrt/runtime.h>
 # include <xkrt/task/task.hpp>
 
 # define K 1
@@ -51,14 +52,21 @@ class IntervalDependencyTreeSearch
     public:
         enum Type
         {
-            SEARCH_TYPE_RESOLVE
+            SEARCH_TYPE_RESOLVE,
+            SEARCH_TYPE_NEEDS_EMPTY_WRITE
         };
 
     public:
         Type type;
 
-        // USED IF TYPE == SEARCH_TYPE_RESOLVE
+        // USED IF TYPE == SEARCH_TYPE_RESOLVE or SEARCH_TYPE_NEEDS_EMPTY_WRITE
         access_t * access;
+
+        // runtime pointer for stats tracking
+        runtime_t * runtime;
+
+        // USED IF TYPE == SEARCH_TYPE_NEEDS_EMPTY_WRITE (output flag)
+        bool needs_empty_write;
 
     public:
         IntervalDependencyTreeSearch() {}
@@ -67,10 +75,20 @@ class IntervalDependencyTreeSearch
     public:
 
         void
-        prepare_resolve(access_t * access)
+        prepare_resolve(runtime_t * runtime, access_t * access)
         {
             this->type = SEARCH_TYPE_RESOLVE;
+            this->runtime = runtime;
             this->access = access;
+        }
+
+        void
+        prepare_needs_empty_write(access_t * access)
+        {
+            this->type = SEARCH_TYPE_NEEDS_EMPTY_WRITE;
+            this->runtime = nullptr;
+            this->access = access;
+            this->needs_empty_write = false;
         }
 
 
@@ -85,14 +103,14 @@ class IntervalDependencyTreeNode : public LPTree<K, IntervalDependencyTreeSearch
 
     public:
 
-        /* last accesses that read */
-        small_vector_t<access_t *> last_reads;
+        /* last accesses that read sequentially */
+        small_vector_t<access_t *> last_seq_reads;
 
         /* last accesses that wrote concurrently */
         small_vector_t<access_t *> last_conc_writes;
 
-        /* last access that wrote */
-        access_t * last_write;
+        /* last access that wrote sequentially */
+        access_t * last_seq_write;
 
         /* number of writes in all subtrees */
         int nwrites;
@@ -183,7 +201,7 @@ class IntervalDependencyTree : public LPTree<K, IntervalDependencyTreeSearch>, p
             const Hyperrect & h
         ) const;
 
-        void link(access_t * access);
+        void link(runtime_t * runtime, access_t * access);
         void put(access_t * access);
 
 };
