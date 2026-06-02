@@ -37,12 +37,10 @@
 #ifndef __INTERVAL_DEPENDENCY_TREE_HPP__
 # define __INTERVAL_DEPENDENCY_TREE_HPP__
 
+# include <xkrt/data-structures/small-vector.h>
 # include <xkrt/memory/access/common/lp-tree.hpp>
 # include <xkrt/memory/access/dependency-domain.hpp>
 # include <xkrt/task/task.hpp>
-
-# include <vector>
-# include <unordered_map>
 
 # define K 1
 
@@ -53,18 +51,14 @@ class IntervalDependencyTreeSearch
     public:
         enum Type
         {
-            SEARCH_TYPE_RESOLVE,
-            SEARCH_TYPE_CONFLICTING
+            SEARCH_TYPE_RESOLVE
         };
 
     public:
         Type type;
 
-        // USED IF TYPE == SEARCH_TYPE_RESOLVE or type == SEARCH_TYPE_CONFLICTING
+        // USED IF TYPE == SEARCH_TYPE_RESOLVE
         access_t * access;
-
-        // USED IF TYPE == SEARCH_TYPE_CONFLICTING
-        std::vector<void *> * conflicts;
 
     public:
         IntervalDependencyTreeSearch() {}
@@ -79,15 +73,6 @@ class IntervalDependencyTreeSearch
             this->access = access;
         }
 
-        void
-        prepare_conflicting(
-            std::vector<void *> * conflicts,
-            access_t * access
-        ) {
-            this->type = SEARCH_TYPE_CONFLICTING;
-            this->conflicts = conflicts;
-            this->access = access;
-        }
 
 } /* class IntervalDependencyTreeSearch */;
 
@@ -101,7 +86,10 @@ class IntervalDependencyTreeNode : public LPTree<K, IntervalDependencyTreeSearch
     public:
 
         /* last accesses that read */
-        std::vector<access_t *> last_reads;
+        small_vector_t<access_t *> last_reads;
+
+        /* last accesses that wrote concurrently */
+        small_vector_t<access_t *> last_conc_writes;
 
         /* last access that wrote */
         access_t * last_write;
@@ -135,16 +123,13 @@ class IntervalDependencyTreeNode : public LPTree<K, IntervalDependencyTreeSearch
             nwrites(0)
         {
             this->last_write = inherit->last_write;
-            this->last_reads.insert(
-                this->last_reads.end(),
-                inherit->last_reads.begin(),
-                inherit->last_reads.end()
-            );
+            this->last_reads.insert(inherit->last_reads);
         }
 
         ////////////
         // UPDATE //
         ////////////
+
         inline void
         update_includes_nwrites(void)
         {
@@ -167,7 +152,7 @@ class IntervalDependencyTreeNode : public LPTree<K, IntervalDependencyTreeSearch
         dump_str(FILE * f) const
         {
             Base::dump_str(f);
-            fprintf(f, "\\nreads=%zu\\nwrites=%d", this->last_reads.size(), this->last_write->task ? 1 : 0);
+            fprintf(f, "\\nreads=%d\\nwrites=%d", this->last_reads.size(), this->last_write->task ? 1 : 0);
         }
 
         void
@@ -175,7 +160,7 @@ class IntervalDependencyTreeNode : public LPTree<K, IntervalDependencyTreeSearch
         {
             Base::dump_hyperrect_str(f);
 
-            fprintf(f, "\\\\ reads=%zu \\\\ writes=%d", this->last_reads.size(), this->last_write->task ? 1 : 0);
+            fprintf(f, "\\\\ reads=%d \\\\ writes=%d", this->last_reads.size(), this->last_write->task ? 1 : 0);
             fprintf(f, "\\\\ nwrites = %d ", this->nwrites);
             fprintf(f, "\\\\ reads = [ ");
             for (const access_t * access : this->last_reads)
@@ -205,20 +190,6 @@ class IntervalDependencyTree : public LPTree<K, IntervalDependencyTreeSearch>, p
         ~IntervalDependencyTree() {}
 
     public:
-
-        inline void
-        conflicting(
-            std::vector<void *> * conflicts,
-            access_t * access
-        ) {
-            // impl assumes this
-            assert((access->mode & ACCESS_MODE_R) && !(access->mode & ACCESS_MODE_W));
-
-            Search search;
-            search.prepare_conflicting(conflicts, access);
-
-            Base::intersect(search, access->region.interval.segment);
-        }
 
         //////////////
         //  INSERT  //
@@ -319,17 +290,6 @@ class IntervalDependencyTree : public LPTree<K, IntervalDependencyTreeSearch>, p
                             __access_precedes(pred, search.access);
                     else if (node->last_write)
                         __access_precedes(node->last_write, search.access);
-
-                    break ;
-                }
-
-                case (Search::Type::SEARCH_TYPE_CONFLICTING):
-                {
-                    if (node->last_write)
-                    {
-                        assert(search.conflicts);
-                        search.conflicts->push_back(node);
-                    }
 
                     break ;
                 }
