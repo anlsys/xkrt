@@ -250,25 +250,32 @@ struct team_t
     void wakeup(void);
 
     /* get iterations */
+    template <typename T_Last, typename T_Bound, typename T_Incr>
     static inline void
     parallel_for_thread_bounds(
-        int * p_last_iter,
-        int * p_lower,
-        int * p_upper,
-        int incr
+        T_Last * p_last_iter,
+        T_Bound * p_lower,
+        T_Bound * p_upper,
+        T_Incr incr
     ) {
         thread_t * thread = thread_t::get_tls();
         assert(thread);
 
-        int p_upper_old = *p_upper;
-        int trip_count = (incr > 0) ? ((*p_upper - *p_lower) / incr) + 1 : ((*p_lower - *p_upper) / (-incr)) + 1;
+        // Inherit the type of the bounds to prevent truncation of 64-bit limits
+        T_Bound p_upper_old = *p_upper;
+
+        // Use auto to let the compiler determine the correct type for the iteration count.
+        // This ensures compatibility whether the bounds are signed 32-bit or unsigned 64-bit.
+        auto trip_count = (incr > 0) ? ((*p_upper - *p_lower) / incr) + 1 : ((*p_lower - *p_upper) / (-incr)) + 1;
 
         int nthreads = thread->team->priv.nthreads;
         int tid      = thread->tid;
 
-        if (trip_count <= nthreads)
+        // Static casts on nthreads and tid avoid -Wsign-compare compiler warnings
+        // when comparing signed thread IDs against potentially unsigned trip_counts.
+        if (trip_count <= static_cast<decltype(trip_count)>(nthreads))
         {
-            if (tid < trip_count)
+            if (static_cast<decltype(trip_count)>(tid) < trip_count)
             {
                 *p_upper = *p_lower = *p_lower + tid * incr;
                 if (p_last_iter)
@@ -283,10 +290,10 @@ struct team_t
         }
         else
         {
-            int chunk_size = trip_count / nthreads;
-            int extras = trip_count % nthreads;
+            auto chunk_size = trip_count / nthreads;
+            auto extras = trip_count % nthreads;
 
-            if (tid < extras)
+            if (static_cast<decltype(extras)>(tid) < extras)
             {
                 /* The first part is homogeneous with a chunk size a little bit larger */
                 *p_upper = *p_lower + (tid + 1) * (chunk_size + 1) * incr - incr;
@@ -303,14 +310,12 @@ struct team_t
             if (p_last_iter)
             {
                 if (incr > 0)
-                    *p_last_iter = *p_lower <= p_upper_old && *p_upper > p_upper_old - incr;
+                    *p_last_iter = (*p_lower <= p_upper_old) && (*p_upper > p_upper_old - incr);
                 else
-                    *p_last_iter = *p_lower >= p_upper_old && *p_upper < p_upper_old - incr;
+                    *p_last_iter = (*p_lower >= p_upper_old) && (*p_upper < p_upper_old - incr);
             }
         }
     }
-
-
 
 };
 
