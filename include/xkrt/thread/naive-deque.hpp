@@ -125,6 +125,8 @@ struct deque_t
     void
     stolen(T ** ts, int * n)
     {
+        (void) ts;
+        (void) n;
         assert(*n);
         this->list.pop_front();
         SPINLOCK_UNLOCK(this->lock);

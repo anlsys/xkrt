@@ -894,6 +894,7 @@ TASK_ACCESSES_OFFSET(const task_flag_bitfield_t flags)
 static inline access_t *
 TASK_ACCESSES(const task_t * task, const task_flag_bitfield_t flags)
 {
+    assert(task->flags & TASK_FLAG_ACCESSES);
     return (access_t *) (((char *) task) + TASK_ACCESSES_OFFSET(flags));
 }
 

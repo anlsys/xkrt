@@ -226,8 +226,6 @@ typedef struct  device_t
         command_t * cmd
     );
 
-    # pragma message(TODO "Remove all these routines to use a generic runtime API")
-
     /* submit a file I/O command */
     template <ocg::command_type_t T>
     command_t * offloader_queue_command_submit_file(
@@ -269,28 +267,28 @@ typedef struct  device_t
         return cmd;
     }
 
+    # define IS_1D (std::is_same<HOST_VIEW_T, size_t>()        && std::is_same<DEVICE_VIEW_T, uintptr_t>())
+    # define IS_2D (std::is_same<HOST_VIEW_T, memory_view_t>() && std::is_same<DEVICE_VIEW_T, memory_replica_view_t>())
+
+    /* builder of a copy command */
     /* copy */
     template <typename HOST_VIEW_T, typename DEVICE_VIEW_T>
-    command_t *
-    offloader_queue_command_submit_copy(
+    static command_t *
+    offloader_command_types(
         const HOST_VIEW_T               & host_view,
         const device_unique_id_t          dst_device_unique_id,
         const DEVICE_VIEW_T             & dst_device_view,
         const device_unique_id_t          src_device_unique_id,
         const DEVICE_VIEW_T             & src_device_view,
-        const std::optional<callback_t> & callback = std::nullopt
+        ocg::command_type_t & ctype,    /* out */
+        command_queue_type_t & qtype    /* out */
     ) {
-        assert(this->unique_id == dst_device_unique_id || this->unique_id == src_device_unique_id);
-
         /* find the command type */
-        ocg::command_type_t ctype;
         const int src_is_host = (src_device_unique_id == XKRT_HOST_DEVICE_UNIQUE_ID) ? 1 : 0;
         const int dst_is_host = (dst_device_unique_id == XKRT_HOST_DEVICE_UNIQUE_ID) ? 1 : 0;
 
         /* assertions */
-        # define IS_1D (std::is_same<HOST_VIEW_T, size_t>()        && std::is_same<DEVICE_VIEW_T, uintptr_t>())
-        # define IS_2D (std::is_same<HOST_VIEW_T, memory_view_t>() && std::is_same<DEVICE_VIEW_T, memory_replica_view_t>())
-        static_assert(IS_1D || IS_2D);
+       static_assert(IS_1D || IS_2D);
         if constexpr(IS_1D) {
             assert(host_view);
             assert(dst_device_view);
@@ -321,7 +319,6 @@ typedef struct  device_t
         }
 
         /* find the type of queue to use */
-        command_queue_type_t qtype;
         switch(ctype)
         {
             case (ocg::COMMAND_TYPE_COPY_H2H_1D):
@@ -353,6 +350,24 @@ typedef struct  device_t
                 break ;
             }
         }
+    }
+
+    /* copy */
+    template <typename HOST_VIEW_T, typename DEVICE_VIEW_T>
+    command_t *
+    offloader_queue_command_submit_copy(
+        const HOST_VIEW_T               & host_view,
+        const device_unique_id_t          dst_device_unique_id,
+        const DEVICE_VIEW_T             & dst_device_view,
+        const device_unique_id_t          src_device_unique_id,
+        const DEVICE_VIEW_T             & src_device_view,
+        const std::optional<callback_t> & callback = std::nullopt
+    ) {
+        assert(this->unique_id == dst_device_unique_id || this->unique_id == src_device_unique_id);
+
+        ocg::command_type_t ctype;
+        command_queue_type_t qtype;
+        device_t::offloader_command_types(host_view, dst_device_unique_id, dst_device_view, src_device_unique_id, src_device_view, ctype, qtype);
 
         /* create a new command and retrieve its offload queue */
         thread_t * thread;
@@ -390,11 +405,11 @@ typedef struct  device_t
             cmd->completion_callback_push(*callback);
         this->offloader_queue_command_commit(thread, queue, cmd);
 
-        # undef IS_1D
-        # undef IS_2D
-
         return cmd;
     }
+
+    # undef IS_1D
+    # undef IS_2D
 
 }               device_t;
 
