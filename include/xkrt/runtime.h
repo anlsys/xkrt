@@ -901,6 +901,10 @@ struct  runtime_t
         task_t * task = this->task_new(fmtid, flags, args, args_size, ac);
         assert(task);
 
+        # if XKRT_SUPPORT_DEBUG
+        snprintf(task->label, sizeof(task->label), "capture");
+        # endif
+
         if constexpr (flags & TASK_FLAG_DEVICE)
         {
             task_dev_info_t * dev = TASK_DEV_INFO(task);
@@ -925,10 +929,6 @@ struct  runtime_t
             assert(tls->current_task);
             this->task_accesses_resolve(tls->current_task, accesses, ac);
         }
-
-        # if XKRT_SUPPORT_DEBUG
-        snprintf(task->label, sizeof(task->label), "capture");
-        # endif
 
         return task;
     }

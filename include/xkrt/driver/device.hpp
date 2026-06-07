@@ -273,7 +273,7 @@ typedef struct  device_t
     /* builder of a copy command */
     /* copy */
     template <typename HOST_VIEW_T, typename DEVICE_VIEW_T>
-    static command_t *
+    static void
     offloader_command_types(
         const HOST_VIEW_T               & host_view,
         const device_unique_id_t          dst_device_unique_id,
