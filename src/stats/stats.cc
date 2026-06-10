@@ -221,6 +221,10 @@ stats_device_gather(
 static void
 stats_tasks_report(runtime_t * runtime)
 {
+    uint64_t total_edges_skipped = runtime->stats.edges.skipped.load();
+    uint64_t total_edges_set     = runtime->stats.edges.set.load();
+    uint64_t total_tasks         = 0;
+
     bool dumped = false;
     for (size_t i = 0 ; i < XKRT_TASK_FORMAT_MAX ; ++i)
     {
@@ -239,10 +243,10 @@ stats_tasks_report(runtime_t * runtime)
                 dumped = true;
                 LOGGER_WARN("  Per format");
             }
-            LOGGER_WARN("  `%16s` - %6zu commited - %6zu submitted - %6zu completed",
-                format->label, c1, c2, c3
-            );
+            LOGGER_WARN("  `%16s` - %6zu commited - %6zu submitted - %6zu completed", format->label, c1, c2, c3);
         }
+
+        total_tasks += c1;
     }
 
     # if XKRT_SUPPORT_DEBUG
@@ -260,6 +264,9 @@ stats_tasks_report(runtime_t * runtime)
         LOGGER_WARN("  `%8d` tasks in state `%12s`", counter[i], xkrt_task_state_to_str((task_state_t)i));
 
     # endif /* XKRT_SUPPORT_DEBUG */
+
+    LOGGER_WARN("  Total: %zu tasks, %zu data-handle edges set, %zu data-handle edges skipped",
+            total_tasks, total_edges_set, total_edges_skipped);
 }
 
 void

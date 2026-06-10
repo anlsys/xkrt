@@ -159,8 +159,7 @@ struct  runtime_t
      *  It increases the current task detach counter by 1.
      *  Once the command completed, it decrements the detact counter by 1.
      */
-    int
-    task_emit_command(
+    int task_emit_command(
         const device_unique_id_t device_unique_id,
         const command_queue_type_t qtype,
         const ocg::command_type_t ctype,
@@ -382,14 +381,6 @@ struct  runtime_t
     ///////////////////////
     // MEMORY ALLOCATION //
     ///////////////////////
-
-    /**
-     * @brief Ensure chunk0 is preallocated on the device
-     *
-     * @param device_unique_id Global device identifier
-     * @param memory_id Device memory index
-     */
-    void memory_device_preallocate_ensure(const device_unique_id_t device_unique_id, const int memory_id);
 
     /**
      * @brief Allocate memory on a specific device memory bank
@@ -910,6 +901,10 @@ struct  runtime_t
         task_t * task = this->task_new(fmtid, flags, args, args_size, ac);
         assert(task);
 
+        # if XKRT_SUPPORT_DEBUG
+        snprintf(task->label, sizeof(task->label), "capture");
+        # endif
+
         if constexpr (flags & TASK_FLAG_DEVICE)
         {
             task_dev_info_t * dev = TASK_DEV_INFO(task);
@@ -934,10 +929,6 @@ struct  runtime_t
             assert(tls->current_task);
             this->task_accesses_resolve(tls->current_task, accesses, ac);
         }
-
-        # if XKRT_SUPPORT_DEBUG
-        snprintf(task->label, sizeof(task->label), "capture");
-        # endif
 
         return task;
     }
@@ -1287,27 +1278,6 @@ struct  runtime_t
      */
     task_format_t * task_format_get(task_format_id_t fmtid);
 
-    /**
-     *  Single kernel launcher.
-     *
-     *  Submit a kernel launch command to the device, then return.
-     *  The 'launch' is executed by a thread of the device implicit team.
-     *  If 'synchronous' is set to true, the runtime the kernel to be executed after returning from the launcher (i.e., synchronous execution).
-     *  Else, it expect the launcher to associate an event to the kernel completion. (i.e., executed asynchronously)
-     *  The task must be detachable, and completion is associated with the command completion.
-     *
-     *  'device' is the targeted device
-     *  'task' is the currently executing task
-     *  'attach_event' if the launcher will attach an event to the command
-     *  'launcher' is the kernel launcher
-     */
-    template <bool synchronous>
-    void task_prog_launch(
-        device_t * device,
-        task_t * task,
-        prog_launcher_t launcher
-    );
-
     ///////////////////////////
     // Task dependency graph //
     ///////////////////////////
@@ -1381,10 +1351,15 @@ struct  runtime_t
      */
     struct {
         struct {
-            stats_int_t submitted;   ///< Number of tasks submitted
-            stats_int_t commited;    ///< Number of tasks committed
-            stats_int_t completed;   ///< Number of tasks completed
+            stats_int_t submitted;      ///< Number of tasks submitted
+            stats_int_t commited;       ///< Number of tasks committed
+            stats_int_t completed;      ///< Number of tasks completed
         } tasks[XKRT_TASK_FORMAT_MAX];
+
+        struct {
+            stats_int_t skipped;        ///< Number of edges skipped
+            stats_int_t set;            ///< Number of edges set
+        } edges;
 
         struct {
             stats_int_t registered;     ///< Memory regions registered

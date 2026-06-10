@@ -504,9 +504,9 @@ class access_t
             host_view(MATRIX_COLMAJOR, a,    SIZE_MAX,    0,     0,     (size_t) (b - a), 1, 1),
             device_view()
         {
-            /* Only ACCESS_CONCURRENCY_SEQUENTIAL is supported yet */
             assert(concurrency == ACCESS_CONCURRENCY_SEQUENTIAL ||
-                    concurrency == ACCESS_CONCURRENCY_COMMUTATIVE);
+                    concurrency == ACCESS_CONCURRENCY_COMMUTATIVE ||
+                    concurrency == ACCESS_CONCURRENCY_CONCURRENT);
 
             assert(a < b);
 

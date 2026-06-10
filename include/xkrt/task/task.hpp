@@ -121,6 +121,11 @@ typedef struct  task_t
 typedef struct  task_acs_info_t
 {
     /*
+     * The team that spawned this task, so it can be pushed to it when ready
+     */
+    void * spawning_thread;
+
+    /*
      * wait counter
      * - if dependent task, it may be scheduled once it reached 0
      * - if detachable task, it is completed when it reached 2
@@ -131,7 +136,8 @@ typedef struct  task_acs_info_t
     task_access_counter_t ac;
 
     /* constructor, wc is initially '1' as task must be commited */
-    task_acs_info_t(task_access_counter_t ac) : wc(1), ac(ac) {}
+    task_acs_info_t(void * thread, task_access_counter_t ac) : spawning_thread(thread), wc(1), ac(ac) {}
+    task_acs_info_t(task_access_counter_t ac) : task_acs_info_t(NULL, ac) {}
 
 }               task_acs_info_t;
 
@@ -739,7 +745,7 @@ TASK_ACS_INFO(const task_t * task, const task_flag_bitfield_t flags)
     return (task_acs_info_t *) (task + 1);
 }
 
-static task_acs_info_t *
+static inline task_acs_info_t *
 TASK_ACS_INFO(const task_t * task)
 {
     return TASK_ACS_INFO(task, task->flags);
@@ -754,7 +760,7 @@ TASK_DET_INFO(const task_t * task, const task_flag_bitfield_t flags)
     return (task_det_info_t *) (task + 1);
 }
 
-static task_det_info_t *
+static inline task_det_info_t *
 TASK_DET_INFO(const task_t * task)
 {
     return TASK_DET_INFO(task, task->flags);
@@ -771,7 +777,7 @@ TASK_DEV_INFO(const task_t * task, const task_flag_bitfield_t flags)
     return (task_dev_info_t *) (task + 1);
 }
 
-static task_dev_info_t *
+static inline task_dev_info_t *
 TASK_DEV_INFO(const task_t * task)
 {
     return TASK_DEV_INFO(task, task->flags);
@@ -790,7 +796,7 @@ TASK_DOM_INFO(const task_t * task, const task_flag_bitfield_t flags)
     return (task_dom_info_t *) (task + 1);
 }
 
-static task_dom_info_t *
+static inline task_dom_info_t *
 TASK_DOM_INFO(const task_t * task)
 {
     return TASK_DOM_INFO(task, task->flags);
@@ -811,7 +817,7 @@ TASK_MOL_INFO(const task_t * task, const task_flag_bitfield_t flags)
     return (task_mol_info_t *) (task + 1);
 }
 
-static task_mol_info_t *
+static inline task_mol_info_t *
 TASK_MOL_INFO(const task_t * task)
 {
     return TASK_MOL_INFO(task, task->flags);
@@ -834,7 +840,7 @@ TASK_GPH_INFO(const task_t * task, const task_flag_bitfield_t flags)
     return (task_gph_info_t *) (task + 1);
 }
 
-static task_gph_info_t *
+static inline task_gph_info_t *
 TASK_GPH_INFO(const task_t * task)
 {
     return TASK_GPH_INFO(task, task->flags);
@@ -859,7 +865,7 @@ TASK_REC_INFO(const task_t * task, const task_flag_bitfield_t flags)
     return (task_rec_info_t *) (task + 1);
 }
 
-static task_rec_info_t *
+static inline task_rec_info_t *
 TASK_REC_INFO(const task_t * task)
 {
     return TASK_REC_INFO(task, task->flags);
@@ -888,6 +894,7 @@ TASK_ACCESSES_OFFSET(const task_flag_bitfield_t flags)
 static inline access_t *
 TASK_ACCESSES(const task_t * task, const task_flag_bitfield_t flags)
 {
+    assert(task->flags & TASK_FLAG_ACCESSES);
     return (access_t *) (((char *) task) + TASK_ACCESSES_OFFSET(flags));
 }
 
@@ -926,8 +933,8 @@ TASK_ARGS(task_t * task)
 ///////////////////////////////////
 
 # define XKRT_TASK_DEPENDENCE_ALREADY_SET   0
-# define XKRT_TASK_DEPENDENCE_SET           1
-# define XKRT_TASK_DEPENDENCE_SKIPPED       2
+# define XKRT_TASK_DEPENDENCE_SKIPPED       1
+# define XKRT_TASK_DEPENDENCE_SET           2
 
 /* pred precedes succ - call 'F(args)' if 'pred' isnt completed yet in a lock region */
 template <typename... Args>

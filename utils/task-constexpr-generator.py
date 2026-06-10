@@ -50,7 +50,7 @@ for i in range(0, n):
     print( '')
 
     # non constexpr version, using task run-time flags
-    print(f'static task_{flags[i][1]}_info_t *')
+    print(f'static inline task_{flags[i][1]}_info_t *')
     print(f'TASK_{flags[i][1].upper()}_INFO(const task_t * task)')
     print( '{')
     print(f'    return TASK_{flags[i][1].upper()}_INFO(task, task->flags);')

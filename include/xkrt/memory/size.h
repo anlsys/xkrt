@@ -2,7 +2,8 @@
 ** Copyright 2024,2025 INRIA
 **
 ** Contributors :
-** Romain PEREIRA, rpereira@anl.gov
+** Thierry Gautier, thierry.gautier@inrialpes.fr
+** Romain PEREIRA, romain.pereira@inria.fr + rpereira@anl.gov
 **
 ** This software is a computer program whose purpose is to execute
 ** blas subroutines on multi-GPUs system.
@@ -34,42 +35,27 @@
 ** knowledge of the CeCILL-C license and that you accept its terms.
 **/
 
-# include <opencg/opencg.hpp>
+#ifndef __XKRT_MEMORY_SIZE_HPP__
+# define __XKRT_MEMORY_SIZE_HPP__
 
-OCG_NAMESPACE_USE;
+# include <stddef.h>
 
-static command_t *
-command_new(
-    command_graph_t * cg,
-    command_type_t type
-) {
-    command_t * command = (command_t *) malloc(sizeof(command_t));
-    assert(command);
-    new (command) command_t(type);
-    return command;
-}
+# define MEMORY_SIZE_TYPE_MAX SIZE_MAX
 
-static command_graph_node_t *
-command_graph_node_new(
-    command_graph_t * cg,
-    const command_graph_node_type_t type,
-    command_t * command,
-    const device_unique_id_t device_unique_id
-) {
-    return new command_graph_node_t(type, command, device_unique_id);
-}
-
-static command_graph_t *
-command_graph_new(command_graph_t * original_cg)
+typedef enum    xkrt_memory_size_unit_t
 {
-    command_graph_t * cg = (command_graph_t *) malloc(sizeof(command_graph_t));
-    assert(cg);
-    cg->init(command_new, command_graph_node_new, command_graph_new);
-    return cg;
-}
+    XKRT_MEMORY_SIZE_UNIT_ABSOLUTE,
+    XKRT_MEMORY_SIZE_UNIT_RELATIVE
 
-static command_graph_t *
-command_graph_new(void)
+}               xkrt_memory_size_unit_t;
+
+typedef size_t  xkrt_memory_size_type_t;
+
+typedef struct  xkrt_memory_size_t
 {
-    return command_graph_new(NULL);
-}
+    xkrt_memory_size_type_t amount;
+    xkrt_memory_size_unit_t unit;
+
+}               xkrt_memory_size_t;
+
+# endif /* __XKRT_MEMORY_SIZE_HPP__ */

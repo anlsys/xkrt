@@ -992,53 +992,6 @@ xkrt_driver_transfer_d2d_async(
 
 // KERNEL LAUNCH
 
-int
-xkrt_driver_prog_launch(
-    xkrt_driver_t * driver,
-    xkrt_command_queue_t * queue,
-    xkrt_command_queue_list_counter_t idx,
-    const xkrt_driver_module_fn_t * fn,
-    const unsigned int gx,
-    const unsigned int gy,
-    const unsigned int gz,
-    const unsigned int bx,
-    const unsigned int by,
-    const unsigned int bz,
-    const unsigned int shared_memory_bytes,
-    void * args,
-    const size_t args_size
-) {
-    assert(driver);
-    driver_t * drv = (driver_t *) driver;
-    return drv->f_prog_launch((command_queue_t *) queue, idx, fn, gx, gy, gz, bx, by, bz, shared_memory_bytes, args, args_size);
-}
-
-int
-xkrt_device_prog_launch(
-    xkrt_runtime_t * runtime,
-    xkrt_device_t * device,
-    xkrt_command_queue_t * queue,
-    xkrt_command_queue_list_counter_t idx,
-    const xkrt_driver_module_fn_t * fn,
-    const unsigned int gx,
-    const unsigned int gy,
-    const unsigned int gz,
-    const unsigned int bx,
-    const unsigned int by,
-    const unsigned int bz,
-    const unsigned int shared_memory_bytes,
-    void * args,
-    const size_t args_size
-) {
-    assert(runtime);
-    assert(device);
-
-    runtime_t *  rt = (runtime_t *) runtime;
-    device_t  * dev = (device_t  *) device;
-    driver_t  * drv = rt->driver_get(dev->driver_type);
-    return xkrt_driver_prog_launch((xkrt_driver_t *) drv, queue, idx, fn, gx, gy, gz, bx, by, bz, shared_memory_bytes, args, args_size);
-}
-
 void
 xkrt_task_prog_launch(
     xkrt_runtime_t * runtime,
@@ -1051,10 +1004,26 @@ xkrt_task_prog_launch(
     runtime_t * rt = (runtime_t *) runtime;
     task_t * t = (task_t *) task;
     device_t * dev = (device_t *) device;
-    if (synchronous)
-        return rt->task_prog_launch<true>(dev, t, (prog_launcher_t) launcher);
-    else
-        return rt->task_prog_launch<false>(dev, t, (prog_launcher_t) launcher);
+
+    constexpr command_queue_type_t qtype = XKRT_QUEUE_TYPE_KERN;
+    constexpr ocg::command_type_t  ctype = ocg::COMMAND_TYPE_PROG;
+    const     command_flag_t       flags = synchronous ? COMMAND_FLAG_SYNCHRONOUS : COMMAND_FLAG_NONE;
+    rt->task_emit_command(
+        dev->unique_id,
+        qtype,
+        ctype,
+        flags,
+        [&] (xkrt::command_t * cmd) {
+            /* create a new kernel command */
+            cmd->prog.launcher.fixed.fn = (void (*)(void * [OCG_CALLBACK_ARGS_MAX])) launcher;
+            cmd->prog.launcher.fixed.args[0] = rt;
+            cmd->prog.launcher.fixed.args[1] = task;
+            static_assert(OCG_CALLBACK_ARGS_MAX >= 2);
+
+            /* program launcher */
+            cmd->flags = cmd->flags | COMMAND_FLAG_PROG_LAUNCHER;
+        }
+    );
 }
 
 // THREADING

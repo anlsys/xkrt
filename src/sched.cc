@@ -68,188 +68,6 @@ XKRT_NAMESPACE_BEGIN
 //  DEVICE PROGRESSION //
 /////////////////////////
 
-static inline void
-__task_moldable_split(
-    runtime_t * runtime,
-    task_t * task,
-    access_t * accesses,
-    task_acs_info_t * acs
-) {
-    // right now, all task accesses must have the same type
-    const access_type_t type = (accesses + 0)->type;
-
-    # if XKRT_SUPPORT_DEBUG
-    for (task_access_counter_t i = 1 ; i < acs->ac ; ++i)
-        assert(type == (accesses + i)->type);
-    # endif /* atm, only support moldable tasks with accesses of same type */
-
-    switch (type)
-    {
-        case (ACCESS_TYPE_SEGMENT):
-        {
-            // dupplicate the task
-            task_t * dup_task = runtime->task_dup(task);
-            assert(dup_task);
-
-            // split accesses and refine dependencies
-            access_t * dup_accesses = TASK_ACCESSES(dup_task);
-            assert(dup_accesses);
-
-            // for each access
-            for (task_access_counter_t i = 0 ; i < acs->ac ; ++i)
-            {
-                access_t * access     = accesses     + i;
-                access_t * dup_access = dup_accesses + i;
-
-                assert(access->task     == task);
-                assert(dup_access->task == task);
-                dup_access->task = dup_task;
-                assert(access->task     == task);
-                assert(dup_access->task == dup_task);
-
-                // split access
-                access_t::split(access, dup_access, dup_task, ACCESS_SPLIT_MODE_HALVES);
-
-                // for each original successor
-                for (access_t * succ_access : access->successors)
-                {
-                    // if new access conflicts
-                    if (access_t::conflicts(dup_access, succ_access))
-                    {
-                        // set a dependency
-                        __access_precedes(dup_access, succ_access);
-                    }
-                    else
-                    {
-                        // nothing to do
-                    }
-
-                    // if shrinked access still conflicts
-                    if (access_t::conflicts(access, succ_access))
-                    {
-                        // nothing to do, we recycle task and the access,
-                        // so the dependency is already set
-                    }
-                    else
-                    {
-                        // TODO: unset the dependency
-                        LOGGER_FATAL("TODO: should unref once the successor");
-                    }
-                }
-            }
-
-            // submit the dupplicated task
-            assert(dup_task->parent);
-            assert(dup_task->parent == task->parent);
-
-            # pragma message(TODO "This is quite ugly, can we have tasks go through a more regular transition path ? At that point, the dupplicated task is in the 'ready' state already, as its original task was ready")
-            ++dup_task->parent->cc;
-            runtime->task_enqueue(dup_task);
-
-            break ;
-        }
-
-        default:
-            LOGGER_FATAL("Not supported");
-    }
-}
-
-static inline void
-__device_prepare_task(
-    runtime_t * runtime,
-    device_t * device,
-    task_t * task
-) {
-    assert(device);
-    assert(task);
-    assert(task->state.value == TASK_STATE_READY);
-
-    /* if that's a device task, then fetches to the device. Else, fetch to the host */
-    device_unique_id_t device_unique_id = (task->flags & TASK_FLAG_DEVICE) ? device->unique_id : XKRT_HOST_DEVICE_UNIQUE_ID;
-    LOGGER_DEBUG("Preparing task `%s` of format `%d` on device `%d` - on a thread of device `%d`",
-            task->label, task->fmtid, device_unique_id, device->unique_id);
-
-    /* if the task has accesses, ensure each of them are coherent before starting execution */
-    if (task->flags & TASK_FLAG_ACCESSES)
-    {
-        task_acs_info_t * acs = TASK_ACS_INFO(task);
-        assert(TASK_ACS_INFO(task)->wc == 0);
-
-        /* if there is at least one access */
-        if (acs->ac > 0)
-        {
-            /* retrieve accesses */
-            access_t * accesses = TASK_ACCESSES(task);
-
-            /////////////////////////
-            // MOLDABLE TASK SPLIT //
-            /////////////////////////
-
-            // TODO : move that to another function
-
-            /* if the task is moldable */
-            if (task->flags & TASK_FLAG_MOLDABLE)
-            {
-                /* check split condition, and split, or execute normally */
-                task_mol_info_t * mol = TASK_MOL_INFO(task);
-                assert(mol->split_condition);
-
-                /* if the moldable task must split */
-                if (mol->split_condition(task, accesses))
-                {
-                    // shrink the moldable task, and resubmit the original task
-                    // whose accesses got shrinked
-                    __task_moldable_split(runtime, task, accesses, acs);
-                    return runtime->task_enqueue(task);
-                }
-                else
-                {
-                    // mothing to do
-                }
-            }
-            else
-            {
-                // nothing to do
-            }
-
-            ////////////////////
-            // FETCH ACCESSES //
-            ////////////////////
-
-            /* increase task 'fetching' counter so it does not get ready early
-             * (eg before we processed all accesses bellow) */
-            __task_fetching(1, task);
-
-            /* Set 'task' as current task record when fetching, so that emitted commands are recorded to 'task' */
-            thread_t * thread = thread_t::get_tls();
-            if (task->flags & TASK_FLAG_RECORD) thread->current_task_record = task;
-
-            /* for each access */
-            assert(acs->ac <= XKRT_TASK_MAX_ACCESSES);
-            for (task_access_counter_t i = 0 ; i < acs->ac ; ++i)
-            {
-                access_t * access = accesses + i;
-                if (access->mode & ACCESS_MODE_V)
-                    continue ;
-
-                assert(task == access->task);
-                MemoryCoherencyController * mcc = task_get_memory_controller(runtime, task->parent, access);
-                if (mcc)
-                    mcc->fetch(access, device_unique_id);
-            }
-            if (task->flags & TASK_FLAG_RECORD) thread->current_task_record = NULL;
-
-            /* decrease the task 'fetching' counter to detect early-fetch completion */
-            __task_fetched(1, task, task_execute, runtime, device);
-            /* else the task will be launched in a callback once all accesses got fetched */
-        }
-    }
-    else
-    {
-        task_execute(runtime, device, task);
-    }
-}
-
 /* main loop for the thread responsible the passed device */
 static inline int
 device_thread_main_loop(
@@ -314,7 +132,7 @@ device_thread_main_loop(
 
         // if there is a task ready, launch it
         if (task)
-            __device_prepare_task(runtime, device, task);
+            task_fetch_execute(runtime, device, task);
 
         // if there are commands ready
         if (ready)
@@ -423,7 +241,13 @@ runtime_t::task_thread_enqueue(
     thread_t * thread,
     task_t * task
 ) {
-    thread->deque.push(task);
+    thread_t * tls = thread_t::get_tls();
+    assert(tls);
+
+    // pushing to my own queue or another thread ?
+    int r = (tls == thread) ? thread->deque.push(task) : thread->deque.give(task);
+    if (r)
+        LOGGER_FATAL("Queue is full, what to do????");
 
     // TODO: this is quite ugly, but the thread may be sleeping in three places:
     //  - within its condition
@@ -499,30 +323,13 @@ runtime_t::task_emit_command(
     /* build command */
     builder(cmd);
 
-    /* increment detach counter and push callback to decrement */
-    callback_t callback;
-    callback.func    = __task_detachable_decr;
-    callback.args[0] = this;
-    callback.args[1] = task;
-    assert(XKRT_CALLBACK_ARGS_MAX >= 2);
-
-    this->task_detachable_incr(task);
-    cmd->completion_callback_push(callback);
-
-    device->offloader_queue_command_commit(device_thread, queue, cmd);
-    return 0;
-}
-
-template <bool synchronous>
-void
-runtime_t::task_prog_launch(
-    device_t * device,
-    task_t * task,
-    prog_launcher_t launcher
-) {
-    /* increase detach counter if asynchronous */
-    if constexpr (synchronous == false)
+    if (flags & COMMAND_FLAG_SYNCHRONOUS)
     {
+        // nothing to do
+    }
+    else
+    {
+        /* increment detach counter and push callback to decrement */
         assert(task->flags & TASK_FLAG_DETACHABLE);
         this->task_detachable_incr(task);
 
@@ -533,22 +340,11 @@ runtime_t::task_prog_launch(
         callback.args[1] = task;
         assert(XKRT_CALLBACK_ARGS_MAX >= 2);
 
-        /* submit kernel launch command */
-        device->offloader_queue_command_submit_kernel<COMMAND_FLAG_NONE>(
-            this,
-            task,
-            launcher,
-            callback
-        );
+        cmd->completion_callback_push(callback);
     }
-    /* else if synchronous, no callback or detach counter */
-    else
-    {
-        static_assert(synchronous == true);
-        device->offloader_queue_command_submit_kernel<COMMAND_FLAG_SYNCHRONOUS>(this, task, launcher);
-    }
+
+    device->offloader_queue_command_commit(device_thread, queue, cmd);
+    return 0;
 }
-template void runtime_t::task_prog_launch<true>(device_t * device, task_t * task, prog_launcher_t launcher);
-template void runtime_t::task_prog_launch<false>(device_t * device, task_t * task, prog_launcher_t launcher);
 
 XKRT_NAMESPACE_END

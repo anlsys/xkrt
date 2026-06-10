@@ -96,15 +96,51 @@ insert_empty_write(
     }
 }
 
+# if XKRT_SUPPORT_STATS
+static inline int
+__dependency_map_access_precedes(
+    runtime_t * runtime,
+    access_t * pred,
+    access_t * succ
+) {
+    int r = __access_precedes(pred, succ);
+
+    switch (r)
+    {
+        case (XKRT_TASK_DEPENDENCE_ALREADY_SET):
+        case (XKRT_TASK_DEPENDENCE_SKIPPED):
+        {
+            XKRT_STATS_INCR(runtime->stats.edges.skipped, 1);
+            break ;
+        }
+
+        case (XKRT_TASK_DEPENDENCE_SET):
+        {
+            XKRT_STATS_INCR(runtime->stats.edges.set, 1);
+            break ;
+        }
+
+        default:
+            break ;
+    }
+    return r;
+}
+# else /* XKRT_SUPPORT_STATS */
+#  define __dependency_map_access_precedes(runtime, pred, succ) __access_precedes(pred, succ)
+# endif /* XKRT_SUPPORT_STATS */
+
 // set all accesses of 'list' as predecessors of 'succ'
 // and remove entries in 'list' that already completed
 static inline void
-link_or_pop(small_vector_t<access_t *> & list, access_t * succ)
-{
+link_or_pop(
+    runtime_t * runtime,
+    small_vector_t<access_t *> & list,
+    access_t * succ
+) {
     int i = 0;
     while (i < list.size())
     {
-        if (__access_precedes(list[i], succ) == XKRT_TASK_DEPENDENCE_SKIPPED)
+        if (__dependency_map_access_precedes(runtime, list[i], succ) == XKRT_TASK_DEPENDENCE_SKIPPED)
             list.swap_erase(i);
         else
             ++i;
@@ -150,7 +186,7 @@ DependencyMap::link(
         // SEQ-W
         else
         {
-            link_or_pop(node->last_seq_reads, access);
+            link_or_pop(runtime, node->last_seq_reads, access);
             seq_w_edge_transitive = true;
         }
     }
@@ -160,7 +196,7 @@ DependencyMap::link(
     {
         if (access->mode & ACCESS_MODE_W)
         {
-            link_or_pop(node->last_conc_writes, access);
+            link_or_pop(runtime, node->last_conc_writes, access);
             seq_w_edge_transitive = true;
         }
         else
@@ -190,7 +226,7 @@ DependencyMap::link(
         }
         else
         {
-            if (__access_precedes(node->last_seq_write, access) == XKRT_TASK_DEPENDENCE_SKIPPED)
+            if (__dependency_map_access_precedes(runtime, node->last_seq_write, access) == XKRT_TASK_DEPENDENCE_SKIPPED)
             {
                 // If recording, keep it to detect dependencies with future tasks
                 if (node->last_seq_write->task && node->last_seq_write->task->flags & TASK_FLAG_RECORD)

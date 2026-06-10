@@ -445,43 +445,6 @@ xkrt_driver_transfer_d2d_async(
     xkrt_command_queue_t * queue
 );
 
-// KERNEL LAUNCH
-
-int
-xkrt_device_prog_launch(
-    xkrt_runtime_t * runtime,
-    xkrt_device_t * device,
-    xkrt_command_queue_t * queue,
-    xkrt_command_queue_list_counter_t idx,
-    const xkrt_driver_module_fn_t * fn,
-    const unsigned int gx,
-    const unsigned int gy,
-    const unsigned int gz,
-    const unsigned int bx,
-    const unsigned int by,
-    const unsigned int bz,
-    const unsigned int shared_memory_bytes,
-    void * args,
-    const size_t args_size
-);
-
-int
-xkrt_driver_prog_launch(
-    xkrt_driver_t * driver,
-    xkrt_command_queue_t * queue,
-    xkrt_command_queue_list_counter_t idx,
-    const xkrt_driver_module_fn_t * fn,
-    const unsigned int gx,
-    const unsigned int gy,
-    const unsigned int gz,
-    const unsigned int bx,
-    const unsigned int by,
-    const unsigned int bz,
-    const unsigned int shared_memory_bytes,
-    void * args,
-    const size_t args_size
-);
-
 // THREADING
 
 # if 0

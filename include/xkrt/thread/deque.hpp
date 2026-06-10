@@ -35,35 +35,84 @@
 ** knowledge of the CeCILL-C license and that you accept its terms.
 **/
 
-# ifndef __XKRT_DEQUE_H__
-#  define __XKRT_DEQUE_H__
+# ifndef __XKRT_LOCKFREE_DEQUE_HPP__
+#  define __XKRT_LOCKFREE_DEQUE_HPP__
 
-#  include <xkrt/consts.h>
 #  include <xkrt/memory/alignas.h>
 #  include <xkrt/sync/spinlock.h>
 
-#  include <pthread.h>
 #  include <atomic>
 #  include <new>
 
 XKRT_NAMESPACE_BEGIN
 
-/* a deque (THE protocol) */
+/**
+ *  This data structure is a deque for multi-threading workstealing.
+ *      - T is the storage type (e.g., task_t *)
+ *      - C is the capacity of the internal storage
+ *
+ *  Let be a team of threads where each thread has its own deque.
+ *  When a thread produces a task, it pushes to the end of its own deque using `push`.
+ *  When a thread is looking for work, it in-order
+ *      - try to pop a single task from the end of its own deque (`pop`)
+ *      - if not, it will find another deque 'D' of another thread, and call successively
+ *          - D.steal(&task_array, &n) -- that will steal 'n' of tasks in 'D' ('n' should be about half the size of 'D')
+ */
 template<typename T, int C>
 struct deque_t
 {
+    /* Storage */
     T tasks[C];
+
+    /* A lock when needs be */
     alignas(hardware_destructive_interference_size) spinlock_t lock;
+
+    /* Head of the deque */
     alignas(hardware_destructive_interference_size) std::atomic<int> _h;
+
+    /* Tail of the deque */
     alignas(hardware_destructive_interference_size) std::atomic<int> _t;
 
+    /* Default constructor / destructor */
     deque_t() : tasks{}, lock(0), _h(0), _t(0) {}
+    ~deque_t() {}
 
-    void push(T const & task);
+    /**
+     *  Push a single element to the tail -- from the thread that own the deque
+     *  Return 0 on success, 1 on failure (if queue is full)
+     */
+    int push(T const & t);
+
+    /**
+     *  Try to push at most 'n' elements to the tail.
+     *  Return the number 'm' <= 'n' so that elements ts[0:m] got pushed to the tail
+     */
+    int push(T const * ts, int n);
+
+    /**
+     *  Push a single element to the head -- from thread that do not own the deque
+     *  Return 0 on success, 1 on failure (if queue is full)
+     */
+    int give(T const & t);
+
+    /**
+     *  Remove and return a copy of the tail.
+     */
     T pop(void);
-    T steal(void);
+
+    /**
+     *  Steal tasks.
+     *  Return a pointer in 'tasks' of the first element and the number of elements to steal 'n'
+     */
+    int steal(T ** ts, int * n);
+
+    /**
+     *  Finalize steal request completion, typically after 'ts[0:*n]' tasks had
+     *  been copied to the deque of the thread stealing.
+     */
+    void stolen(T ** ts, int * n);
 };
 
 XKRT_NAMESPACE_END
 
-# endif /* __XKRT_DEQUE_H__ */
+# endif /* __XKRT_LOCKFREE_DEQUE_HPP__ */

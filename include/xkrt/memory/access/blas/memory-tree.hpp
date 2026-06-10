@@ -1447,6 +1447,7 @@ next_view:
                 LOGGER_DEBUG("No continuous allocation found, reallocating and creating a new view");
                 chunk = this->fetch_access_allocate(access, device_unique_id);
                 assert(chunk);
+                LOGGER_DEBUG("Allocated %p", (void *) chunk->ptr);
 
                 /* create new views */
                 this->fetch_access_create_allocation_views(access, device_unique_id, partition, chunk);

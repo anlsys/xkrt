@@ -35,15 +35,103 @@
 ** knowledge of the CeCILL-C license and that you accept its terms.
 **/
 
-#ifndef __OPENCG_MIN_MAX_H__
-# define __OPENCG_MIN_MAX_H__
+#ifndef __XKRT_DEQUE_HPP__
+# define __XKRT_DEQUE_HPP__
 
-# ifndef MIN
-#  define MIN(X, Y) ((Y) < (X) ? (Y) : (X))
-# endif /* MIN */
+# include <xkrt/sync/spinlock.h>
 
-# ifndef MAX
-#  define MAX(X, Y) ((X) < (Y) ? (Y) : (X))
-# endif /* MAX */
+# include <atomic>
+# include <assert.h>
+# include <list>
 
-#endif
+/**
+ *  A naive list implementation with a lock, to be used for debugging purposes
+ *  of the lock-free list
+ */
+
+template<typename T, int C_UNUSED>
+struct deque_t
+{
+    std::list<T> list;
+    volatile spinlock_t lock;
+
+    deque_t() : list(), lock() {}
+    ~deque_t() {}
+
+    int
+    push(T const & t)
+    {
+        SPINLOCK_LOCK(this->lock);
+        {
+            this->list.push_back(t);
+        }
+        SPINLOCK_UNLOCK(this->lock);
+        return 0;
+    }
+
+    int
+    push(T const * ts, int n)
+    {
+        SPINLOCK_LOCK(this->lock);
+        {
+            for (int i = 0 ; i < n ; ++i)
+                this->list.push_back(ts[i]);
+        }
+        SPINLOCK_UNLOCK(this->lock);
+        return 0;
+    }
+
+    int
+    give(T const & t)
+    {
+        return this->push(t);
+    }
+
+    T
+    pop(void)
+    {
+        SPINLOCK_LOCK(this->lock);
+
+        if (this->list.empty())
+        {
+            SPINLOCK_UNLOCK(this->lock);
+            return nullptr;
+        }
+
+        T t = this->list.back();
+        this->list.pop_back();
+
+        SPINLOCK_UNLOCK(this->lock);
+
+        return t;
+    }
+
+    int
+    steal(T ** ts, int * n)
+    {
+        SPINLOCK_LOCK(this->lock);
+        if (this->list.empty())
+        {
+            SPINLOCK_UNLOCK(this->lock);
+            return 1;
+        }
+
+        *ts = &this->list.front();
+        *n  = 1;
+
+        return 0;
+    }
+
+    void
+    stolen(T ** ts, int * n)
+    {
+        (void) ts;
+        (void) n;
+        assert(*n);
+        this->list.pop_front();
+        SPINLOCK_UNLOCK(this->lock);
+    }
+
+};
+
+#endif /* __XKRT_DEQUE_HPP__ */

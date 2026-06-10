@@ -48,66 +48,160 @@ XKRT_NAMESPACE_BEGIN
 // It does not support 'giving' tasks, that is, having a thread different from
 // the producer pushing a task into this queue
 
-template <typename T, int C>
-void
-deque_t<T, C>::push(T const & task)
+template<typename T, int C>
+int
+deque_t<T, C>::push(T const & t)
 {
-    int idx = _t++;
-    tasks[idx%C] = task;
+    int h = _h.load(std::memory_order_relaxed);
+    int t_idx = _t.load(std::memory_order_relaxed);
+
+    if (t_idx - h >= C)
+        return 1;   /* Full */
+
+    tasks[t_idx % C] = t;
+    // Release ensures visibility before the tail pointer increments
+    _t.store(t_idx + 1, std::memory_order_release);
+    return 0;
 }
 
-template <typename T, int C>
+template<typename T, int C>
+int
+deque_t<T, C>::push(
+    T const * ts,
+    int n
+) {
+    int h = _h.load(std::memory_order_relaxed);
+    int t_idx = _t.load(std::memory_order_relaxed);
+
+    int available = C - (t_idx - h);
+    int m = std::min(n, available);
+
+    for (int i = 0; i < m; ++i)
+        tasks[(t_idx + i) % C] = ts[i];
+
+    _t.store(t_idx + m, std::memory_order_release);
+    return m;
+}
+
+template<typename T, int C>
 T
-deque_t<T,C>::pop(void)
+deque_t<T, C>::pop(void)
 {
-    task_t * task;
-    int idx = --_t;
-    if (_h > _t)
+    int t_idx = _t.load(std::memory_order_relaxed) - 1;
+    _t.store(t_idx, std::memory_order_relaxed);
+
+    // Ensure the store to _t is visible before loading _h
+    std::atomic_thread_fence(std::memory_order_seq_cst);
+    int h = _h.load(std::memory_order_relaxed);
+
+    T result = NULL;
+
+    if (h <= t_idx)
     {
-        ++_t;
-        SPINLOCK_LOCK(lock);
-        {
-            int idx = --_t;
-            if (_h > idx || ((task = tasks[idx%C]) == NULL))
+        result = tasks[t_idx % C];
+        if (h == t_idx) {
+            // Potential race with a thief
+            SPINLOCK_LOCK(lock);
+            if (_h.load(std::memory_order_relaxed) > t_idx)
             {
-                ++_t;
-                SPINLOCK_UNLOCK(lock);
-                return NULL; // FAILURE
+                // Thief won
+                result = T{};
             }
             else
-                tasks[idx%C] = NULL;
+            {
+                // Owner won, advance head to signify "empty"
+                _h.fetch_add(1, std::memory_order_relaxed);
+            }
+            SPINLOCK_UNLOCK(lock);
+            _t.store(t_idx + 1, std::memory_order_relaxed);
         }
-        SPINLOCK_UNLOCK(lock);
     }
     else
     {
-        task = tasks[idx%C];
-        tasks[idx%C] = NULL;
+        // Deque was already empty
+        _t.store(t_idx + 1, std::memory_order_relaxed);
     }
-    return task; // SUCCESS
+    return result;
 }
 
-template <typename T, int C>
-T
-deque_t<T,C>::steal(void)
-{
-    task_t * task;
+template<typename T, int C>
+int
+deque_t<T, C>::steal(
+    T ** ts,
+    int * n
+) {
     SPINLOCK_LOCK(lock);
+
+    // Acquire ensures we see the latest pushes from the owner
+    int h = _h.load(std::memory_order_acquire);
+    int t = _t.load(std::memory_order_acquire);
+
+    int size = t - h;
+    if (size <= 0)
     {
-        int idx = _h++;
-        if (idx >= _t || ((task = tasks[idx%C]) == NULL))
-        {
-            --_h;
-            SPINLOCK_UNLOCK(lock);
-            return NULL;  // FAILURE
-        }
-        tasks[idx%C] = NULL;
+        SPINLOCK_UNLOCK(lock);
+        *n = 0;
+        return 1; // Fail
     }
+
+    // Standard work-stealing: steal half the tasks
+    *n = std::max(1, size / 2);
+
+    // Note: In a circular buffer, a batch steal might wrap around.
+    // For simplicity, we limit 'n' to the contiguous segment.
+    int till_end = C - (h % C);
+    if (*n > till_end) *n = till_end;
+
+    *ts = &tasks[h % C];
+
+    // We keep the lock held until 'stolen' is called to prevent
+    // the owner or other thieves from invalidating this memory.
+    return 0;
+}
+
+template<typename T, int C>
+void
+deque_t<T, C>::stolen(
+    T ** ts,
+    int * n
+) {
+    // Advance head to finalize the removal of 'n' tasks
+    _h.fetch_add(*n, std::memory_order_release);
     SPINLOCK_UNLOCK(lock);
-    return task;  // SUCCESS
+}
+
+template<typename T, int C>
+int
+deque_t<T, C>::give(T const & t)
+{
+    // We must lock because we are competing with thieves (and other givers) at the head.
+    SPINLOCK_LOCK(lock);
+
+    int h = _h.load(std::memory_order_relaxed);
+    int t_idx = _t.load(std::memory_order_relaxed);
+
+    // Check for capacity
+    if (t_idx - h >= C)
+    {
+        SPINLOCK_UNLOCK(lock);
+        return 1; // Queue is full
+    }
+
+    // Calculate the new head position (prepended)
+    int new_h = h - 1;
+
+    // Circular buffer index: ((index % C) + C) % C handles negative results of %
+    int slot = ((new_h % C) + C) % C;
+    tasks[slot] = t;
+
+    // Release fence ensures the task is fully written before a thief can see the new head index
+    _h.store(new_h, std::memory_order_release);
+
+    SPINLOCK_UNLOCK(lock);
+    return 0;
 }
 
 // Explicit instantiation
-template struct deque_t<task_t *, 4096>;
+template struct deque_t<task_t *, XKRT_THREAD_DEQUE_CAPACITY>;
 
 XKRT_NAMESPACE_END

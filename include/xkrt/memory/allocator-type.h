@@ -2,6 +2,7 @@
 ** Copyright 2024,2025 INRIA
 **
 ** Contributors :
+** Thierry Gautier, thierry.gautier@inrialpes.fr
 ** Romain PEREIRA, romain.pereira@inria.fr + rpereira@anl.gov
 **
 ** This software is a computer program whose purpose is to execute
@@ -34,23 +35,14 @@
 ** knowledge of the CeCILL-C license and that you accept its terms.
 **/
 
-#ifndef __IQUEUE_HPP__
-# define __IQUEUE_HPP__
+#ifndef __XKRT_MEMORY_ALLOCATOR_TYPE_HPP__
+# define __XKRT_MEMORY_ALLOCATOR_TYPE_HPP__
 
-template<typename T>
-class IQueue
+typedef enum    xkrt_memory_allocator_type_t
 {
-    public:
+    XKRT_MEMORY_ALLOCATOR_TYPE_BUDDY,
+    XKRT_MEMORY_ALLOCATOR_TYPE_FREELIST
 
-        /** Add a new object to the deque (by the worker */
-        virtual void push(const T & obj) = 0;
+}               xkrt_memory_allocator_type_t;
 
-        /* Remove an object from the deque (by the worker) */
-        virtual T pop(void) = 0;
-
-        /* Steal from the deque (by the thief) */
-        virtual T steal(void) = 0;
-
-};
-
-#endif /* __IQUEUE_HPP__ */
+# endif /* __XKRT_MEMORY_ALLOCATOR_TYPE_HPP__ */

@@ -69,6 +69,18 @@ class small_vector_t
         _overflow_cap = nc;
     }
 
+    void grow_to(int min_cap) {
+        if (_overflow_cap >= min_cap) return;
+        int nc = _overflow_cap ? _overflow_cap * 2 : N * 2;
+        while (nc < min_cap) nc *= 2;         // one doubling pass to hit min_cap
+        T * nb = static_cast<T *>(realloc(_overflow, nc * sizeof(T)));
+        assert(nb);
+        if (!_overflow_cap)
+            memcpy(nb, _buf, _sz * sizeof(T)); // promote inline buf → heap
+        _overflow     = nb;
+        _overflow_cap = nc;
+    }
+
 public:
     small_vector_t()  = default;
     ~small_vector_t() { if (_overflow) free(_overflow); }
@@ -105,6 +117,26 @@ public:
                 ( _overflow_cap && _sz == _overflow_cap), 0))
             grow();
         data_ptr()[_sz++] = v;
+    }
+
+    inline void
+    insert(const small_vector_t & other)
+    {
+        const int n = other._sz;
+        if (n == 0) return;
+
+        const int needed  = _sz + n;
+        const int cur_cap = _overflow_cap ? _overflow_cap : N;
+
+        if (__builtin_expect(needed > cur_cap, 0))
+            grow_to(needed);
+
+        // Evaluate other.data_ptr() AFTER grow_to:
+        // If &other == this and _overflow was moved by realloc, the pointer
+        // is now refreshed.  Non-overlapping dst [_sz, _sz+n) is always safe
+        // because even for self-insertion the src is [0, n) == [0, _sz).
+        memcpy(data_ptr() + _sz, other.data_ptr(), n * sizeof(T));
+        _sz += n;
     }
 
     inline T &

@@ -71,13 +71,16 @@ xkstatic_assert(XKRT_HOST_DEVICE_UNIQUE_ID != XKRT_UNSPECIFIED_DEVICE_UNIQUE_ID)
 /* a bitmask that represents all devices */
 # define XKRT_DEVICES_MASK_ALL (~((xkrt_device_unique_id_bitfield_t)0))
 
+/* capacity of the circular deque of tasks per thread */
+# define XKRT_THREAD_DEQUE_CAPACITY 4096
+
 /* maximum number of threads per device */
 # define XKRT_MAX_THREADS_PER_DEVICE (16)
 
 /* maximum memory per thread for task stack */
-# define XKRT_THREAD_MAX_MEMORY ((size_t)4*1024*1024*1024)
+# define XKRT_THREAD_MAX_MEMORY ((size_t)8*1024*1024*1024)
 
-# define XKRT_TASK_MAX_ACCESSES (1024)
+# define XKRT_TASK_MAX_ACCESSES (2048)
 # define XKRT_UNSPECIFIED_TASK_ACCESS ((xkrt_task_access_counter_t) XKRT_TASK_MAX_ACCESSES)
 
 /* When recording tasks and their commands: the number of empty commands reallocated in each chunk */

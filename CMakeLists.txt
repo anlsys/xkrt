@@ -83,6 +83,9 @@ SET(SOURCE_FILES
     ${CMAKE_SOURCE_DIR}/src/memory.cc
     ${CMAKE_SOURCE_DIR}/src/memory/access.cc
     ${CMAKE_SOURCE_DIR}/src/memory/access/handle/dependency-map.cc
+    ${CMAKE_SOURCE_DIR}/src/memory/access/interval/dependency-tree.cc
+    ${CMAKE_SOURCE_DIR}/src/memory/allocator/buddy.cc
+    ${CMAKE_SOURCE_DIR}/src/memory/allocator/freelist.cc
     ${CMAKE_SOURCE_DIR}/src/memory/coherent.cc
     ${CMAKE_SOURCE_DIR}/src/memory/copy.cc
     ${CMAKE_SOURCE_DIR}/src/memory/distribute.cc
@@ -126,12 +129,12 @@ set(XKRT_TARGETS ${XKRT})
 
 # OpenCG
 
-# find_package(OpenCG REQUIRED)
-# target_link_libraries(${XKRT} PRIVATE OpenCG::opencg)
+find_package(OpenCG REQUIRED)
+target_link_libraries(${XKRT} PUBLIC OpenCG::opencg)
 
-add_subdirectory(opencg/)
-target_link_libraries(${XKRT} PUBLIC opencg)
-include_directories(${CMAKE_SOURCE_DIR}/opencg/include/)
+# add_subdirectory(opencg/)
+# target_link_libraries(${XKRT} PUBLIC opencg)
+# include_directories(${CMAKE_SOURCE_DIR}/opencg/include/)
 
 # PTHREAD
 set(THREADS_PREFER_PTHREAD_FLAG ON)

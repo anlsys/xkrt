@@ -40,10 +40,15 @@
 # include <xkrt/logger/logger.h>
 # include <xkrt/logger/metric.h>
 
+# ifdef NDEBUG
+#  define assert(X) X
+# endif
+
 XKRT_NAMESPACE_USE;
 
 static int N = 0;
-# define CUTOFF_DEPTH 10
+// # define CUTOFF_DEPTH 10
+# define CUTOFF_DEPTH 1000
 
 static const int fib_values[] = {
     1, 1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144, 233, 377, 610,
@@ -111,8 +116,11 @@ fib(int n, int depth = 0)
 }
 
 static void
-body_host(task_t * task)
-{
+body_host(
+    runtime_t * runtime,
+    device_t * device,
+    task_t * task
+) {
     task_args_t * args = (task_args_t *) TASK_ARGS(task);
     *(args->fibn) = fib(args->n, args->depth);
 }
@@ -123,7 +131,7 @@ main_team(runtime_t * rt, team_t * team, thread_t * thread)
     // warmup
     if (thread->tid == 0)
     {
-        fib(5);
+        fib(10);
         runtime.task_wait();
     }
     runtime.team_barrier<true>(team, thread);
@@ -135,7 +143,7 @@ main_team(runtime_t * rt, team_t * team, thread_t * thread)
         int r = fib(N);
         runtime.task_wait();
         double tf = get_nanotime();
-        LOGGER_INFO("Fib(%d) = %d - took %.2lf s", N, r, (tf - t0) / (double)1e9);
+        printf("Fib(%d) = %d - took %.6lf s\n", N, r, (tf - t0) / (double)1e9);
         assert(r == fib_values[N]);
     }
     runtime.team_barrier<true>(team, thread);
@@ -146,8 +154,6 @@ main_team(runtime_t * rt, team_t * team, thread_t * thread)
 int
 main(int argc, char ** argv)
 {
-    LOGGER_INFO("Task size is %lu", task_compute_size(TASK_FLAG_ZERO, 0));
-    LOGGER_INFO("Task size is %lu", task_compute_size(TASK_FLAG_ACCESSES | TASK_FLAG_MOLDABLE, 1));
     if (argc != 2)
     {
         LOGGER_WARN("usage: %s [n]", argv[0]);
@@ -168,7 +174,9 @@ main(int argc, char ** argv)
     fmtid = runtime.task_format_create(&format);
 
     team_t team;
+    team.desc.nthreads = 16;
     team.desc.routine = (team_routine_t) main_team;
+    team.desc.master_is_member = false;
 
     runtime.team_create(&team);
     runtime.team_join(&team);

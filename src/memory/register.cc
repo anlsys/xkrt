@@ -263,9 +263,9 @@ runtime_t::memory_unregister(
 int
 runtime_t::memory_register_async(void * ptr, size_t size)
 {
-    constexpr task_flag_bitfield_t flags = TASK_FLAG_ZERO;
+    constexpr task_flag_bitfield_t flags = TASK_FLAG_DEVICE;
     this->task_spawn<flags>(
-        XKRT_UNSPECIFIED_DEVICE_UNIQUE_ID,
+        XKRT_HOST_DEVICE_UNIQUE_ID,
         0,
         nullptr,
         nullptr,
@@ -280,9 +280,9 @@ runtime_t::memory_register_async(void * ptr, size_t size)
 int
 runtime_t::memory_unregister_async(void * ptr, size_t size)
 {
-    constexpr task_flag_bitfield_t flags = TASK_FLAG_ZERO;
+    constexpr task_flag_bitfield_t flags = TASK_FLAG_DEVICE;
     this->task_spawn<flags>(
-        XKRT_UNSPECIFIED_DEVICE_UNIQUE_ID,
+        XKRT_HOST_DEVICE_UNIQUE_ID,
         0,
         nullptr,
         nullptr,
@@ -311,9 +311,6 @@ typedef enum    memory_op_type_t
     UNREGISTER,
     TOUCH
 }               memory_op_type_t;
-
-constexpr size_t args_size = sizeof(memory_op_async_args_t);
-constexpr task_flag_bitfield_t flags = TASK_FLAG_ACCESSES;
 
 template<memory_op_type_t T>
 static void
@@ -388,10 +385,15 @@ memory_op_async(
     for (size_t i = 0 ; i < ntasks ; ++i)
     {
         // create a task that will register/pin/unpin the memory
+        constexpr size_t args_size = sizeof(memory_op_async_args_t);
+        constexpr task_flag_bitfield_t flags = TASK_FLAG_DEVICE | TASK_FLAG_ACCESSES;
         task_t * task = runtime->task_new(fmtid, flags, NULL, args_size, AC);
 
         task_acs_info_t * acs = TASK_ACS_INFO(task);
         new (acs) task_acs_info_t(AC);
+
+        task_dev_info_t * dev = TASK_DEV_INFO(task);
+        new (dev) task_dev_info_t(XKRT_HOST_DEVICE_UNIQUE_ID, XKRT_UNSPECIFIED_TASK_ACCESS);
 
         // setup register args
         memory_op_async_args_t * args = (memory_op_async_args_t *) TASK_ARGS(task);
@@ -411,7 +413,7 @@ memory_op_async(
         assert(args->start < args->end);
 
         // virtual write onto the memory segment
-        access_t * accesses = TASK_ACCESSES(task, flags);
+        access_t * accesses = TASK_ACCESSES(task);
         new (accesses + 0) access_t(task, args->start, args->end, ACCESS_MODE_VW);
 
         // if register/unregister, create a virtual write on NULL, to

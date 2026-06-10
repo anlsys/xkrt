@@ -45,11 +45,12 @@
 # include <xkrt/driver/driver-type.h>
 # include <xkrt/driver/queue.h>
 # include <xkrt/logger/todo.h>
-# include <xkrt/memory/area.h>
+# include <xkrt/memory/allocator/freelist.hpp>
+# include <xkrt/memory/allocator/buddy.hpp>
+# include <xkrt/memory/allocator-type.h>
 # include <xkrt/memory/cache-line-size.hpp>
 # include <xkrt/stats/stats.h>
 # include <xkrt/support.h>
-# include <xkrt/sync/mutex.h>
 # include <xkrt/task/task.hpp>
 
 # include <optional>
@@ -83,16 +84,6 @@ typedef struct  device_memory_info_t
 
     /* memory name */
     char name[32];
-
-    ////////////////////////////////
-    //  TO BE FILL BY THE RUNTIME //
-    ////////////////////////////////
-
-    /* whether this area was already allocated+mapped to the device */
-    bool allocated;
-
-    /* the area of that memory */
-    area_t area;
 
 }               device_memory_info_t;
 
@@ -150,6 +141,22 @@ typedef struct  device_t
     device_memory_info_t memories[XKRT_DEVICE_MEMORIES_MAX];
     int nmemories;
 
+    /* allocator type for this device */
+    xkrt_memory_allocator_type_t allocator_type;
+
+    /* inline storage for the allocator (no heap allocation).
+     * Constructed via placement new, destroyed via explicit destructor call.
+     * The trivial default ctor/dtor allow device_t to be default-constructed. */
+    union allocator_storage_t {
+        freelist_allocator_t freelist;
+        buddy_allocator_t    buddy;
+        allocator_storage_t()  {}
+        ~allocator_storage_t() {}
+    } allocator_storage;
+
+    /* virtual dispatch pointer — points into allocator_storage */
+    allocator_t * allocator;
+
     /* allocate memory on a specific area */
     area_chunk_t * memory_allocate_on(const size_t size, int area_idx);
 
@@ -162,14 +169,11 @@ typedef struct  device_t
     /* deallocate the given chunk */
     void memory_deallocate(area_chunk_t * chunk);
 
-    /* free all memory of every area of that device, resetting their state to chunk0 */
+    /* free all memory of every area of that device, resetting to uninitialized state */
     void memory_reset(void);
 
-    /* free all memory of the given area of that device, resetting their state to chunk0 */
+    /* free all memory of the given area of that device, resetting to uninitialized state */
     void memory_reset_on(int area_idx);
-
-    /* set chunk0 of an area */
-    void memory_set_chunk0(uintptr_t device_ptr, size_t size, int area_idx);
 
     ///////////////////////
     // QUEUE MANAGEMENT //
@@ -204,9 +208,6 @@ typedef struct  device_t
         command_queue_t ** pqueue           /* OUT */
     );
 
-    /* submit a command to the device */
-    int command_submit(command_t * command);
-
     /* create a new command */
     void offloader_queue_command_new(
         const command_queue_type_t qtype,   /* IN  */
@@ -224,8 +225,6 @@ typedef struct  device_t
         command_queue_t * queue,
         command_t * cmd
     );
-
-    # pragma message(TODO "Remove all these routines to use a generic runtime API")
 
     /* submit a file I/O command */
     template <ocg::command_type_t T>
@@ -268,64 +267,28 @@ typedef struct  device_t
         return cmd;
     }
 
-    template <command_flag_t flags>
-    command_t * offloader_queue_command_submit_kernel(
-        void * runtime,
-        task_t * task,
-        prog_launcher_t launch,
-        const std::optional<callback_t> & callback = std::nullopt
-    ) {
-        /* create a new command and retrieve its offload queue */
-        thread_t * thread;
-        command_queue_t * queue;
-        command_t * cmd;
-        this->offloader_queue_command_new(
-            XKRT_QUEUE_TYPE_KERN,
-            ocg::COMMAND_TYPE_PROG_LAUNCHER,
-            flags,
-            &thread,
-            &queue,
-            &cmd
-        );
-        assert(thread);
-        assert(queue);
-        assert(cmd);
+    # define IS_1D (std::is_same<HOST_VIEW_T, size_t>()        && std::is_same<DEVICE_VIEW_T, uintptr_t>())
+    # define IS_2D (std::is_same<HOST_VIEW_T, memory_view_t>() && std::is_same<DEVICE_VIEW_T, memory_replica_view_t>())
 
-        /* create a new kernel command */
-        cmd->prog_launcher.launch  = (void (*)()) launch;
-        cmd->prog_launcher.runtime = runtime;
-        cmd->prog_launcher.device  = this;
-        cmd->prog_launcher.task    = task;
-        if (callback)
-            cmd->completion_callback_push(*callback);
-
-        this->offloader_queue_command_commit(thread, queue, cmd);
-
-        return cmd;
-    }
-
+    /* builder of a copy command */
     /* copy */
     template <typename HOST_VIEW_T, typename DEVICE_VIEW_T>
-    command_t *
-    offloader_queue_command_submit_copy(
+    static void
+    offloader_command_types(
         const HOST_VIEW_T               & host_view,
         const device_unique_id_t          dst_device_unique_id,
         const DEVICE_VIEW_T             & dst_device_view,
         const device_unique_id_t          src_device_unique_id,
         const DEVICE_VIEW_T             & src_device_view,
-        const std::optional<callback_t> & callback = std::nullopt
+        ocg::command_type_t & ctype,    /* out */
+        command_queue_type_t & qtype    /* out */
     ) {
-        assert(this->unique_id == dst_device_unique_id || this->unique_id == src_device_unique_id);
-
         /* find the command type */
-        ocg::command_type_t ctype;
         const int src_is_host = (src_device_unique_id == XKRT_HOST_DEVICE_UNIQUE_ID) ? 1 : 0;
         const int dst_is_host = (dst_device_unique_id == XKRT_HOST_DEVICE_UNIQUE_ID) ? 1 : 0;
 
         /* assertions */
-        # define IS_1D (std::is_same<HOST_VIEW_T, size_t>()        && std::is_same<DEVICE_VIEW_T, uintptr_t>())
-        # define IS_2D (std::is_same<HOST_VIEW_T, memory_view_t>() && std::is_same<DEVICE_VIEW_T, memory_replica_view_t>())
-        static_assert(IS_1D || IS_2D);
+       static_assert(IS_1D || IS_2D);
         if constexpr(IS_1D) {
             assert(host_view);
             assert(dst_device_view);
@@ -356,7 +319,6 @@ typedef struct  device_t
         }
 
         /* find the type of queue to use */
-        command_queue_type_t qtype;
         switch(ctype)
         {
             case (ocg::COMMAND_TYPE_COPY_H2H_1D):
@@ -388,6 +350,24 @@ typedef struct  device_t
                 break ;
             }
         }
+    }
+
+    /* copy */
+    template <typename HOST_VIEW_T, typename DEVICE_VIEW_T>
+    command_t *
+    offloader_queue_command_submit_copy(
+        const HOST_VIEW_T               & host_view,
+        const device_unique_id_t          dst_device_unique_id,
+        const DEVICE_VIEW_T             & dst_device_view,
+        const device_unique_id_t          src_device_unique_id,
+        const DEVICE_VIEW_T             & src_device_view,
+        const std::optional<callback_t> & callback = std::nullopt
+    ) {
+        assert(this->unique_id == dst_device_unique_id || this->unique_id == src_device_unique_id);
+
+        ocg::command_type_t ctype;
+        command_queue_type_t qtype;
+        device_t::offloader_command_types(host_view, dst_device_unique_id, dst_device_view, src_device_unique_id, src_device_view, ctype, qtype);
 
         /* create a new command and retrieve its offload queue */
         thread_t * thread;
@@ -425,11 +405,11 @@ typedef struct  device_t
             cmd->completion_callback_push(*callback);
         this->offloader_queue_command_commit(thread, queue, cmd);
 
-        # undef IS_1D
-        # undef IS_2D
-
         return cmd;
     }
+
+    # undef IS_1D
+    # undef IS_2D
 
 }               device_t;
 
