@@ -30,11 +30,14 @@ var searchData=
   ['accesses_27',['accesses',['../examples.html#autotoc_md10',1,'AXPY &amp;ndash; Vector Addition with Data Accesses'],['../architecture.html#autotoc_md39',1,'Data Accesses']]],
   ['addition_20with_20data_20accesses_28',['AXPY &amp;ndash; Vector Addition with Data Accesses',['../examples.html#autotoc_md10',1,'']]],
   ['addr_29',['addr',['../structxkrt__access__t_1_1xkrt__region__t_1_1xkrt__matrix__t.html#a8b0ab62a0d9c9d77f0c84f344f556750',1,'xkrt_access_t::xkrt_region_t::xkrt_matrix_t::addr'],['../structxkrt__access__t_1_1xkrt__region__t_1_1xkrt__handle__t.html#a10a0d52e8d45391a8f0f0880eda35184',1,'xkrt_access_t::xkrt_region_t::xkrt_handle_t::addr']]],
-  ['advised_30',['advised',['../structxkrt_1_1runtime__t.html#ae0b8df222ce5b865b6e99ad26b33577c',1,'xkrt::runtime_t']]],
+  ['advised_30',['advised',['../structxkrt_1_1runtime__t.html#a524c6480bab8319a6398409755d9b5f0',1,'xkrt::runtime_t']]],
   ['architecture_20concepts_31',['Architecture &amp; Concepts',['../architecture.html',1,'']]],
   ['architecture_2emd_32',['architecture.md',['../architecture_8md.html',1,'']]],
   ['architectures_33',['XKaapi Runtime (XKRT) - A parallel runtime system for macro-dataflow on multi-devices architectures.',['../index.html#autotoc_md0',1,'']]],
-  ['available_20environment_20variable_34',['Available environment variable',['../index.html#autotoc_md7',1,'']]],
-  ['axpby_20ndash_20moldable_20tasks_20with_20split_20conditions_35',['AXPBY &amp;ndash; Moldable Tasks with Split Conditions',['../examples.html#autotoc_md13',1,'']]],
-  ['axpy_20ndash_20vector_20addition_20with_20data_20accesses_36',['AXPY &amp;ndash; Vector Addition with Data Accesses',['../examples.html#autotoc_md10',1,'']]]
+  ['area_5fchunk_5fstate_5ft_34',['area_chunk_state_t',['../namespacexkrt.html#ae06164c56c579a66c2d8df9c640c3621',1,'xkrt']]],
+  ['area_5fchunk_5ft_35',['area_chunk_t',['../namespacexkrt.html#a888f2247a58d08b0e16d1352c37e0286',1,'xkrt']]],
+  ['area_5ft_36',['area_t',['../namespacexkrt.html#a00f3dc37c1d0262d4f38c20c46eda65a',1,'xkrt']]],
+  ['available_20environment_20variable_37',['Available environment variable',['../index.html#autotoc_md7',1,'']]],
+  ['axpby_20ndash_20moldable_20tasks_20with_20split_20conditions_38',['AXPBY &amp;ndash; Moldable Tasks with Split Conditions',['../examples.html#autotoc_md13',1,'']]],
+  ['axpy_20ndash_20vector_20addition_20with_20data_20accesses_39',['AXPY &amp;ndash; Vector Addition with Data Accesses',['../examples.html#autotoc_md10',1,'']]]
 ];

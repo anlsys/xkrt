@@ -16,8 +16,9 @@ var searchData=
   ['xkrt_5fteam_5fhierarchy_5fgroup_5fsize_13',['XKRT_TEAM_HIERARCHY_GROUP_SIZE',['../consts_8h.html#acb01ebd7546879a5dcb51590cdfabe39',1,'consts.h']]],
   ['xkrt_5fteam_5fmax_5fthreads_14',['XKRT_TEAM_MAX_THREADS',['../consts_8h.html#a37dabb9e69b2508ad4b67b998382b95e',1,'consts.h']]],
   ['xkrt_5fteam_5froutine_5fparallel_5ffor_15',['XKRT_TEAM_ROUTINE_PARALLEL_FOR',['../runtime_8h.html#aa26a233462efd5babbdb780d085fd0ae',1,'runtime.h']]],
-  ['xkrt_5fthread_5fmax_5fmemory_16',['XKRT_THREAD_MAX_MEMORY',['../consts_8h.html#a183621680b764210661b39f0f9787a98',1,'consts.h']]],
-  ['xkrt_5funspecified_5fdevice_5funique_5fid_17',['XKRT_UNSPECIFIED_DEVICE_UNIQUE_ID',['../consts_8h.html#af2cd8f3ada38f7b176dddecf63605ba1',1,'consts.h']]],
-  ['xkrt_5funspecified_5ftask_5faccess_18',['XKRT_UNSPECIFIED_TASK_ACCESS',['../consts_8h.html#a00c5b3a42ffb2e7de9f3bc9960acafc9',1,'consts.h']]],
-  ['xkstatic_5fassert_19',['xkstatic_assert',['../consts_8h.html#a7185ad36c9696600d2a335606a080528',1,'consts.h']]]
+  ['xkrt_5fthread_5fdeque_5fcapacity_16',['XKRT_THREAD_DEQUE_CAPACITY',['../consts_8h.html#a5590bc2bff274ed2304b559b86c936b0',1,'consts.h']]],
+  ['xkrt_5fthread_5fmax_5fmemory_17',['XKRT_THREAD_MAX_MEMORY',['../consts_8h.html#a183621680b764210661b39f0f9787a98',1,'consts.h']]],
+  ['xkrt_5funspecified_5fdevice_5funique_5fid_18',['XKRT_UNSPECIFIED_DEVICE_UNIQUE_ID',['../consts_8h.html#af2cd8f3ada38f7b176dddecf63605ba1',1,'consts.h']]],
+  ['xkrt_5funspecified_5ftask_5faccess_19',['XKRT_UNSPECIFIED_TASK_ACCESS',['../consts_8h.html#a00c5b3a42ffb2e7de9f3bc9960acafc9',1,'consts.h']]],
+  ['xkstatic_5fassert_20',['xkstatic_assert',['../consts_8h.html#a7185ad36c9696600d2a335606a080528',1,'consts.h']]]
 ];

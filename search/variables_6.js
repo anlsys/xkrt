@@ -1,6 +1,5 @@
 var searchData=
 [
-  ['handle_0',['handle',['../unionxkrt__access__t_1_1xkrt__region__t.html#ad47262c973bfa4598cf2d05efcb9acf3',1,'xkrt_access_t::xkrt_region_t']]],
-  ['host_1',['host',['../structxkrt_1_1runtime__t.html#afbcd2d12ce716e7099f3e8551f165773',1,'xkrt::runtime_t']]],
-  ['host_5fcapture_2',['host_capture',['../structxkrt_1_1runtime__t.html#a95338bbcc553c7bb250ba27b36a66786',1,'xkrt::runtime_t']]]
+  ['gm_0',['gm',['../structxkrt_1_1distribution__t.html#a76f97913be95cdb3dfbc5bf92d5b7253',1,'xkrt::distribution_t']]],
+  ['gn_1',['gn',['../structxkrt_1_1distribution__t.html#a0cb1bc1c9900d54ca0d97a179b93d840',1,'xkrt::distribution_t']]]
 ];

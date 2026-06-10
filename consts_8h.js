@@ -12,6 +12,7 @@ var consts_8h =
     [ "XKRT_TASK_RECORD_COMMAND_POOL_CHUNK_CAPACITY", "consts_8h.html#a900fd1cd192faccd4fe4bc8aedd7b7f1", null ],
     [ "XKRT_TEAM_HIERARCHY_GROUP_SIZE", "consts_8h.html#acb01ebd7546879a5dcb51590cdfabe39", null ],
     [ "XKRT_TEAM_MAX_THREADS", "consts_8h.html#a37dabb9e69b2508ad4b67b998382b95e", null ],
+    [ "XKRT_THREAD_DEQUE_CAPACITY", "consts_8h.html#a5590bc2bff274ed2304b559b86c936b0", null ],
     [ "XKRT_THREAD_MAX_MEMORY", "consts_8h.html#a183621680b764210661b39f0f9787a98", null ],
     [ "XKRT_UNSPECIFIED_DEVICE_UNIQUE_ID", "consts_8h.html#af2cd8f3ada38f7b176dddecf63605ba1", null ],
     [ "XKRT_UNSPECIFIED_TASK_ACCESS", "consts_8h.html#a00c5b3a42ffb2e7de9f3bc9960acafc9", null ],

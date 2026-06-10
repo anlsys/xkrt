@@ -23,7 +23,7 @@ var searchData=
   ['device_5foffloader_5fwait_5frandom_5fcommand_20',['device_offloader_wait_random_command',['../structxkrt_1_1driver__t.html#ab47fc37edcc472860e88e20296f97f6e',1,'xkrt::driver_t']]],
   ['device_5funique_5fid_5fbitfield_5ft_21',['device_unique_id_bitfield_t',['../namespacexkrt.html#afd14f5ef96063902899a29d81f0a9d9c',1,'xkrt']]],
   ['device_5funique_5fid_5ft_22',['device_unique_id_t',['../namespacexkrt.html#a1a1e98dcb6976b625ebe34485d97e277',1,'xkrt']]],
-  ['devices_23',['devices',['../structxkrt_1_1driver__t.html#a8d7e86be50c270fd5b157e8206dd6077',1,'xkrt::driver_t::devices'],['../structxkrt_1_1drivers__t.html#a665434525e5926265e720d5ff610ca08',1,'xkrt::drivers_t::devices']]],
+  ['devices_23',['devices',['../structxkrt_1_1driver__t.html#a71b77a8d59535a7506b6e36ab463183d',1,'xkrt::driver_t::devices'],['../structxkrt_1_1drivers__t.html#a8aee7178b6adb706cade7d65d3476f14',1,'xkrt::drivers_t::devices']]],
   ['devices_20architectures_24',['XKaapi Runtime (XKRT) - A parallel runtime system for macro-dataflow on multi-devices architectures.',['../index.html#autotoc_md0',1,'']]],
   ['devices_5fget_25',['devices_get',['../structxkrt_1_1runtime__t.html#a57ce7460f32868cfd0457ecfb505d3a4',1,'xkrt::runtime_t']]],
   ['diffusion_20stencil_26',['2D Heat Diffusion Stencil',['../examples.html#autotoc_md25',1,'']]],

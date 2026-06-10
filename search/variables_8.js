@@ -1,13 +1,6 @@
 var searchData=
 [
-  ['m_0',['m',['../structxkrt_1_1distribution__t.html#ae0fed51218847a0f0cd616c0cc4c7e73',1,'xkrt::distribution_t::m'],['../structxkrt__access__t_1_1xkrt__region__t_1_1xkrt__matrix__t.html#a889f727b1ff2cf2f76d09371462015f0',1,'xkrt_access_t::xkrt_region_t::xkrt_matrix_t::m']]],
-  ['matrix_1',['matrix',['../unionxkrt__access__t_1_1xkrt__region__t.html#aad0b02ac586be80481d9c23dc8880884',1,'xkrt_access_t::xkrt_region_t']]],
-  ['mb_2',['mb',['../structxkrt_1_1distribution__t.html#a2eca01ed99d3ac51fe071015cd8fdd60',1,'xkrt::distribution_t']]],
-  ['memory_3',['memory',['../structxkrt_1_1runtime__t.html#a0671684a5917344b705700944c241694',1,'xkrt::runtime_t']]],
-  ['memory_5fcopy_5fasync_4',['memory_copy_async',['../structxkrt_1_1runtime__t.html#aea0e62ce2cc28e403abc5cc101932d07',1,'xkrt::runtime_t']]],
-  ['memory_5fregister_5fasync_5',['memory_register_async',['../structxkrt_1_1runtime__t.html#aac2e3d325fbe40a21e07b3a16918b11d',1,'xkrt::runtime_t']]],
-  ['memory_5ftouch_5fasync_6',['memory_touch_async',['../structxkrt_1_1runtime__t.html#a51b7da071f57d56265c01e2c4714fae1',1,'xkrt::runtime_t']]],
-  ['memory_5funregister_5fasync_7',['memory_unregister_async',['../structxkrt_1_1runtime__t.html#a90697a813600b6d9496b50c0c6328955',1,'xkrt::runtime_t']]],
-  ['mode_8',['mode',['../structxkrt__access__t.html#a72a9dfc9c6b1a6dcf8faca1860f66269',1,'xkrt_access_t']]],
-  ['mt_9',['mt',['../structxkrt_1_1distribution__t.html#ae62ec7f306a5e1b0da4e5383138e15bb',1,'xkrt::distribution_t']]]
+  ['label_0',['label',['../structxkrt__task__format__t.html#abf2a4fb2a7d73479fa994d3d94637581',1,'xkrt_task_format_t']]],
+  ['ld_1',['ld',['../structxkrt__access__t_1_1xkrt__region__t_1_1xkrt__matrix__t.html#ab6011b67138896024fb5058cdbb64278',1,'xkrt_access_t::xkrt_region_t::xkrt_matrix_t']]],
+  ['list_2',['list',['../structxkrt_1_1runtime__t.html#aa29a6625743065b5768bf1780beb6a64',1,'xkrt::runtime_t::list'],['../structxkrt__task__formats__t.html#a6bc7d54d5eb2c68a9f8812de30909037',1,'xkrt_task_formats_t::list'],['../structxkrt_1_1driver__t.html#aba39ec6c0a8482e56b5c617f2b43346a',1,'xkrt::driver_t::list'],['../structxkrt_1_1drivers__t.html#a69b4a46d3f3da84ca00610f8b138e9de',1,'xkrt::drivers_t::list'],['../structxkrt_1_1drivers__t.html#a68f46ea4e34728bf6b9e7efd49584317',1,'xkrt::drivers_t::list']]]
 ];

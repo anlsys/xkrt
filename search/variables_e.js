@@ -1,9 +1,14 @@
 var searchData=
 [
-  ['t_0',['t',['../structxkrt_1_1distribution__t.html#a3c0fda90c764a514a0aec670e68b4757',1,'xkrt::distribution_t']]],
-  ['tasks_1',['tasks',['../structxkrt_1_1runtime__t.html#a393c1d26e424dca70fc2bb5cff3ef46a',1,'xkrt::runtime_t']]],
-  ['team_2',['team',['../structxkrt_1_1driver__t.html#a9e13f5a99477982700f2e9c58bab17c4',1,'xkrt::driver_t']]],
-  ['teams_3',['teams',['../structxkrt_1_1driver__t.html#ad94e3c5e7ec6b9842805df26c151bb57',1,'xkrt::driver_t']]],
-  ['topology_4',['topology',['../structxkrt_1_1runtime__t.html#a51404d38804d5cf36ca7a29b0fb2e188',1,'xkrt::runtime_t']]],
-  ['type_5',['type',['../structxkrt_1_1driver__t.html#a82a52f7cbecf8680b9e0c0eb51d0ca0a',1,'xkrt::driver_t::type'],['../structxkrt_1_1distribution__t.html#a7cbe4ed4e5a6dd7a78d236e250665507',1,'xkrt::distribution_t::type'],['../structxkrt__access__t.html#ae07deef1e5d8dd4921fe8a754759caff',1,'xkrt_access_t::type']]]
+  ['scope_0',['scope',['../structxkrt__access__t.html#a885d48bfa97322f61bcda0977c94bc3a',1,'xkrt_access_t']]],
+  ['segment_1',['segment',['../unionxkrt__access__t_1_1xkrt__region__t.html#a34f4dbfb9181114d0ef321073bdd073c',1,'xkrt_access_t::xkrt_region_t']]],
+  ['set_2',['set',['../structxkrt_1_1runtime__t.html#a02ba6a98b87c9434c48212c94d8c64bf',1,'xkrt::runtime_t']]],
+  ['size_3',['size',['../structxkrt_1_1distribution__t.html#a716023b7e88a93c069b0f7664e916a59',1,'xkrt::distribution_t']]],
+  ['sizeof_5ftype_4',['sizeof_type',['../structxkrt__access__t_1_1xkrt__region__t_1_1xkrt__matrix__t.html#ac2cd297cce0daa41a8ea8ee22edb9527',1,'xkrt_access_t::xkrt_region_t::xkrt_matrix_t']]],
+  ['skipped_5',['skipped',['../structxkrt_1_1runtime__t.html#a68e230fce826c0cb532def4fb3e919da',1,'xkrt::runtime_t']]],
+  ['state_6',['state',['../structxkrt_1_1runtime__t.html#aaadc2b38d4f7fd9384ab7b9a67b1cd75',1,'xkrt::runtime_t']]],
+  ['stats_7',['stats',['../structxkrt_1_1runtime__t.html#a2efb8cd7b5a9f46595f2bfce991ddcfc',1,'xkrt::runtime_t']]],
+  ['storage_8',['storage',['../structxkrt__access__t_1_1xkrt__region__t_1_1xkrt__matrix__t.html#af29d52044abbdf472d58bfec3972e69a',1,'xkrt_access_t::xkrt_region_t::xkrt_matrix_t']]],
+  ['submitted_9',['submitted',['../structxkrt_1_1runtime__t.html#aa460771a34367f51285aa94a70f601ca',1,'xkrt::runtime_t']]],
+  ['suggest_10',['suggest',['../structxkrt__task__format__t.html#a8d0fb09abac09721ebde8e32752e5a07',1,'xkrt_task_format_t']]]
 ];

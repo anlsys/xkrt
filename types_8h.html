@@ -106,6 +106,9 @@ $(document).ready(function(){initNavTree('types_8h.html',''); initResizable(); }
 <code>#include &lt;xkrt/driver/queue-command-list-counter.h&gt;</code><br />
 <code>#include &lt;xkrt/driver/queue-type.h&gt;</code><br />
 <code>#include &lt;<a class="el" href="driver-type_8h_source.html">xkrt/driver/driver-type.h</a>&gt;</code><br />
+<code>#include &lt;xkrt/memory/allocator-type.h&gt;</code><br />
+<code>#include &lt;xkrt/memory/area.h&gt;</code><br />
+<code>#include &lt;xkrt/memory/size.h&gt;</code><br />
 <code>#include &lt;xkrt/memory/access/blas/matrix-storage.h&gt;</code><br />
 <code>#include &lt;<a class="el" href="concurrency_8h_source.html">xkrt/memory/access/concurrency.h</a>&gt;</code><br />
 <code>#include &lt;<a class="el" href="mode_8h_source.html">xkrt/memory/access/mode.h</a>&gt;</code><br />
@@ -185,6 +188,22 @@ Typedefs</h2></td></tr>
 <tr class="separator:a6dc548faeb8394cceface3d2b79f3933"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aef58d2e4beaffbe3e81067927a4f7c1e" id="r_aef58d2e4beaffbe3e81067927a4f7c1e"><td class="memItemLeft" align="right" valign="top">typedef xkrt_prog_launcher_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacexkrt.html#aef58d2e4beaffbe3e81067927a4f7c1e">xkrt::prog_launcher_t</a></td></tr>
 <tr class="separator:aef58d2e4beaffbe3e81067927a4f7c1e"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a3e2dde225db3f3e17aa8347625705599" id="r_a3e2dde225db3f3e17aa8347625705599"><td class="memItemLeft" align="right" valign="top">typedef xkrt_memory_size_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacexkrt.html#a3e2dde225db3f3e17aa8347625705599">xkrt::memory_size_t</a></td></tr>
+<tr class="separator:a3e2dde225db3f3e17aa8347625705599"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a1c52db0b1c9571aa6b20e4b7bb0fbf78" id="r_a1c52db0b1c9571aa6b20e4b7bb0fbf78"><td class="memItemLeft" align="right" valign="top">typedef xkrt_memory_size_unit_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacexkrt.html#a1c52db0b1c9571aa6b20e4b7bb0fbf78">xkrt::memory_size_unit_t</a></td></tr>
+<tr class="separator:a1c52db0b1c9571aa6b20e4b7bb0fbf78"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a8aea03550c815b4bb65e1fce182555aa" id="r_a8aea03550c815b4bb65e1fce182555aa"><td class="memItemLeft" align="right" valign="top">typedef xkrt_memory_size_type_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacexkrt.html#a8aea03550c815b4bb65e1fce182555aa">xkrt::memory_size_type_t</a></td></tr>
+<tr class="separator:a8aea03550c815b4bb65e1fce182555aa"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ad60b3af1598fdaf051e629de1e39a4cb" id="r_ad60b3af1598fdaf051e629de1e39a4cb"><td class="memItemLeft" align="right" valign="top">typedef xkrt_memory_allocator_type_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacexkrt.html#ad60b3af1598fdaf051e629de1e39a4cb">xkrt::memory_allocator_type_t</a></td></tr>
+<tr class="separator:ad60b3af1598fdaf051e629de1e39a4cb"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a00f3dc37c1d0262d4f38c20c46eda65a" id="r_a00f3dc37c1d0262d4f38c20c46eda65a"><td class="memItemLeft" align="right" valign="top">typedef xkrt_area_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacexkrt.html#a00f3dc37c1d0262d4f38c20c46eda65a">xkrt::area_t</a></td></tr>
+<tr class="separator:a00f3dc37c1d0262d4f38c20c46eda65a"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a888f2247a58d08b0e16d1352c37e0286" id="r_a888f2247a58d08b0e16d1352c37e0286"><td class="memItemLeft" align="right" valign="top">typedef xkrt_area_chunk_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacexkrt.html#a888f2247a58d08b0e16d1352c37e0286">xkrt::area_chunk_t</a></td></tr>
+<tr class="separator:a888f2247a58d08b0e16d1352c37e0286"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ae06164c56c579a66c2d8df9c640c3621" id="r_ae06164c56c579a66c2d8df9c640c3621"><td class="memItemLeft" align="right" valign="top">typedef xkrt_area_chunk_state_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacexkrt.html#ae06164c56c579a66c2d8df9c640c3621">xkrt::area_chunk_state_t</a></td></tr>
+<tr class="separator:ae06164c56c579a66c2d8df9c640c3621"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a08236e204858e3ce6155d3d38cef842c" id="r_a08236e204858e3ce6155d3d38cef842c"><td class="memItemLeft" align="right" valign="top">typedef xkrt_mutex_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacexkrt.html#a08236e204858e3ce6155d3d38cef842c">xkrt::mutex_t</a></td></tr>
+<tr class="separator:a08236e204858e3ce6155d3d38cef842c"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 </div><!-- contents -->
 </div><!-- doc-content -->
