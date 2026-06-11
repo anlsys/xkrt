@@ -27,7 +27,7 @@ XKRT is implemented in C++ and exposes two APIs: C and C++.
 ### Requirements
 - A C/C++ compiler with support for C++20 (the only compiler tested is LLVM >=20.x)
 - hwloc - https://github.com/open-mpi/hwloc
-- OpenCG - https://github.com/JLESC-Tasking-Group/opencg
+- OpenCG release/v0.1 - https://github.com/JLESC-Tasking-Group/opencg
 
 ### Optional
 - Cuda, HIP, Level Zero, SYCL, OpenCL
