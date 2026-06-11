@@ -43,26 +43,68 @@ XKRT_NAMESPACE_USE;
 // ALLOCATORS //
 ////////////////
 
-static ocg::command_t *
-command_allocate(ocg::command_graph_t * cg)
-{
-    return ((command_graph_t *)cg)->commands.put();
+static command_t *
+command_new(
+    command_graph_t * cg,
+    const ocg::command_type_t type
+) {
+    return cg->commands.put(type, COMMAND_FLAG_NONE);
 }
 
-static ocg::command_graph_node_t *
-command_graph_node_allocate(ocg::command_graph_t * cg)
-{
-    return ((command_graph_t *)cg)->nodes.put();
+static command_graph_node_t *
+command_graph_node_new(
+    command_graph_t * cg,
+    const device_unique_id_t device_unique_id,
+    const ocg::command_graph_node_type_t type
+) {
+    return cg->nodes.put(device_unique_id, type);
 }
 
-static ocg::command_graph_t *
-command_graph_allocate(ocg::command_graph_t * original_cg)
+void command_graph_init(command_graph_t * cg);
+
+static command_graph_t *
+command_graph_new(command_graph_t * original_cg)
 {
     command_graph_t * cg = (command_graph_t *) malloc(sizeof(command_graph_t));
     assert(cg);
-    new (cg) command_graph_t();
+    command_graph_init(cg);
     return cg;
 }
+
+void
+command_graph_init(command_graph_t * cg)
+{
+    new (cg) command_graph_t();
+    cg->init(
+        (ocg::command_constructor_t)            command_new,
+        (ocg::command_graph_node_constructor_t) command_graph_node_new,
+        (ocg::command_graph_constructor_t)      command_graph_new
+    );
+}
+
+static inline command_graph_node_t *
+xkrt_command_graph_node_new(
+    command_graph_t * cg,
+    const device_unique_id_t device_unique_id,
+    command_t * command
+) {
+    assert(command);
+    command_graph_node_t * node = (command_graph_node_t *) command_graph_node_new(cg, device_unique_id, ocg::COMMAND_GRAPH_NODE_TYPE_COMMAND);
+    assert(node);
+    node->command = command;
+    return node;
+}
+
+static inline command_graph_node_t *
+xkrt_command_graph_node_new(
+    command_graph_t * cg,
+    const device_unique_id_t device_unique_id
+) {
+    command_graph_node_t * node = (command_graph_node_t *) command_graph_node_new(cg, device_unique_id, ocg::COMMAND_GRAPH_NODE_TYPE_EMPTY);
+    assert(node);
+    return node;
+}
+
 
 //////////////////////////////
 // CONSTRUCT FROM TASKGRAPH //
@@ -75,36 +117,12 @@ command_graph_allocate(ocg::command_graph_t * original_cg)
 // - N7 - is the completed state
 // and 1 node per emitted command
 
-static inline command_graph_node_t *
-xkrt_command_graph_node_new(
-    command_graph_t * cg,
-    const device_unique_id_t device_unique_id
-) {
-    command_graph_node_t * node = (command_graph_node_t *) command_graph_node_allocate(cg);
-    assert(node);
-    new (node) command_graph_node_t(device_unique_id);
-    return node;
-}
-
-static inline command_graph_node_t *
-xkrt_command_graph_node_new(
-    command_graph_t * cg,
-    const device_unique_id_t device_unique_id,
-    command_t * command
-) {
-    assert(command);
-    command_graph_node_t * node = (command_graph_node_t *) command_graph_node_allocate(cg);
-    assert(node);
-    new (node) command_graph_node_t(device_unique_id, command);
-    return node;
-}
-
 void
 runtime_t::command_graph_from_task_dependency_graph(
     task_dependency_graph_t * tdg,              /* IN  */
     command_graph_t * cg                        /* OUT */
 ) {
-    // base get_number_of_allocated_nodes
+    // base get_number_of_newd_nodes
     const size_t ntasks = tdg->get_ntasks();
 
     // TODO: we should save graph complexity here: if there is no emitted
@@ -113,18 +131,13 @@ runtime_t::command_graph_from_task_dependency_graph(
     // TODO: we could save this malloc, by hiting directly in the cg->nodes struct.
     // Each task is getting 4 control nodes pushed to the cg, offset by 2 (entry/exit of the cg)
 
-    // allocate a temporary buffer to store N1, N3, N5 and N7 of each task
+    // new a temporary buffer to store N1, N3, N5 and N7 of each task
     # define N_CONTROL_NODES_PER_TASK 4
     command_graph_node_t ** control_nodes = (command_graph_node_t **) malloc(sizeof(command_graph_node_t *) * ntasks * N_CONTROL_NODES_PER_TASK);
     assert(control_nodes);
 
     // get entry/exit nodes
-    new (cg) command_graph_t();
-    cg->init(
-        command_allocate,
-        command_graph_node_allocate,
-        command_graph_allocate
-    );
+    command_graph_init(cg);
     command_graph_node_t * entry = (command_graph_node_t *) cg->node_get_entry();
     command_graph_node_t * exit  = (command_graph_node_t *) cg->node_get_exit();
     assert(entry);
@@ -346,8 +359,10 @@ command_graph_replay_process_node(
         // first time processing this node for that replay: reinitialize the node
         if (xkrt_compare_and_swap(node->rc, cg->rc))
         {
-            if (node->command)
+            if (node->type == ocg::COMMAND_GRAPH_NODE_TYPE_COMMAND)
             {
+                assert(node->command);
+
                 // clear all previous callbacks
                 ((command_t *) node->command)->completion_callback_clear();
 
