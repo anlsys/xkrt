@@ -666,7 +666,6 @@ xkrt_cuda_driver_command_batch_init(
         {
             case (ocg::COMMAND_GRAPH_NODE_TYPE_EMPTY):
             {
-                assert(node->command == NULL);
                 cudaGraphAddEmptyNode(cu_node, handle->graph, deps, ndeps);
                 break ;
             }
@@ -877,10 +876,7 @@ xkrt_cuda_driver_command_batch_init(
         {
             /* must skip edges to entry, as it is not included in the cuda graph */
             if (pred == entry)
-            {
-                assert(pred->command == NULL);
                 continue ;
-            }
 
             CU_SAFE_CALL(cuGraphAddDependencies(
                 handle->graph,

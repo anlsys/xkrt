@@ -55,23 +55,13 @@ command_graph_node_allocate(ocg::command_graph_t * cg)
     return ((command_graph_t *)cg)->nodes.put();
 }
 
-void command_graph_init(command_graph_t * cg);
-
 static ocg::command_graph_t *
 command_graph_allocate(ocg::command_graph_t * original_cg)
 {
-    return (command_graph_t *) malloc(sizeof(command_graph_t));
-}
-
-void
-command_graph_init(command_graph_t * cg)
-{
+    command_graph_t * cg = (command_graph_t *) malloc(sizeof(command_graph_t));
+    assert(cg);
     new (cg) command_graph_t();
-    cg->init(
-        command_allocate,
-        command_graph_node_allocate,
-        command_graph_allocate
-    );
+    return cg;
 }
 
 //////////////////////////////
@@ -129,7 +119,12 @@ runtime_t::command_graph_from_task_dependency_graph(
     assert(control_nodes);
 
     // get entry/exit nodes
-    command_graph_init(cg);
+    new (cg) command_graph_t();
+    cg->init(
+        command_allocate,
+        command_graph_node_allocate,
+        command_graph_allocate
+    );
     command_graph_node_t * entry = (command_graph_node_t *) cg->node_get_entry();
     command_graph_node_t * exit  = (command_graph_node_t *) cg->node_get_exit();
     assert(entry);
