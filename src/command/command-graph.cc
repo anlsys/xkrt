@@ -43,33 +43,24 @@ XKRT_NAMESPACE_USE;
 // ALLOCATORS //
 ////////////////
 
-static command_t *
-command_new(
-    command_graph_t * cg,
-    ocg::command_type_t type
-) {
-    return cg->commands.put(type, COMMAND_FLAG_NONE);
+static ocg::command_t *
+command_allocate(ocg::command_graph_t * cg)
+{
+    return ((command_graph_t *)cg)->commands.put();
 }
 
-static command_graph_node_t *
-command_graph_node_new(
-    command_graph_t * cg,
-    command_t * command,
-    const ocg::device_unique_id_t device_unique_id
-) {
-    static_assert(sizeof(command_graph_node_t) <= sizeof(command_graph_node_t));
-    return cg->nodes.put(command, device_unique_id);
+static ocg::command_graph_node_t *
+command_graph_node_allocate(ocg::command_graph_t * cg)
+{
+    return ((command_graph_t *)cg)->nodes.put();
 }
 
 void command_graph_init(command_graph_t * cg);
 
-static command_graph_t *
-command_graph_new(command_graph_t * original_cg)
+static ocg::command_graph_t *
+command_graph_allocate(ocg::command_graph_t * original_cg)
 {
-    command_graph_t * cg = (command_graph_t *) malloc(sizeof(command_graph_t));
-    assert(cg);
-    command_graph_init(cg);
-    return cg;
+    return (command_graph_t *) malloc(sizeof(command_graph_t));
 }
 
 void
@@ -77,9 +68,9 @@ command_graph_init(command_graph_t * cg)
 {
     new (cg) command_graph_t();
     cg->init(
-        (ocg::command_allocator_t)              command_new,
-        (ocg::command_graph_node_allocator_t)   command_graph_node_new,
-        (ocg::command_graph_allocator_t)        command_graph_new
+        command_allocate,
+        command_graph_node_allocate,
+        command_graph_allocate
     );
 }
 
@@ -93,6 +84,30 @@ command_graph_init(command_graph_t * cg)
 // - N5 - is the executing state
 // - N7 - is the completed state
 // and 1 node per emitted command
+
+static inline command_graph_node_t *
+xkrt_command_graph_node_new(
+    command_graph_t * cg,
+    const device_unique_id_t device_unique_id
+) {
+    command_graph_node_t * node = (command_graph_node_t *) command_graph_node_allocate(cg);
+    assert(node);
+    new (node) command_graph_node_t(device_unique_id);
+    return node;
+}
+
+static inline command_graph_node_t *
+xkrt_command_graph_node_new(
+    command_graph_t * cg,
+    const device_unique_id_t device_unique_id,
+    command_t * command
+) {
+    assert(command);
+    command_graph_node_t * node = (command_graph_node_t *) command_graph_node_allocate(cg);
+    assert(node);
+    new (node) command_graph_node_t(device_unique_id, command);
+    return node;
+}
 
 void
 runtime_t::command_graph_from_task_dependency_graph(
@@ -137,10 +152,10 @@ runtime_t::command_graph_from_task_dependency_graph(
         //  6)  commands N6i emitted after completion, for prefetching
         //  7) empty node N7 that depends on all N5i (sink of the task cg)
 
-        command_graph_node_t * N1 = command_graph_node_new(cg, NULL, device_unique_id);
-        command_graph_node_t * N3 = command_graph_node_new(cg, NULL, device_unique_id);
-        command_graph_node_t * N5 = command_graph_node_new(cg, NULL, device_unique_id);
-        command_graph_node_t * N7 = command_graph_node_new(cg, NULL, device_unique_id);
+        command_graph_node_t * N1 = xkrt_command_graph_node_new(cg, device_unique_id);
+        command_graph_node_t * N3 = xkrt_command_graph_node_new(cg, device_unique_id);
+        command_graph_node_t * N5 = xkrt_command_graph_node_new(cg, device_unique_id);
+        command_graph_node_t * N7 = xkrt_command_graph_node_new(cg, device_unique_id);
 
         assert(taskrec->index < ntasks);
         control_nodes[taskrec->index * N_CONTROL_NODES_PER_TASK + 0] = N1;
@@ -208,8 +223,7 @@ runtime_t::command_graph_from_task_dependency_graph(
             }
 
             // Create a node
-            command_graph_node_t * N = command_graph_node_new(cg, &rec.command, cmd_device_unique_id);
-            assert(N);
+            command_graph_node_t * N = xkrt_command_graph_node_new(cg, cmd_device_unique_id, &rec.command);
 
             // link it in the command graph
             switch (rec.state)
@@ -367,17 +381,32 @@ command_graph_replay_process_node(
     if (node->wc.fetch_sub(dwc, std::memory_order_relaxed) == dwc)
     {
         // if the node holds a command
-        if (node->command)
+        switch (node->type)
         {
-            assert(node->device_unique_id != XKRT_UNSPECIFIED_DEVICE_UNIQUE_ID);
-            assert(node->state == COMMAND_GRAPH_NODE_STATE_INIT);
-            runtime->command_submit(node->device_unique_id, (command_t *) node->command);
-        }
-        // else, submit its descendence
-        else
-        {
-            // completes it without submitting any command
-            command_graph_replay_node_complete(runtime, cg, node);
+            case (ocg::COMMAND_GRAPH_NODE_TYPE_EMPTY):
+            {
+                // completes it without submitting any command
+                command_graph_replay_node_complete(runtime, cg, node);
+                break ;
+            }
+
+            case (ocg::COMMAND_GRAPH_NODE_TYPE_COMMAND):
+            {
+                // replay the command
+                assert(node->command);
+                assert(node->device_unique_id != XKRT_UNSPECIFIED_DEVICE_UNIQUE_ID);
+                assert(node->state == COMMAND_GRAPH_NODE_STATE_INIT);
+                runtime->command_submit(node->device_unique_id, (command_t *) node->command);
+                break ;
+            }
+
+            case (ocg::COMMAND_GRAPH_NODE_TYPE_COMMAND_GRAPH):
+            case (ocg::COMMAND_GRAPH_NODE_TYPE_CONDITION):
+            default:
+            {
+                LOGGER_FATAL("Not supported");
+                break ;
+            }
         }
     }
 }
