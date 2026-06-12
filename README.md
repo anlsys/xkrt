@@ -11,10 +11,11 @@ Please open any issue at https://github.com/rpereira-dev/xkrt
 This repository hosts the XKRT runtime system.    
 Other repository hosts specialization layers built on top of the runtime:
 - [Drava](https://github.com/anlsys/drava) is an event-driven programming model and runtime system, for real-time high-throughput data processing.
+- [LLVM-ANLSYS](https://github.com/anlsys/llvm-project/) is a fork of LLVM with extensions for OpenMP, targeting [XKOMP](https://github.com/anlsys/xkomp)
+- [OpenCG](https://github.com/JLESC-Tasking-Group/opencg) is a library for optimizing graph of commands targeting multi-devices systems.
 - [XK.jl](https://github.com/anlsys/XK.jl) Julia bindings of XKRT and XKBlas
 - [XKBlas](https://gitlab.inria.fr/xkblas/dev/-/tree/v2.0) is a multi-gpu BLAS implementation that allows the tiling and composition of kernels, with asynchronous overlap of computation/transfers.
 - [XKOMP](https://github.com/anlsys/xkomp) is an experimental OpenMP runtime built on top of XKRT.
-- [OpenCG](https://github.com/JLESC-Tasking-Group/opencg) is a library for optimizing graph of commands targeting multi-devices systems.
 
 [![XKRT software stack](docs/software-stack.png)](docs/software-stack.pdf)
 
@@ -35,6 +36,7 @@ XKRT is implemented in C++ and exposes two APIs: C and C++.
 - NVML, RSMI, Level Zero Sysman
 - AML - https://github.com/anlsys/aml
 - Cairo - https://github.com/msteinert/cairo - for debugging purposes, to visualize memory trees
+- Proteus - https://github.com/Olympus-HPC/proteus - for JIT compiling tasks
 
 ### Build example
 See the `CMakeLists.txt` file for all available options.
