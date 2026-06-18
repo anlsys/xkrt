@@ -552,11 +552,11 @@ XKRT_DRIVER_ENTRYPOINT(command_queue_launch)(
         case (ocg::COMMAND_TYPE_COPY_D2H_2D):
         case (ocg::COMMAND_TYPE_COPY_D2D_2D):
         {
-                  void * dst    = (      void *) cmd->copy_2D.dst_device_view.addr;
-            const void * src    = (const void *) cmd->copy_2D.src_device_view.addr;
+                  void * dst    = (      void *) cmd->copy_2D.dst_addr;
+            const void * src    = (const void *) cmd->copy_2D.src_addr;
 
-            const size_t dst_pitch = cmd->copy_2D.dst_device_view.ld * cmd->copy_2D.sizeof_type;
-            const size_t src_pitch = cmd->copy_2D.src_device_view.ld * cmd->copy_2D.sizeof_type;
+            const size_t dst_pitch = cmd->copy_2D.dst_ld * cmd->copy_2D.sizeof_type;
+            const size_t src_pitch = cmd->copy_2D.src_ld * cmd->copy_2D.sizeof_type;
 
             const size_t width  = cmd->copy_2D.m * cmd->copy_2D.sizeof_type;
             const size_t height = cmd->copy_2D.n;
@@ -589,8 +589,8 @@ XKRT_DRIVER_ENTRYPOINT(command_queue_launch)(
                 assert(src_region.height == dst_region.height);
                 for (int i = 0 ; i < src_region.height ; ++i)
                 {
-                    void * l_dst = (void *) (cmd->copy_2D.dst_device_view.addr + i*dst_pitch);
-                    void * l_src = (void *) (cmd->copy_2D.src_device_view.addr + i*src_pitch);
+                    void * l_dst = (void *) (cmd->copy_2D.dst_addr + i*dst_pitch);
+                    void * l_src = (void *) (cmd->copy_2D.src_addr + i*src_pitch);
                     const size_t l_size = width;
                     const ze_event_handle_t l_ze_event_handle = (i == src_region.height - 1) ? ze_event_handle : nullptr;
                     XKRT_DRIVER_ENTRYPOINT(transfer_async)(l_dst, l_src, l_size, iqueue, l_ze_event_handle);
@@ -773,11 +773,7 @@ XKRT_DRIVER_ENTRYPOINT(command_queue_create)(
     command_queue_init(
         (command_queue_t *) queue,
         type,
-        capacity,
-        XKRT_DRIVER_ENTRYPOINT(command_queue_launch),
-        XKRT_DRIVER_ENTRYPOINT(command_queue_progress),
-        XKRT_DRIVER_ENTRYPOINT(command_queue_wait_all),
-        XKRT_DRIVER_ENTRYPOINT(command_queue_wait)
+        capacity
     );
 
     device_ze_t * device = (device_ze_t *) idevice;
@@ -1339,6 +1335,10 @@ XKRT_DRIVER_ENTRYPOINT(create_driver)(void)
     REGISTER(command_queue_suggest);
     REGISTER(command_queue_create);
     REGISTER(command_queue_delete);
+    // REGISTER(command_queue_launch);
+    REGISTER(command_queue_progress);
+    REGISTER(command_queue_wait_all);
+    REGISTER(command_queue_wait);
 
     REGISTER(module_load);
     REGISTER(module_unload);
