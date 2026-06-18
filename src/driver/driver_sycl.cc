@@ -357,6 +357,7 @@ XKRT_DRIVER_ENTRYPOINT(command_queue_suggest)(
 
 static int
 XKRT_DRIVER_ENTRYPOINT(command_queue_launch)(
+    device_driver_id_t device_driver_id,
     command_queue_t * iqueue,
     command_t * cmd,
     xkrt_command_queue_list_counter_t idx
@@ -731,7 +732,7 @@ XKRT_DRIVER_ENTRYPOINT(create_driver)(void)
     REGISTER(command_queue_suggest);
     REGISTER(command_queue_create);
     REGISTER(command_queue_delete);
-    // REGISTER(command_queue_launch);
+    REGISTER(command_queue_launch);
     REGISTER(command_queue_progress);
     REGISTER(command_queue_wait_all);
     REGISTER(command_queue_wait);
