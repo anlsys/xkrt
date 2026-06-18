@@ -1571,7 +1571,6 @@ XKRT_DRIVER_ENTRYPOINT(create_driver)(void)
 
     REGISTER(command_queue_create);
     REGISTER(command_queue_delete);
-    REGISTER(command_queue_delete);
     REGISTER(command_queue_launch);
     REGISTER(command_queue_progress);
     REGISTER(command_queue_wait_all);
