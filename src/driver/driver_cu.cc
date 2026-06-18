@@ -1190,6 +1190,7 @@ XKRT_DRIVER_ENTRYPOINT(command_queue_progress)(
             case (ocg::COMMAND_TYPE_COPY_H2H_2D):
             case (ocg::COMMAND_TYPE_COPY_H2D_2D):
             case (ocg::COMMAND_TYPE_COPY_D2H_2D):
+            case (ocg::COMMAND_TYPE_COPY_D2D_2D):
             case (ocg::COMMAND_TYPE_BATCH):
             {
                 CUevent event = queue->cu.events.buffer[p];
