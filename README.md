@@ -36,10 +36,10 @@ Other repository hosts specialization layers built on top of the runtime:
 
 ```bash
 # using wget
-bash <(wget -qO- https://raw.githubusercontent.com/rpereira-dev/xkrt/release/latest/scripts/install.sh)
+bash <(wget -qO- https://gitlab.inria.fr/xkaapi/dev-v2/-/raw/release/latest/scripts/install.sh)
 
 # using curl
-bash <(curl -fsSL https://raw.githubusercontent.com/rpereira-dev/xkrt/release/latest/scripts/install.sh)
+bash <(curl -fsSL https://gitlab.inria.fr/xkaapi/dev-v2/-/raw/release/latest/scripts/install.sh)
 ```
 
 ## Build example (Manual)

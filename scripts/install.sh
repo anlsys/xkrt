@@ -764,7 +764,7 @@ fi
 if [[ "$INSTALL_XKRT" == "true" ]]; then
     step "Building & installing xkrt"
     clone_or_update \
-        "https://github.com/rpereira-dev/xkrt" \
+        "https://gitlab.inria.fr/xkaapi/dev-v2" \
         "$REPO_DIR/xkrt" \
         "$XKRT_BRANCH"
 
