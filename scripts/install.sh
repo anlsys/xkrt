@@ -119,6 +119,29 @@ ask_cmake_opts() {
     printf '%s' "${flags# }"   # strip leading space
 }
 
+# ─── Configuration cache ─────────────────────────────────────────────────────
+
+# _write_cache FILE
+# Serialises every Phase-1 output variable into a sourceable bash file so the
+# user can skip re-answering all questions on a re-run.
+_write_cache() {
+    local f="$1"
+    {
+        printf '# xkrt install configuration — %s\n' "$(date '+%Y-%m-%d %H:%M:%S')"
+        declare -p BASE_DIR REPO_DIR INSTALL_DIR MODULES_DIR
+        declare -p CC CXX
+        declare -p INSTALL_LLVM LLVM_BRANCH LLVM_BUILD_TYPE \
+                   LLVM_PROJECTS LLVM_RUNTIMES \
+                   LLVM_CMAKE_TARGETS LLVM_CMAKE_RUNTIME_TARGETS \
+                   LLVM_EXTRA_CMAKE_OPTS LLVM_GPU_SUMMARY
+        declare -p INSTALL_HWLOC HWLOC_BRANCH
+        declare -p INSTALL_OPENCG OPENCG_BRANCH OPENCG_BUILD_TYPE OPENCG_CMAKE_OPTS
+        declare -p INSTALL_XKRT  XKRT_BRANCH  XKRT_BUILD_TYPE  XKRT_CMAKE_OPTS
+        declare -p INSTALL_XKBLAS XKBLAS_BRANCH XKBLAS_BUILD_TYPE XKBLAS_CMAKE_OPTS
+        declare -p INSTALL_XKOMP  XKOMP_BRANCH  XKOMP_BUILD_TYPE  XKOMP_CMAKE_OPTS
+    } > "$f"
+}
+
 # ─── Module-file generation ──────────────────────────────────────────────────
 
 # generate_modulefile LIBNAME PREFIX ENVVAR OUTFILE [DEP ...]
@@ -280,6 +303,30 @@ trap 'fatal "error on line $LINENO – aborting."' ERR
 # PHASE 1 – GATHER CONFIGURATION
 # ─────────────────────────────────────────────────────────────────────────────
 
+CACHE_FILE="$(pwd)/.xkrt_install.cache"
+REUSE_CACHE=false
+
+if [[ -f "$CACHE_FILE" ]]; then
+    _tty "\n"
+    hr
+    _tty "  ${BOLD}${YELLOW}Cached configuration found${NC}\n"
+    _tty "  %s\n" "$CACHE_FILE"
+    _tty "  Created: %s\n" "$(date -r "$CACHE_FILE" '+%Y-%m-%d %H:%M:%S' 2>/dev/null \
+                               || stat -c '%y' "$CACHE_FILE" 2>/dev/null | cut -d. -f1)"
+    hr
+    _tty "\n"
+    if prompt_yn "Reuse this configuration and skip to the build?" "yes"; then
+        # shellcheck disable=SC1090
+        source "$CACHE_FILE"
+        REUSE_CACHE=true
+        success "Configuration loaded — jumping to build phase."
+    else
+        info "Starting fresh configuration."
+    fi
+fi
+
+if [[ "$REUSE_CACHE" == "false" ]]; then
+
 _tty "\n"
 hr
 _tty "  ${BOLD}xkrt ecosystem – interactive installer${NC}\n"
@@ -297,6 +344,10 @@ MODULES_DIR="$BASE_DIR/modules"
 info "Repos    → $REPO_DIR"
 info "Install  → $INSTALL_DIR"
 info "Modules  → $MODULES_DIR"
+
+# Create the repo directory now so Phase 1 can clone into it for CMakeLists.txt
+# parsing before the full build phase begins.
+mkdir -p "$REPO_DIR"
 
 # ── Compilers ─────────────────────────────────────────────────────────────────
 step "Compilers"
@@ -506,7 +557,9 @@ if prompt_yn "Install opencg?" "yes"; then
     INSTALL_OPENCG=true
     OPENCG_BRANCH=$(prompt_value "Branch" "release/latest")
     OPENCG_BUILD_TYPE=$(prompt_value "Build type (Release/Debug)" "Release")
-    OPENCG_CMAKE_OPTS=$(ask_cmake_opts "opencg" "$SCRIPT_DIR/opencg/CMakeLists.txt")
+    clone_or_update "https://github.com/JLESC-Tasking-Group/opencg" \
+        "$REPO_DIR/opencg" "$OPENCG_BRANCH"
+    OPENCG_CMAKE_OPTS=$(ask_cmake_opts "opencg" "$REPO_DIR/opencg/CMakeLists.txt")
 fi
 
 # ── xkrt ──────────────────────────────────────────────────────────────────────
@@ -517,7 +570,9 @@ if prompt_yn "Install xkrt?" "yes"; then
     INSTALL_XKRT=true
     XKRT_BRANCH=$(prompt_value "Branch" "release/latest")
     XKRT_BUILD_TYPE=$(prompt_value "Build type (Release/Debug)" "Release")
-    XKRT_CMAKE_OPTS=$(ask_cmake_opts "xkrt" "$SCRIPT_DIR/xkrt/CMakeLists.txt")
+    clone_or_update "https://gitlab.inria.fr/xkaapi/dev-v2" \
+        "$REPO_DIR/xkrt" "$XKRT_BRANCH"
+    XKRT_CMAKE_OPTS=$(ask_cmake_opts "xkrt" "$REPO_DIR/xkrt/CMakeLists.txt")
 fi
 
 # ── xkblas ────────────────────────────────────────────────────────────────────
@@ -531,7 +586,9 @@ if prompt_yn "Install xkblas?" "yes"; then
     INSTALL_XKBLAS=true
     XKBLAS_BRANCH=$(prompt_value "Branch" "release/v2.0-latest")
     XKBLAS_BUILD_TYPE=$(prompt_value "Build type (Release/Debug)" "Release")
-    XKBLAS_CMAKE_OPTS=$(ask_cmake_opts "xkblas" "$SCRIPT_DIR/xkblas/CMakeLists.txt")
+    clone_or_update "https://gitlab.inria.fr/xkblas/dev" \
+        "$REPO_DIR/xkblas" "$XKBLAS_BRANCH"
+    XKBLAS_CMAKE_OPTS=$(ask_cmake_opts "xkblas" "$REPO_DIR/xkblas/CMakeLists.txt")
 fi
 
 # ── xkomp ─────────────────────────────────────────────────────────────────────
@@ -542,7 +599,9 @@ if prompt_yn "Install xkomp?" "yes"; then
     INSTALL_XKOMP=true
     XKOMP_BRANCH=$(prompt_value "Branch" "release/latest")
     XKOMP_BUILD_TYPE=$(prompt_value "Build type (Release/Debug)" "Release")
-    XKOMP_CMAKE_OPTS=$(ask_cmake_opts "xkomp" "$SCRIPT_DIR/xkomp/CMakeLists.txt")
+    clone_or_update "https://github.com/anlsys/xkomp" \
+        "$REPO_DIR/xkomp" "$XKOMP_BRANCH"
+    XKOMP_CMAKE_OPTS=$(ask_cmake_opts "xkomp" "$REPO_DIR/xkomp/CMakeLists.txt")
 fi
 
 # ── Summary & confirmation ────────────────────────────────────────────────────
@@ -579,6 +638,11 @@ _tty "\n"
 if ! prompt_yn "Proceed with installation?" "yes"; then
     info "Aborted by user."; exit 0
 fi
+
+_write_cache "$CACHE_FILE"
+success "Configuration saved → $CACHE_FILE"
+
+fi # REUSE_CACHE — end of Phase 1
 
 # ─────────────────────────────────────────────────────────────────────────────
 # PHASE 2 – BUILD & INSTALL
