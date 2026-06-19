@@ -121,14 +121,19 @@ ask_cmake_opts() {
 
 # ─── Module-file generation ──────────────────────────────────────────────────
 
-# generate_modulefile LIBNAME PREFIX ENVVAR OUTFILE
-# ENVVAR: environment variable name set to the install prefix (e.g. XKRT_HOME)
-# The CMAKE_PREFIX_PATH is set to the full install prefix so cmake can locate
-# package config files in $prefix/lib/cmake/<Name>/ automatically.
+# generate_modulefile LIBNAME PREFIX ENVVAR OUTFILE [DEP ...]
+# ENVVAR : environment variable set to the install prefix (e.g. XKRT_HOME)
+# DEP    : zero or more dependency module paths ("name/hash/type") that will be
+#          auto-loaded via 'module load' when this module is loaded.
 generate_modulefile() {
     local lib="$1" prefix="$2" envvar="$3" out="$4"
+    shift 4
+    local -a deps=("$@")
+
     mkdir -p "$(dirname "$out")"
-    cat > "$out" <<MODEOF
+
+    {
+        cat <<MODEOF
 #%Module1.0
 
 set whatis    "$lib"
@@ -137,6 +142,20 @@ set description "$lib"
 
 conflict "\$software"
 
+MODEOF
+
+        # Emit dependency loads before path manipulation so their libs are
+        # visible as soon as this module is loaded.
+        if (( ${#deps[@]} > 0 )); then
+            echo "# ── Dependencies ────────────────────────────────────────────────────────────"
+            echo "module use \"$MODULES_DIR\""
+            for dep in "${deps[@]}"; do
+                echo "module load \"$dep\""
+            done
+            echo ""
+        fi
+
+        cat <<MODEOF
 set prefix "$prefix"
 
 prepend-path PATH               "\$prefix/bin"
@@ -155,6 +174,7 @@ prepend-path PKG_CONFIG_PATH    "\$prefix/lib/pkgconfig"
 
 setenv $envvar "\$prefix"
 MODEOF
+    } > "$out"
 }
 
 # ─── Git helpers ─────────────────────────────────────────────────────────────
@@ -764,7 +784,13 @@ if [[ "$INSTALL_XKRT" == "true" ]]; then
 
     # Activate xkrt so xkblas and xkomp find its headers, libs and cmake config.
     XKRT_MOD="$MODULES_DIR/xkrt/$XKRT_HASH/$XKRT_BUILD_TYPE"
-    generate_modulefile "xkrt" "$XKRT_INSTALL_DIR" "XKRT_HOME" "$XKRT_MOD"
+    # Build the dependency list: opencg is always required; hwloc only when
+    # it was installed from source by this script (otherwise it is system-provided).
+    declare -a _xkrt_deps=()
+    [[ "$INSTALL_OPENCG" == "true" ]] && _xkrt_deps+=("opencg/$OPENCG_HASH/$OPENCG_BUILD_TYPE")
+    [[ "$INSTALL_HWLOC"  == "true" ]] && _xkrt_deps+=("hwloc/$HWLOC_HASH/default")
+    generate_modulefile "xkrt" "$XKRT_INSTALL_DIR" "XKRT_HOME" "$XKRT_MOD" \
+        ${_xkrt_deps[@]+"${_xkrt_deps[@]}"}
     _activate_prefix "$XKRT_INSTALL_DIR" "xkrt" "$XKRT_HASH/$XKRT_BUILD_TYPE"
     MOD_LOAD+=("module load xkrt/$XKRT_HASH/$XKRT_BUILD_TYPE")
     success "xkrt  installed  → $XKRT_INSTALL_DIR"
@@ -794,7 +820,10 @@ if [[ "$INSTALL_XKBLAS" == "true" ]]; then
     make install -j "$(nproc)"
 
     XKBLAS_MOD="$MODULES_DIR/xkblas/$XKBLAS_HASH/$XKBLAS_BUILD_TYPE"
-    generate_modulefile "xkblas" "$XKBLAS_INSTALL_DIR" "XKBLAS_HOME" "$XKBLAS_MOD"
+    declare -a _xkblas_deps=()
+    [[ "$INSTALL_XKRT" == "true" ]] && _xkblas_deps+=("xkrt/$XKRT_HASH/$XKRT_BUILD_TYPE")
+    generate_modulefile "xkblas" "$XKBLAS_INSTALL_DIR" "XKBLAS_HOME" "$XKBLAS_MOD" \
+        ${_xkblas_deps[@]+"${_xkblas_deps[@]}"}
     MOD_LOAD+=("module load xkblas/$XKBLAS_HASH/$XKBLAS_BUILD_TYPE")
     success "xkblas installed → $XKBLAS_INSTALL_DIR"
     success "module file      → $XKBLAS_MOD"
@@ -823,7 +852,10 @@ if [[ "$INSTALL_XKOMP" == "true" ]]; then
     make install -j "$(nproc)"
 
     XKOMP_MOD="$MODULES_DIR/xkomp/$XKOMP_HASH/$XKOMP_BUILD_TYPE"
-    generate_modulefile "xkomp" "$XKOMP_INSTALL_DIR" "XKOMP_HOME" "$XKOMP_MOD"
+    declare -a _xkomp_deps=()
+    [[ "$INSTALL_XKRT" == "true" ]] && _xkomp_deps+=("xkrt/$XKRT_HASH/$XKRT_BUILD_TYPE")
+    generate_modulefile "xkomp" "$XKOMP_INSTALL_DIR" "XKOMP_HOME" "$XKOMP_MOD" \
+        ${_xkomp_deps[@]+"${_xkomp_deps[@]}"}
     MOD_LOAD+=("module load xkomp/$XKOMP_HASH/$XKOMP_BUILD_TYPE")
     success "xkomp installed  → $XKOMP_INSTALL_DIR"
     success "module file      → $XKOMP_MOD"
