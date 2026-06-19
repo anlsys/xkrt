@@ -18,25 +18,27 @@ Other repository hosts specialization layers built on top of the runtime:
 
 [![XKRT software stack](docs/software-stack.png)](docs/software-stack.pdf)
 
-# Getting started
+# Installation
 
-## Installation
-
-XKRT is implemented in C++ and exposes two APIs: C and C++.
-
-### Requirements
+## Requirements
 - A C/C++ compiler with support for C++20 (the only compiler tested is LLVM >=20.x)
 - hwloc - https://github.com/open-mpi/hwloc
 - OpenCG - https://github.com/JLESC-Tasking-Group/opencg
 
-### Optional
+## Optional
 - Cuda, HIP, Level Zero, SYCL, OpenCL
 - CUBLAS, HIPBLAS, ONEAPI::MKL
 - NVML, RSMI, Level Zero Sysman
 - AML - https://github.com/anlsys/aml
 - Cairo - https://github.com/msteinert/cairo - for debugging purposes, to visualize memory trees
 
-### Build example
+## Build (Assisted)
+
+```bash
+sh -c "$(wget https://github.com/rpereira-dev/xkrt/blob/master/script/install.sh)"
+```
+
+## Build example (Manual)
 See the `CMakeLists.txt` file for all available options.
 
 ```bash
@@ -50,7 +52,7 @@ CC=clang CXX=clang++ CMAKE_PREFIX_PATH=$CUDA_PATH:$CMAKE_PREFIX_PATH cmake -DUSE
 CC=clang CXX=clang++ CMAKE_PREFIX_PATH=$CUDA_PATH:$CMAKE_PREFIX_PATH cmake -DUSE_CUDA=on -DUSE_SHUT_UP=on -DENABLE_HEAVY_DEBUG=off -DCMAKE_BUILD_TYPE=Release ..
 ```
 
-## Available environment variable
+# Available environment variable
 - `XKRT_HELP=1` - displays available environment variables.
 
 # Directions for improvements / known issues

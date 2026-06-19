@@ -346,6 +346,17 @@ install(FILES
     DESTINATION lib/cmake/XKRT
 )
 
+##################
+# UTILITY BINARY #
+##################
+
+add_executable(xkrt_info ${CMAKE_SOURCE_DIR}/src/xkrt_info.cc)
+target_link_libraries(xkrt_info PRIVATE ${XKRT})
+if (STRICT)
+    target_compile_options(xkrt_info PRIVATE ${STRICT_OPTIONS})
+endif()
+install(TARGETS xkrt_info RUNTIME DESTINATION bin)
+
 ################
 # Sub projects #
 ################
