@@ -69,38 +69,48 @@ parse_cmake_opts() {
 }
 
 # ask_cmake_opts LIBNAME CMAKE_FILE
-# Interactively asks the user about each cmake option.
+# Asks whether to use cmake defaults or customise, then prompts accordingly.
 # Prints the accumulated "-DVAR=VAL ..." flag string on stdout.
 ask_cmake_opts() {
     local lib="$1" f="$2" flags=""
 
     if [[ ! -f "$f" ]]; then
         _tty "  ${YELLOW}!${NC} CMakeLists.txt not found at %s – skipping option prompts.\n" "$f"
-        printf ''
-        return
+        printf ''; return
     fi
 
     local opts
     opts=$(parse_cmake_opts "$f")
 
+    # No xkoption/ocgoption entries: just offer the free-form extra-flags field.
     if [[ -z "$opts" ]]; then
         _tty "  ${DIM}(no xkoption/ocgoption entries found in CMakeLists.txt)${NC}\n"
-    else
-        _tty "\n  ${BOLD}CMake options for %s${NC} (dynamically parsed from CMakeLists.txt):\n" "$lib"
-        _tty "  ${DIM}Note: these reflect the local clone; may differ on other branches.${NC}\n\n"
-
-        while IFS='|' read -r var desc default; do
-            [[ -z "$var" ]] && continue
-            local def_yn
-            [[ "$default" == "ON" ]] && def_yn="yes" || def_yn="no"
-            _tty "    ${DIM}%-45s${NC} %s\n" "$var" "$desc"
-            if prompt_yn "      Enable ${BOLD}${var}${NC}?" "$def_yn"; then
-                flags="${flags} -D${var}=ON"
-            else
-                flags="${flags} -D${var}=OFF"
-            fi
-        done <<< "$opts"
+        _tty "  ${BOLD}${BLUE}?${NC} Extra cmake flags for %s (or Enter to skip): " "$lib"
+        local extra; read -r extra </dev/tty
+        printf '%s' "${extra:-}"; return
     fi
+
+    # There are options: ask whether to use all defaults or customise.
+    _tty "\n  ${BOLD}CMake options for %s${NC} (parsed from CMakeLists.txt):\n" "$lib"
+    _tty "  ${DIM}Note: these reflect the local clone; may differ on other branches.${NC}\n\n"
+
+    if prompt_yn "  Use all default cmake options?" "yes"; then
+        # Fast path: return empty flags; cmake will apply its own defaults.
+        printf ''; return
+    fi
+
+    # Customise: ask each option individually, then offer extra flags.
+    while IFS='|' read -r var desc default; do
+        [[ -z "$var" ]] && continue
+        local def_yn
+        [[ "$default" == "ON" ]] && def_yn="yes" || def_yn="no"
+        _tty "    ${DIM}%-45s${NC} %s\n" "$var" "$desc"
+        if prompt_yn "      Enable ${BOLD}${var}${NC}?" "$def_yn"; then
+            flags="${flags} -D${var}=ON"
+        else
+            flags="${flags} -D${var}=OFF"
+        fi
+    done <<< "$opts"
 
     _tty "\n  ${BOLD}${BLUE}?${NC} Extra cmake flags for %s (e.g. -DFOO=bar), or Enter to skip: " "$lib"
     local extra; read -r extra </dev/tty
@@ -362,7 +372,7 @@ LLVM_CMAKE_TARGETS="" LLVM_CMAKE_RUNTIME_TARGETS=""
 LLVM_EXTRA_CMAKE_OPTS=""
 LLVM_GPU_SUMMARY=""   # human-readable, for summary display
 
-if prompt_yn "Install custom patched LLVM?" "yes"; then
+if prompt_yn "Install custom patched LLVM?" "no"; then
     INSTALL_LLVM=true
     LLVM_BRANCH=$(prompt_value "Branch" "main")
     LLVM_BUILD_TYPE=$(prompt_value "Build type (Release/Debug)" "Release")
@@ -537,7 +547,7 @@ if [[ "$INSTALL_LLVM" == "true" ]]; then
          "$LLVM_PROJECTS" "${LLVM_RUNTIMES:-none}"
     _tty "          GPU targets: %s\n" "$LLVM_GPU_SUMMARY"
 else
-    _tty "  ${DIM}✗  %-10s  (skipped — using %s)${NC}\n" "llvm" "$CC"
+    _tty "  ${DIM}✗  %-10s  (skipped)${NC}\n" "llvm"
 fi
 _lib_row "hwloc"  "$INSTALL_HWLOC"  "$HWLOC_BRANCH"  "autotools"
 _lib_row "opencg" "$INSTALL_OPENCG" "$OPENCG_BRANCH" "$OPENCG_BUILD_TYPE"
@@ -831,4 +841,6 @@ for line in "${MOD_LOAD[@]}"; do
 done
 _tty "\n  Then compile against the installed libraries, for example:\n"
 _tty "    clang++ main.cc -lxkblas\n"
+_tty "\n"
+_tty "\n  You may also test the installation by running 'xkrt_info'\n"
 _tty "\n"
