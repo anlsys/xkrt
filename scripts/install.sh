@@ -283,7 +283,7 @@ trap 'fatal "error on line $LINENO – aborting."' ERR
 _tty "\n"
 hr
 _tty "  ${BOLD}xkrt ecosystem – interactive installer${NC}\n"
-_tty "  llvm(opt)  ·  hwloc  ·  opencg  ·  xkrt  ·  xkblas  ·  xkomp\n"
+_tty "  llvm  ·  hwloc  ·  opencg  ·  xkrt  ·  xkblas  ·  xkomp\n"
 hr
 _tty "\n"
 

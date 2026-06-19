@@ -32,10 +32,14 @@ Other repository hosts specialization layers built on top of the runtime:
 - AML - https://github.com/anlsys/aml
 - Cairo - https://github.com/msteinert/cairo - for debugging purposes, to visualize memory trees
 
-## Build (Assisted)
+## Build (One line assistant)
 
 ```bash
-sh -c "$(wget https://github.com/rpereira-dev/xkrt/blob/master/script/install.sh)"
+# using wget
+bash <(wget -qO- https://raw.githubusercontent.com/rpereira-dev/xkrt/release/latest/scripts/install.sh)
+
+# using curl
+bash <(curl -fsSL https://raw.githubusercontent.com/rpereira-dev/xkrt/release/latest/scripts/install.sh)
 ```
 
 ## Build example (Manual)
