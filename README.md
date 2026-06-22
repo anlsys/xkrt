@@ -19,18 +19,14 @@ Other repository hosts specialization layers built on top of the runtime:
 
 [![XKRT software stack](docs/software-stack.png)](docs/software-stack.pdf)
 
-# Getting started
+# Installation
 
-## Installation
-
-XKRT is implemented in C++ and exposes two APIs: C and C++.
-
-### Requirements
+## Requirements
 - A C/C++ compiler with support for C++20 (the only compiler tested is LLVM >=20.x)
 - hwloc - https://github.com/open-mpi/hwloc
 - OpenCG release/v0.1 - https://github.com/JLESC-Tasking-Group/opencg
 
-### Optional
+## Optional
 - Cuda, HIP, Level Zero, SYCL, OpenCL
 - CUBLAS, HIPBLAS, ONEAPI::MKL
 - NVML, RSMI, Level Zero Sysman
@@ -38,7 +34,17 @@ XKRT is implemented in C++ and exposes two APIs: C and C++.
 - Cairo - https://github.com/msteinert/cairo - for debugging purposes, to visualize memory trees
 - Proteus - https://github.com/Olympus-HPC/proteus - for JIT compiling tasks
 
-### Build example
+## Build (One line assistant)
+
+```bash
+# using wget
+bash <(wget -qO- https://gitlab.inria.fr/xkaapi/dev-v2/-/raw/release/latest/scripts/install.sh)
+
+# using curl
+bash <(curl -fsSL https://gitlab.inria.fr/xkaapi/dev-v2/-/raw/release/latest/scripts/install.sh)
+```
+
+## Build example (Manual)
 See the `CMakeLists.txt` file for all available options.
 
 ```bash
@@ -52,7 +58,7 @@ CC=clang CXX=clang++ CMAKE_PREFIX_PATH=$CUDA_PATH:$CMAKE_PREFIX_PATH cmake -DUSE
 CC=clang CXX=clang++ CMAKE_PREFIX_PATH=$CUDA_PATH:$CMAKE_PREFIX_PATH cmake -DUSE_CUDA=on -DUSE_SHUT_UP=on -DENABLE_HEAVY_DEBUG=off -DCMAKE_BUILD_TYPE=Release ..
 ```
 
-## Available environment variable
+# Available environment variable
 - `XKRT_HELP=1` - displays available environment variables.
 
 # Directions for improvements / known issues

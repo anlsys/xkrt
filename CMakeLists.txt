@@ -188,15 +188,11 @@ endif()
 
 # Level Zero
 if (USE_ZE)
-
     find_package(ZE REQUIRED)
-    include_directories("${ZE_INCLUDE_DIRS}")
-
     add_library(${XKRT}_driver_ze SHARED src/driver/driver_ze.cc)
-    target_link_libraries(${XKRT}_driver_ze PRIVATE hwloc::hwloc ${ZE_LIBRARIES})
+    target_link_libraries(${XKRT}_driver_ze PRIVATE hwloc::hwloc ZE::ZE)
     target_link_libraries(${XKRT} PRIVATE ${XKRT}_driver_ze)
     list(APPEND XKRT_TARGETS ${XKRT}_driver_ze)
-
 endif()
 
 # SYCL / ZE_SYCL_INTEROP
@@ -345,6 +341,17 @@ install(FILES
     "${CMAKE_CURRENT_BINARY_DIR}/XKRTConfig.cmake"
     DESTINATION lib/cmake/XKRT
 )
+
+##################
+# UTILITY BINARY #
+##################
+
+add_executable(xkrt_info ${CMAKE_SOURCE_DIR}/src/xkrt_info.cc)
+target_link_libraries(xkrt_info PRIVATE ${XKRT})
+if (STRICT)
+    target_compile_options(xkrt_info PRIVATE ${STRICT_OPTIONS})
+endif()
+install(TARGETS xkrt_info RUNTIME DESTINATION bin)
 
 ################
 # Sub projects #

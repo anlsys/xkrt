@@ -40,6 +40,7 @@
 # define __XKRT_MEMORY_ALLOCATOR_FREELIST_HPP__
 
 # include <xkrt/memory/allocator/allocator.hpp>
+# include <xkrt/data-structures/small-vector.h>
 # include <xkrt/consts.h>
 
 XKRT_NAMESPACE_BEGIN
@@ -71,14 +72,12 @@ class freelist_allocator_t : public allocator_t
          *  Per-area state: the area_t (lock + free_chunk_list)
          *  and list of backing regions.
          *
-         *  An area is considered initialized when _nbacking[area_idx] > 0.
+         *  An area is considered initialized when _backing[area_idx] is non-empty.
          */
         area_t _areas[XKRT_DEVICE_MEMORIES_MAX];
 
-        /* backing regions per area — dynamically grown */
-        backing_region_t * _backing[XKRT_DEVICE_MEMORIES_MAX];
-        int                _nbacking[XKRT_DEVICE_MEMORIES_MAX];
-        int                _backing_capacity[XKRT_DEVICE_MEMORIES_MAX];
+        /* backing regions per area — small_vector avoids heap allocation in the common case */
+        small_vector_t<backing_region_t, 4> _backing[XKRT_DEVICE_MEMORIES_MAX];
 
         /**
          *  Lazily allocate backing device memory for the given area.

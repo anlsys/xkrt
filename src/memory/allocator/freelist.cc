@@ -65,9 +65,7 @@ freelist_allocator_t::freelist_allocator_t(
     )
 {
     memset(this->_areas, 0, sizeof(this->_areas));
-    memset(this->_backing, 0, sizeof(this->_backing));
-    memset(this->_nbacking, 0, sizeof(this->_nbacking));
-    memset(this->_backing_capacity, 0, sizeof(this->_backing_capacity));
+    /* _backing[] elements are default-constructed by small_vector_t (no memset needed) */
     for (int i = 0 ; i < XKRT_DEVICE_MEMORIES_MAX ; ++i)
         XKRT_MUTEX_INIT(this->_areas[i].lock);
 }
@@ -79,7 +77,7 @@ freelist_allocator_t::_add_backing_region(int area_idx)
 
     /* determine size: first allocation uses memory_size_initial,
      * subsequent ones use memory_size_resize */
-    const memory_size_t & ms = (this->_nbacking[area_idx] == 0)
+    const memory_size_t & ms = (this->_backing[area_idx].empty())
         ? this->_memory_size_initial
         : this->_memory_size_resize;
 
@@ -100,18 +98,6 @@ freelist_allocator_t::_add_backing_region(int area_idx)
     if (device_ptr == NULL)
         return false;
 
-    /* track the backing region */
-    if (this->_nbacking[area_idx] >= this->_backing_capacity[area_idx])
-    {
-        int new_cap = (this->_backing_capacity[area_idx] == 0) ? 4 : this->_backing_capacity[area_idx] * 2;
-        backing_region_t * new_buf = (backing_region_t *) realloc(
-            this->_backing[area_idx],
-            (size_t) new_cap * sizeof(backing_region_t)
-        );
-        assert(new_buf);
-        this->_backing[area_idx] = new_buf;
-        this->_backing_capacity[area_idx] = new_cap;
-    }
     /* create a free chunk covering the entire region */
     area_chunk_t * chunk = (area_chunk_t *) malloc(sizeof(area_chunk_t));
     assert(chunk);
@@ -126,11 +112,10 @@ freelist_allocator_t::_add_backing_region(int area_idx)
 
     area->free_chunk_list = chunk;
 
-    /* track the backing region */
-    backing_region_t * region = &(this->_backing[area_idx][this->_nbacking[area_idx]]);
+    /* track the backing region — small_vector grows automatically */
+    backing_region_t * region = this->_backing[area_idx].emplace_back();
     region->ptr  = (uintptr_t) device_ptr;
     region->size = size;
-    this->_nbacking[area_idx]++;
 
     return true;
 }
@@ -158,11 +143,8 @@ freelist_allocator_t::_free_area_chunks(int area_idx)
      * everything.
      */
 
-    /* step 1: collect unique chain heads */
-    int nheads = 0;
-    int heads_cap = 4;
-    area_chunk_t ** heads = (area_chunk_t **) malloc((size_t) heads_cap * sizeof(area_chunk_t *));
-    assert(heads);
+    /* step 1: collect unique chain heads (inline storage avoids heap in the common case) */
+    small_vector_t<area_chunk_t *, 4> heads;
 
     for (area_chunk_t * fchunk = area->free_chunk_list ; fchunk ; fchunk = fchunk->freelink)
     {
@@ -173,7 +155,7 @@ freelist_allocator_t::_free_area_chunks(int area_idx)
 
         /* check for duplicates */
         bool found = false;
-        for (int i = 0 ; i < nheads ; ++i)
+        for (int i = 0 ; i < heads.size() ; ++i)
         {
             if (heads[i] == head)
             {
@@ -182,19 +164,11 @@ freelist_allocator_t::_free_area_chunks(int area_idx)
             }
         }
         if (!found)
-        {
-            if (nheads >= heads_cap)
-            {
-                heads_cap *= 2;
-                heads = (area_chunk_t **) realloc(heads, (size_t) heads_cap * sizeof(area_chunk_t *));
-                assert(heads);
-            }
-            heads[nheads++] = head;
-        }
+            heads.push_back(head);
     }
 
     /* step 2: walk each chain and free every chunk */
-    for (int i = 0 ; i < nheads ; ++i)
+    for (int i = 0 ; i < heads.size() ; ++i)
     {
         area_chunk_t * curr = heads[i];
         while (curr)
@@ -204,8 +178,7 @@ freelist_allocator_t::_free_area_chunks(int area_idx)
             curr = next;
         }
     }
-
-    free(heads);
+    /* heads destructor frees overflow buffer automatically */
     area->free_chunk_list = NULL;
 }
 
@@ -215,14 +188,14 @@ freelist_allocator_t::_lazy_init(int area_idx)
     assert(area_idx >= 0);
     assert(area_idx < this->_nmemories);
 
-    if (this->_nbacking[area_idx] > 0)
+    if (!this->_backing[area_idx].empty())
         return ;
 
     area_t * area = &(this->_areas[area_idx]);
 
     XKRT_MUTEX_LOCK(area->lock);
     {
-        if (this->_nbacking[area_idx] == 0)
+        if (this->_backing[area_idx].empty())
         {
             if (!this->_add_backing_region(area_idx))
                 LOGGER_FATAL("Out of GPU memory");
@@ -237,24 +210,44 @@ freelist_allocator_t::reset_on(int area_idx)
     assert(area_idx >= 0);
     assert(area_idx < this->_nmemories);
 
-    if (this->_nbacking[area_idx] == 0)
+    if (this->_backing[area_idx].empty())
         return ;
 
     area_t * area = &(this->_areas[area_idx]);
 
     XKRT_MUTEX_LOCK(area->lock);
     {
-        /* free all chunk metadata */
+        /* free all chunk metadata nodes */
         this->_free_area_chunks(area_idx);
 
-        /* deallocate all backing device memory regions */
         assert(this->_f_dealloc);
-        for (int j = 0 ; j < this->_nbacking[area_idx] ; ++j)
+
+        /* save the initial (first) backing region so it can be recycled */
+        backing_region_t initial = this->_backing[area_idx][0];
+
+        /* release all additional backing regions back to the driver */
+        for (int j = 1 ; j < this->_backing[area_idx].size() ; ++j)
         {
             backing_region_t * r = &(this->_backing[area_idx][j]);
             this->_f_dealloc(this->_device_driver_id, (void *) r->ptr, r->size, area_idx);
         }
-        this->_nbacking[area_idx] = 0;
+
+        /* shrink the backing list back to just the initial region */
+        this->_backing[area_idx].clear();
+        this->_backing[area_idx].push_back(initial);
+
+        /* reinstall a single free chunk covering the recycled initial region */
+        area_chunk_t * chunk = (area_chunk_t *) malloc(sizeof(area_chunk_t));
+        assert(chunk);
+        chunk->ptr         = initial.ptr;
+        chunk->size        = initial.size;
+        chunk->state       = XKRT_ALLOC_CHUNK_STATE_FREE;
+        chunk->prev        = NULL;
+        chunk->next        = NULL;
+        chunk->freelink    = NULL;
+        chunk->use_counter = 0;
+        chunk->area_idx    = area_idx;
+        area->free_chunk_list = chunk;
     }
     XKRT_MUTEX_UNLOCK(area->lock);
 }
@@ -270,7 +263,7 @@ freelist_allocator_t::~freelist_allocator_t()
 {
     for (int i = 0 ; i < this->_nmemories ; ++i)
     {
-        if (this->_nbacking[i] == 0)
+        if (this->_backing[i].empty())
             continue ;
 
         /* free all chunk metadata */
@@ -278,20 +271,12 @@ freelist_allocator_t::~freelist_allocator_t()
 
         /* deallocate all backing device memory regions */
         assert(this->_f_dealloc);
-        for (int j = 0 ; j < this->_nbacking[i] ; ++j)
+        for (int j = 0 ; j < this->_backing[i].size() ; ++j)
         {
             backing_region_t * r = &(this->_backing[i][j]);
             this->_f_dealloc(this->_device_driver_id, (void *) r->ptr, r->size, i);
         }
-        this->_nbacking[i] = 0;
-
-        /* free the backing array itself */
-        if (this->_backing[i])
-        {
-            free(this->_backing[i]);
-            this->_backing[i] = NULL;
-            this->_backing_capacity[i] = 0;
-        }
+        /* _backing[i] destructor releases the overflow buffer automatically */
     }
 }
 

@@ -37,6 +37,7 @@
 **/
 
 # include <xkrt/runtime.h>
+# include <xkrt/memory/access/blas/dependency-tree.hpp>
 
 XKRT_NAMESPACE_BEGIN
 
@@ -111,8 +112,8 @@ runtime_t::reset_dependence_controllers(void)
         dom->deps.interval = NULL;
     }
 
-    for (auto dep : dom->deps.blas)
-        delete dep;
+    for (DependencyDomain * dep : dom->deps.blas)
+        delete (BLASDependencyTree *) dep;
     dom->deps.blas.clear();
 }
 

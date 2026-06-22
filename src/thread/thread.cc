@@ -530,7 +530,10 @@ get_ith_victim(int tid, int i, int n)
     //      F(2, 2, 4) = 0
     //      F(2, 3, 4) = 1
 
-    return (i + tid) % n;
+    assert(0 <= (tid ^ i));
+    assert((tid ^ i) < n);
+
+    return (tid ^ i);
 }
 
 task_t *

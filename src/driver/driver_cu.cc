@@ -662,188 +662,201 @@ xkrt_cuda_driver_command_batch_init(
         const size_t ndeps = 0;
         const CUgraphNode * deps = NULL;
 
-        /* get command */
-        ocg::command_t * command = node->command;
-
-        if (command == NULL)
+        switch (node->type)
         {
-            cudaGraphAddEmptyNode(cu_node, handle->graph, deps, ndeps);
-        }
-        else
-        {
-            switch (command->type)
+            case (ocg::COMMAND_GRAPH_NODE_TYPE_EMPTY):
             {
-                case (ocg::COMMAND_TYPE_PROG):
+                cudaGraphAddEmptyNode(cu_node, handle->graph, deps, ndeps);
+                break ;
+            }
+
+            case (ocg::COMMAND_GRAPH_NODE_TYPE_COMMAND):
+            {
+                ocg::command_t * command = node->command;
+                switch (command->type)
                 {
-                    CUDA_KERNEL_NODE_PARAMS params;
-                    memset(&params, 0, sizeof(params));
-                    params.func             = (CUfunction) command->prog.launcher.variadic.fn;
-                    params.gridDimX         = command->prog.grid.x;
-                    params.gridDimY         = command->prog.grid.y;
-                    params.gridDimZ         = command->prog.grid.z;
-                    params.blockDimX        = command->prog.block.x;
-                    params.blockDimY        = command->prog.block.y;
-                    params.blockDimZ        = command->prog.block.z;
-                    params.sharedMemBytes   = 0;
-                    params.kernelParams     = NULL;
-                    params.extra            = NULL;
-
-                    /* CUDA graph kernel nodes require kernel params passed via
-                     * the CUDA_KERNEL_NODE_PARAMS::extra field (same as cuLaunchKernel) */
-                    void * conf[] = {
-                        CU_LAUNCH_PARAM_BUFFER_POINTER,
-                        command->prog.launcher.variadic.args,
-                        CU_LAUNCH_PARAM_BUFFER_SIZE,
-                        (void *) &command->prog.launcher.variadic.args_size,
-                        CU_LAUNCH_PARAM_END
-                    };
-                    params.extra = conf;
-
-                    CU_SAFE_CALL(cuGraphAddKernelNode(cu_node, handle->graph, deps, ndeps, &params));
-                    break ;
-                }
-
-                case (ocg::COMMAND_TYPE_COPY_H2D_1D):
-                {
-                    CUDA_MEMCPY3D cpy = {0};
-
-                    cpy.srcMemoryType = CU_MEMORYTYPE_HOST;
-                    cpy.srcHost       = (void *) command->copy_1D.src_device_addr;
-                    cpy.srcPitch      = command->copy_1D.size;
-                    cpy.srcHeight     = 1;
-
-                    cpy.dstMemoryType = CU_MEMORYTYPE_DEVICE;
-                    cpy.dstDevice     = (CUdeviceptr) command->copy_1D.dst_device_addr;
-                    cpy.dstPitch      = command->copy_1D.size;
-                    cpy.dstHeight     = 1;
-
-                    cpy.WidthInBytes  = command->copy_1D.size;
-                    cpy.Height        = 1;
-                    cpy.Depth         = 1;
-
-                    CU_SAFE_CALL(cuGraphAddMemcpyNode(cu_node, handle->graph, deps, ndeps, &cpy, device->cu.context));
-
-                    break;
-                }
-
-                case (ocg::COMMAND_TYPE_COPY_D2H_1D):
-                {
-                    CUDA_MEMCPY3D cpy = {0};
-
-                    cpy.srcMemoryType = CU_MEMORYTYPE_DEVICE;
-                    cpy.srcDevice     = (CUdeviceptr) command->copy_1D.dst_device_addr;
-                    cpy.srcPitch      = command->copy_1D.size;
-                    cpy.srcHeight     = 1;
-
-                    cpy.dstMemoryType = CU_MEMORYTYPE_HOST;
-                    cpy.dstHost       = (void *) command->copy_1D.src_device_addr;
-                    cpy.dstPitch      = command->copy_1D.size;
-                    cpy.dstHeight     = 1;
-
-                    cpy.WidthInBytes  = command->copy_1D.size;
-                    cpy.Height        = 1;
-                    cpy.Depth         = 1;
-
-                    CU_SAFE_CALL(cuGraphAddMemcpyNode(cu_node, handle->graph, deps, ndeps, &cpy, device->cu.context));
-
-                    break ;
-                }
-
-                case (ocg::COMMAND_TYPE_COPY_D2D_1D):
-                {
-                    CUDA_MEMCPY3D cpy;
-                    memset(&cpy, 0, sizeof(cpy));
-                    cpy.srcMemoryType = CU_MEMORYTYPE_DEVICE;
-                    cpy.srcDevice     = (CUdeviceptr) command->copy_1D.src_device_addr;
-                    cpy.dstMemoryType = CU_MEMORYTYPE_DEVICE;
-                    cpy.dstDevice     = (CUdeviceptr) command->copy_1D.dst_device_addr;
-                    cpy.WidthInBytes  = command->copy_1D.size;
-                    cpy.Height        = 1;
-                    cpy.Depth         = 1;
-                    CU_SAFE_CALL(cuGraphAddMemcpyNode(cu_node, handle->graph, deps, ndeps, &cpy, device->cu.context));
-                    break ;
-                }
-
-                case (ocg::COMMAND_TYPE_COPY_H2D_2D):
-                case (ocg::COMMAND_TYPE_COPY_D2H_2D):
-                case (ocg::COMMAND_TYPE_COPY_D2D_2D):
-                {
-                    CUmemorytype src_type, dst_type;
-                    CUdeviceptr src_deviceptr = 0, dst_deviceptr = 0;
-                    void * src_host = NULL, * dst_host = NULL;
-
-                    void * src = (void *) command->copy_2D.src_addr;
-                    void * dst = (void *) command->copy_2D.dst_addr;
-
-                    switch (command->type)
+                    case (ocg::COMMAND_TYPE_PROG):
                     {
-                        case (ocg::COMMAND_TYPE_COPY_H2D_2D):
-                            src_type = CU_MEMORYTYPE_HOST;   src_host = src;
-                            dst_type = CU_MEMORYTYPE_DEVICE; dst_deviceptr = (CUdeviceptr) dst;
-                            break ;
-                        case (ocg::COMMAND_TYPE_COPY_D2H_2D):
-                            src_type = CU_MEMORYTYPE_DEVICE; src_deviceptr = (CUdeviceptr) src;
-                            dst_type = CU_MEMORYTYPE_HOST;   dst_host = dst;
-                            break ;
-                        case (ocg::COMMAND_TYPE_COPY_D2D_2D):
-                            src_type = CU_MEMORYTYPE_DEVICE; src_deviceptr = (CUdeviceptr) src;
-                            dst_type = CU_MEMORYTYPE_DEVICE; dst_deviceptr = (CUdeviceptr) dst;
-                            break ;
-                        default:
-                            LOGGER_FATAL("unreachable");
-                            break ;
+                        CUDA_KERNEL_NODE_PARAMS params;
+                        memset(&params, 0, sizeof(params));
+                        params.func             = (CUfunction) command->prog.launcher.variadic.fn;
+                        params.gridDimX         = command->prog.grid.x;
+                        params.gridDimY         = command->prog.grid.y;
+                        params.gridDimZ         = command->prog.grid.z;
+                        params.blockDimX        = command->prog.block.x;
+                        params.blockDimY        = command->prog.block.y;
+                        params.blockDimZ        = command->prog.block.z;
+                        params.sharedMemBytes   = 0;
+                        params.kernelParams     = NULL;
+                        params.extra            = NULL;
+
+                        /* CUDA graph kernel nodes require kernel params passed via
+                         * the CUDA_KERNEL_NODE_PARAMS::extra field (same as cuLaunchKernel) */
+                        void * conf[] = {
+                            CU_LAUNCH_PARAM_BUFFER_POINTER,
+                            command->prog.launcher.variadic.args,
+                            CU_LAUNCH_PARAM_BUFFER_SIZE,
+                            (void *) &command->prog.launcher.variadic.args_size,
+                            CU_LAUNCH_PARAM_END
+                        };
+                        params.extra = conf;
+
+                        CU_SAFE_CALL(cuGraphAddKernelNode(cu_node, handle->graph, deps, ndeps, &params));
+                        break ;
                     }
 
-                    const size_t dpitch = command->copy_2D.dst_ld * command->copy_2D.sizeof_type;
-                    const size_t spitch = command->copy_2D.src_ld * command->copy_2D.sizeof_type;
-                    const size_t width  = command->copy_2D.m * command->copy_2D.sizeof_type;
-                    const size_t height = command->copy_2D.n;
+                    case (ocg::COMMAND_TYPE_COPY_H2D_1D):
+                    {
+                        CUDA_MEMCPY3D cpy = {0};
 
-                    CUDA_MEMCPY3D cpy;
-                    memset(&cpy, 0, sizeof(cpy));
-                    cpy.srcMemoryType = src_type;
-                    cpy.srcHost       = src_host;
-                    cpy.srcDevice     = src_deviceptr;
-                    cpy.srcPitch      = spitch;
-                    cpy.dstMemoryType = dst_type;
-                    cpy.dstHost       = dst_host;
-                    cpy.dstDevice     = dst_deviceptr;
-                    cpy.dstPitch      = dpitch;
-                    cpy.WidthInBytes  = width;
-                    cpy.Height        = height;
-                    cpy.Depth         = 1;
+                        cpy.srcMemoryType = CU_MEMORYTYPE_HOST;
+                        cpy.srcHost       = (void *) command->copy_1D.src_device_addr;
+                        cpy.srcPitch      = command->copy_1D.size;
+                        cpy.srcHeight     = 1;
 
-                    CU_SAFE_CALL(cuGraphAddMemcpyNode(cu_node, handle->graph, deps, ndeps, &cpy, device->cu.context));
-                    break ;
-                }
+                        cpy.dstMemoryType = CU_MEMORYTYPE_DEVICE;
+                        cpy.dstDevice     = (CUdeviceptr) command->copy_1D.dst_device_addr;
+                        cpy.dstPitch      = command->copy_1D.size;
+                        cpy.dstHeight     = 1;
 
-                case (ocg::COMMAND_TYPE_BATCH):
-                {
-                    // assert(command->batch.cg == false);
+                        cpy.WidthInBytes  = command->copy_1D.size;
+                        cpy.Height        = 1;
+                        cpy.Depth         = 1;
 
-                    if (command->batch.driver_handle == NULL)
-                        command->batch.driver_handle = xkrt_cuda_driver_command_batch_init(device_driver_id, command);
+                        CU_SAFE_CALL(cuGraphAddMemcpyNode(cu_node, handle->graph, deps, ndeps, &cpy, device->cu.context));
 
-                    if (command->batch.driver_handle == NULL)
-                        LOGGER_FATAL("Failed to initialized a command batch");
+                        break;
+                    }
 
-                    command_batch_cu_handle_t * command_handle = (command_batch_cu_handle_t *) command->batch.driver_handle;
-                    assert(command_handle);
+                    case (ocg::COMMAND_TYPE_COPY_D2H_1D):
+                    {
+                        CUDA_MEMCPY3D cpy = {0};
 
-                    CU_SAFE_CALL(cuGraphAddChildGraphNode(cu_node, handle->graph, deps, ndeps, command_handle->graph));
-                    break ;
-                }
+                        cpy.srcMemoryType = CU_MEMORYTYPE_DEVICE;
+                        cpy.srcDevice     = (CUdeviceptr) command->copy_1D.dst_device_addr;
+                        cpy.srcPitch      = command->copy_1D.size;
+                        cpy.srcHeight     = 1;
 
-                default:
-                {
-                    /* unsupported command type for CUDA graph batching:
-                     * abort the contraction */
-                    LOGGER_FATAL("Cannot batch command type %s into CUDA graph", ocg::command_type_to_str(command->type));
-                    CU_SAFE_CALL(cuGraphDestroy(handle->graph));
-                    return NULL;
-                }
-            } /* switch command->type */
-        } /* if command != NULL */
+                        cpy.dstMemoryType = CU_MEMORYTYPE_HOST;
+                        cpy.dstHost       = (void *) command->copy_1D.src_device_addr;
+                        cpy.dstPitch      = command->copy_1D.size;
+                        cpy.dstHeight     = 1;
+
+                        cpy.WidthInBytes  = command->copy_1D.size;
+                        cpy.Height        = 1;
+                        cpy.Depth         = 1;
+
+                        CU_SAFE_CALL(cuGraphAddMemcpyNode(cu_node, handle->graph, deps, ndeps, &cpy, device->cu.context));
+
+                        break ;
+                    }
+
+                    case (ocg::COMMAND_TYPE_COPY_D2D_1D):
+                    {
+                        CUDA_MEMCPY3D cpy;
+                        memset(&cpy, 0, sizeof(cpy));
+                        cpy.srcMemoryType = CU_MEMORYTYPE_DEVICE;
+                        cpy.srcDevice     = (CUdeviceptr) command->copy_1D.src_device_addr;
+                        cpy.dstMemoryType = CU_MEMORYTYPE_DEVICE;
+                        cpy.dstDevice     = (CUdeviceptr) command->copy_1D.dst_device_addr;
+                        cpy.WidthInBytes  = command->copy_1D.size;
+                        cpy.Height        = 1;
+                        cpy.Depth         = 1;
+                        CU_SAFE_CALL(cuGraphAddMemcpyNode(cu_node, handle->graph, deps, ndeps, &cpy, device->cu.context));
+                        break ;
+                    }
+
+                    case (ocg::COMMAND_TYPE_COPY_H2D_2D):
+                    case (ocg::COMMAND_TYPE_COPY_D2H_2D):
+                    case (ocg::COMMAND_TYPE_COPY_D2D_2D):
+                    {
+                        CUmemorytype src_type, dst_type;
+                        CUdeviceptr src_deviceptr = 0, dst_deviceptr = 0;
+                        void * src_host = NULL, * dst_host = NULL;
+
+                        void * src = (void *) command->copy_2D.src_addr;
+                        void * dst = (void *) command->copy_2D.dst_addr;
+
+                        switch (command->type)
+                        {
+                            case (ocg::COMMAND_TYPE_COPY_H2D_2D):
+                                src_type = CU_MEMORYTYPE_HOST;   src_host = src;
+                                dst_type = CU_MEMORYTYPE_DEVICE; dst_deviceptr = (CUdeviceptr) dst;
+                                break ;
+                            case (ocg::COMMAND_TYPE_COPY_D2H_2D):
+                                src_type = CU_MEMORYTYPE_DEVICE; src_deviceptr = (CUdeviceptr) src;
+                                dst_type = CU_MEMORYTYPE_HOST;   dst_host = dst;
+                                break ;
+                            case (ocg::COMMAND_TYPE_COPY_D2D_2D):
+                                src_type = CU_MEMORYTYPE_DEVICE; src_deviceptr = (CUdeviceptr) src;
+                                dst_type = CU_MEMORYTYPE_DEVICE; dst_deviceptr = (CUdeviceptr) dst;
+                                break ;
+                            default:
+                                LOGGER_FATAL("unreachable");
+                                break ;
+                        }
+
+                        const size_t dpitch = command->copy_2D.dst_ld * command->copy_2D.sizeof_type;
+                        const size_t spitch = command->copy_2D.src_ld * command->copy_2D.sizeof_type;
+                        const size_t width  = command->copy_2D.m * command->copy_2D.sizeof_type;
+                        const size_t height = command->copy_2D.n;
+
+                        CUDA_MEMCPY3D cpy;
+                        memset(&cpy, 0, sizeof(cpy));
+                        cpy.srcMemoryType = src_type;
+                        cpy.srcHost       = src_host;
+                        cpy.srcDevice     = src_deviceptr;
+                        cpy.srcPitch      = spitch;
+                        cpy.dstMemoryType = dst_type;
+                        cpy.dstHost       = dst_host;
+                        cpy.dstDevice     = dst_deviceptr;
+                        cpy.dstPitch      = dpitch;
+                        cpy.WidthInBytes  = width;
+                        cpy.Height        = height;
+                        cpy.Depth         = 1;
+
+                        CU_SAFE_CALL(cuGraphAddMemcpyNode(cu_node, handle->graph, deps, ndeps, &cpy, device->cu.context));
+                        break ;
+                    }
+
+                    case (ocg::COMMAND_TYPE_BATCH):
+                    {
+                        // assert(command->batch.cg == false);
+
+                        if (command->batch.driver_handle == NULL)
+                            command->batch.driver_handle = xkrt_cuda_driver_command_batch_init(device_driver_id, command);
+
+                        if (command->batch.driver_handle == NULL)
+                            LOGGER_FATAL("Failed to initialized a command batch");
+
+                        command_batch_cu_handle_t * command_handle = (command_batch_cu_handle_t *) command->batch.driver_handle;
+                        assert(command_handle);
+
+                        CU_SAFE_CALL(cuGraphAddChildGraphNode(cu_node, handle->graph, deps, ndeps, command_handle->graph));
+                        break ;
+                    }
+
+                    default:
+                    {
+                        /* unsupported command type for CUDA graph batching:
+                         * abort the contraction */
+                        LOGGER_FATAL("Cannot batch command type %s into CUDA graph", ocg::command_type_to_str(command->type));
+                        CU_SAFE_CALL(cuGraphDestroy(handle->graph));
+                        return NULL;
+                    }
+                } /* switch command->type */
+
+                break ;
+            } /* case ocg::COMMAND_GRAPH_NODE_TYPE_COMMAND */
+
+            case (ocg::COMMAND_GRAPH_NODE_TYPE_COMMAND_GRAPH):
+            case (ocg::COMMAND_GRAPH_NODE_TYPE_CONDITION):
+            default:
+            {
+                LOGGER_FATAL("Not supported");
+                break ;
+            }
+        } /* switch case(command->type) */
     } /* for each iterator */
 
     assert(command->batch.cg);
@@ -863,10 +876,7 @@ xkrt_cuda_driver_command_batch_init(
         {
             /* must skip edges to entry, as it is not included in the cuda graph */
             if (pred == entry)
-            {
-                assert(pred->command == NULL);
                 continue ;
-            }
 
             CU_SAFE_CALL(cuGraphAddDependencies(
                 handle->graph,
@@ -1180,6 +1190,7 @@ XKRT_DRIVER_ENTRYPOINT(command_queue_progress)(
             case (ocg::COMMAND_TYPE_COPY_H2H_2D):
             case (ocg::COMMAND_TYPE_COPY_H2D_2D):
             case (ocg::COMMAND_TYPE_COPY_D2H_2D):
+            case (ocg::COMMAND_TYPE_COPY_D2D_2D):
             case (ocg::COMMAND_TYPE_BATCH):
             {
                 CUevent event = queue->cu.events.buffer[p];
@@ -1559,7 +1570,6 @@ XKRT_DRIVER_ENTRYPOINT(create_driver)(void)
     REGISTER(device_cpuset);
 
     REGISTER(command_queue_create);
-    REGISTER(command_queue_delete);
     REGISTER(command_queue_delete);
     REGISTER(command_queue_launch);
     REGISTER(command_queue_progress);
