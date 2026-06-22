@@ -116,19 +116,16 @@ Related Projects</h1>
 XKRT software stack</div></div>
      </a></p>
 <h1><a class="anchor" id="autotoc_md2"></a>
-Getting started</h1>
+Installation</h1>
 <h2><a class="anchor" id="autotoc_md3"></a>
-Installation</h2>
-<p>XKRT is implemented in C++ and exposes two APIs: C and C++.</p>
-<h3><a class="anchor" id="autotoc_md4"></a>
-Requirements</h3>
+Requirements</h2>
 <ul>
 <li>A C/C++ compiler with support for C++20 (the only compiler tested is LLVM &gt;=20.x)</li>
 <li>hwloc - <a href="https://github.com/open-mpi/hwloc">https://github.com/open-mpi/hwloc</a></li>
 <li>OpenCG release/v0.1 - <a href="https://github.com/JLESC-Tasking-Group/opencg">https://github.com/JLESC-Tasking-Group/opencg</a></li>
 </ul>
-<h3><a class="anchor" id="autotoc_md5"></a>
-Optional</h3>
+<h2><a class="anchor" id="autotoc_md4"></a>
+Optional</h2>
 <ul>
 <li>Cuda, HIP, Level Zero, SYCL, OpenCL</li>
 <li>CUBLAS, HIPBLAS, ONEAPI::MKL</li>
@@ -137,8 +134,15 @@ Optional</h3>
 <li>Cairo - <a href="https://github.com/msteinert/cairo">https://github.com/msteinert/cairo</a> - for debugging purposes, to visualize memory trees</li>
 <li>Proteus - <a href="https://github.com/Olympus-HPC/proteus">https://github.com/Olympus-HPC/proteus</a> - for JIT compiling tasks</li>
 </ul>
-<h3><a class="anchor" id="autotoc_md6"></a>
-Build example</h3>
+<h2><a class="anchor" id="autotoc_md5"></a>
+Build (One line assistant)</h2>
+<div class="fragment"><div class="line"># using wget</div>
+<div class="line">bash &lt;(wget -qO- https://gitlab.inria.fr/xkaapi/dev-v2/-/raw/release/latest/scripts/install.sh)</div>
+<div class="line"> </div>
+<div class="line"># using curl</div>
+<div class="line">bash &lt;(curl -fsSL https://gitlab.inria.fr/xkaapi/dev-v2/-/raw/release/latest/scripts/install.sh)</div>
+</div><!-- fragment --><h2><a class="anchor" id="autotoc_md6"></a>
+Build example (Manual)</h2>
 <p>See the <code>CMakeLists.txt</code> file for all available options.</p>
 <div class="fragment"><div class="line"># with support for only the host driver and debug modes, typically for developing on local machines with no GPUs</div>
 <div class="line">CC=clang CXX=clang++ cmake -DUSE_STATS=on -DCMAKE_BUILD_TYPE=Debug ..</div>
@@ -148,8 +152,8 @@ Build example</h3>
 <div class="line"> </div>
 <div class="line"># with support for Cuda and all optimization</div>
 <div class="line">CC=clang CXX=clang++ CMAKE_PREFIX_PATH=$CUDA_PATH:$CMAKE_PREFIX_PATH cmake -DUSE_CUDA=on -DUSE_SHUT_UP=on -DENABLE_HEAVY_DEBUG=off -DCMAKE_BUILD_TYPE=Release ..</div>
-</div><!-- fragment --><h2><a class="anchor" id="autotoc_md7"></a>
-Available environment variable</h2>
+</div><!-- fragment --><h1><a class="anchor" id="autotoc_md7"></a>
+Available environment variable</h1>
 <ul>
 <li><code>XKRT_HELP=1</code> - displays available environment variables.</li>
 </ul>

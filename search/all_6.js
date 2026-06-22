@@ -9,9 +9,10 @@ var searchData=
   ['blkn_6',['blkn',['../structxkrt_1_1distribution__t.html#a3cc38ac44d82bf7bddc36d483e57ac45',1,'xkrt::distribution_t']]],
   ['blockquote_7',['&lt;/blockquote&gt;',['../building.html#autotoc_md58',1,'']]],
   ['bs_8',['bs',['../structxkrt_1_1distribution__t.html#ab3863085f8204353021f562581f5d1e2',1,'xkrt::distribution_t']]],
-  ['build_20example_9',['Build example',['../index.html#autotoc_md6',1,'']]],
+  ['build_20example_20manual_9',['Build example (Manual)',['../index.html#autotoc_md6',1,'']]],
   ['build_20examples_10',['Build Examples',['../building.html#autotoc_md66',1,'']]],
-  ['build_20outputs_11',['Build Outputs',['../building.html#autotoc_md74',1,'']]],
-  ['building_20configuration_12',['Building &amp; Configuration',['../building.html',1,'']]],
-  ['building_2emd_13',['building.md',['../building_8md.html',1,'']]]
+  ['build_20one_20line_20assistant_11',['Build (One line assistant)',['../index.html#autotoc_md5',1,'']]],
+  ['build_20outputs_12',['Build Outputs',['../building.html#autotoc_md74',1,'']]],
+  ['building_20configuration_13',['Building &amp; Configuration',['../building.html',1,'']]],
+  ['building_2emd_14',['building.md',['../building_8md.html',1,'']]]
 ];

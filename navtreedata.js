@@ -27,14 +27,13 @@ var NAVTREE =
   [ "XKRT", "index.html", [
     [ "XKaapi Runtime (XKRT) - A parallel runtime system for macro-dataflow on multi-devices architectures.", "index.html#autotoc_md0", null ],
     [ "Related Projects", "index.html#autotoc_md1", null ],
-    [ "Getting started", "index.html#autotoc_md2", [
-      [ "Installation", "index.html#autotoc_md3", [
-        [ "Requirements", "index.html#autotoc_md4", null ],
-        [ "Optional", "index.html#autotoc_md5", null ],
-        [ "Build example", "index.html#autotoc_md6", null ]
-      ] ],
-      [ "Available environment variable", "index.html#autotoc_md7", null ]
+    [ "Installation", "index.html#autotoc_md2", [
+      [ "Requirements", "index.html#autotoc_md3", null ],
+      [ "Optional", "index.html#autotoc_md4", null ],
+      [ "Build (One line assistant)", "index.html#autotoc_md5", null ],
+      [ "Build example (Manual)", "index.html#autotoc_md6", null ]
     ] ],
+    [ "Available environment variable", "index.html#autotoc_md7", null ],
     [ "Directions for improvements / known issues", "index.html#autotoc_md8", null ],
     [ "Examples", "examples.html", [
       [ "AXPY – Vector Addition with Data Accesses", "examples.html#autotoc_md10", [
