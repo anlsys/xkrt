@@ -459,7 +459,7 @@ LLVM_BOOTSTRAP_CC="" LLVM_BOOTSTRAP_CXX=""    # compiler used to build LLVM itse
 if prompt_yn "Install custom patched LLVM?" "no"; then
     INSTALL_LLVM=true
     LLVM_BRANCH=$(prompt_value "Branch" "main")
-    LLVM_BUILD_TYPE=$(prompt_value "Build type (Release/Debug)" "Release")
+    LLVM_BUILD_TYPE=$(prompt_value "Build type (Release/Debug/RelWithDebInfo)" "Release")
 
     # ── Host LLVM backend (auto-detected from uname -m) ──────────────────────
     _host_tgt=$(_llvm_host_target)
@@ -517,6 +517,9 @@ if prompt_yn "Install custom patched LLVM?" "no"; then
     # ── Projects ─────────────────────────────────────────────────────────────
     _tty "\n  ${BOLD}LLVM projects${NC} (clang is always included):\n"
     _projects="clang"
+    if prompt_yn "  Include MLIR  (recommended for OpenCG)?" "yes"; then
+        _projects="${_projects};mlir"
+    fi
     if prompt_yn "  Include lld  (LLVM linker — recommended for GPU offload)?" "yes"; then
         _projects="${_projects};lld"
     fi
