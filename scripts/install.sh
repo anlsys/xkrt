@@ -504,6 +504,9 @@ if prompt_yn "Install custom patched LLVM?" "no"; then
     # ── Projects ─────────────────────────────────────────────────────────────
     _tty "\n  ${BOLD}LLVM projects${NC} (clang is always included):\n"
     _projects="clang"
+    if prompt_yn "  Include MLIR  (recommended for OpenCG)?" "yes"; then
+        _projects="${_projects};mlir"
+    fi
     if prompt_yn "  Include lld  (LLVM linker — recommended for GPU offload)?" "yes"; then
         _projects="${_projects};lld"
     fi
