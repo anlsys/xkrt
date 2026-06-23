@@ -215,18 +215,21 @@ clone_or_update() {
 
     if [[ ! -d "$dest/.git" ]]; then
         info "Cloning $(basename "$dest") from $url"
-        git clone -q "$url" "$dest"
+        # --progress forces the transfer meter even when stderr is not a TTY,
+        # so large clones (e.g. LLVM) don't look frozen.
+        git clone --progress "$url" "$dest"
     else
         info "Fetching latest for $(basename "$dest")"
-        git -C "$dest" fetch -q --all --tags
+        git -C "$dest" fetch --all --tags --progress
     fi
 
     info "Checking out $ref"
-    git -C "$dest" checkout -q "$ref"
+    # --progress shows the "Updating files" meter for big working trees.
+    git -C "$dest" checkout --progress "$ref"
 
     # Pull only if this ref is a remote branch (tags are immutable)
     if git -C "$dest" ls-remote --exit-code --heads origin "$ref" >/dev/null 2>&1; then
-        git -C "$dest" pull -q
+        git -C "$dest" pull --progress
     fi
 }
 
@@ -742,11 +745,14 @@ if [[ "$INSTALL_LLVM" == "true" ]]; then
     fi
 
     # Always fetch + checkout the requested branch in the repo we'll use.
-    info "Fetching and checking out branch: $LLVM_BRANCH"
-    git -C "$LLVM_REPO_DIR" fetch -q --all --tags
-    git -C "$LLVM_REPO_DIR" checkout -q "$LLVM_BRANCH"
+    # LLVM is a very large repository, so keep the progress meters on (no -q)
+    # to make it obvious the fetch/checkout are working and not hung.
+    info "Updating LLVM sources for branch '$LLVM_BRANCH' (large repo — this can take a while) …"
+    git -C "$LLVM_REPO_DIR" fetch --all --tags --progress
+    info "Checking out '$LLVM_BRANCH' (updating the working tree) …"
+    git -C "$LLVM_REPO_DIR" checkout --progress "$LLVM_BRANCH"
     if git -C "$LLVM_REPO_DIR" ls-remote --exit-code --heads origin "$LLVM_BRANCH" >/dev/null 2>&1; then
-        git -C "$LLVM_REPO_DIR" pull -q
+        git -C "$LLVM_REPO_DIR" pull --progress
     fi
 
     LLVM_HASH=$(git -C "$LLVM_REPO_DIR" rev-parse HEAD | cut -c1-12)
