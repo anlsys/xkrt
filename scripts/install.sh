@@ -1,13 +1,18 @@
 #!/usr/bin/env bash
 # ============================================================================
-# Interactive installer: hwloc · opencg · xkrt · xkblas · xkomp
+# Interactive installer: llvm · hwloc · opencg · xkrt · xkblas · xkomp
 #
 # Dependency order:
-#   hwloc  ─┐
-#            ├─▶  xkrt  ─┬─▶  xkblas
-#   opencg ─┘             └─▶  xkomp
+#   llvm ─▶ opencg ─┐
+#                    ├─▶  xkrt  ─┬─▶  xkblas
+#   hwloc ───────────┘           └─▶  xkomp
 #
-# Requires: cmake >= 3.17, clang/gcc, git, autoconf/automake (for hwloc)
+# The custom LLVM (anlsys/llvm-project) is a dependency of opencg and may
+# optionally be used to build opencg/xkrt/xkblas/xkomp.  It can be bootstrapped
+# with any compiler, but building those libraries requires an LLVM >= 20 (the
+# custom one, or a system clang >= 20).
+#
+# Requires: cmake >= 3.17, a C/C++ compiler, git, autoconf/automake (for hwloc)
 # ============================================================================
 
 set -euo pipefail
@@ -133,7 +138,8 @@ _write_cache() {
         declare -p INSTALL_LLVM LLVM_BRANCH LLVM_BUILD_TYPE \
                    LLVM_PROJECTS LLVM_RUNTIMES \
                    LLVM_CMAKE_TARGETS LLVM_CMAKE_RUNTIME_TARGETS \
-                   LLVM_EXTRA_CMAKE_OPTS LLVM_GPU_SUMMARY
+                   LLVM_EXTRA_CMAKE_OPTS LLVM_GPU_SUMMARY \
+                   USE_LLVM_FOR_BUILD LLVM_BOOTSTRAP_CC LLVM_BOOTSTRAP_CXX
         declare -p INSTALL_HWLOC HWLOC_BRANCH
         declare -p INSTALL_OPENCG OPENCG_BRANCH OPENCG_BUILD_TYPE OPENCG_CMAKE_OPTS
         declare -p INSTALL_XKRT  XKRT_BRANCH  XKRT_BUILD_TYPE  XKRT_CMAKE_OPTS
@@ -411,30 +417,35 @@ _detect_clang() {
 info "Scanning PATH for clang >= ${MIN_CLANG_VER} …"
 read -r _clang_status _def_cc _def_cxx _clang_ver <<< "$(_detect_clang)"
 
+# A system clang >= MIN_CLANG_VER is required to build the libraries *unless*
+# the user installs the custom LLVM and chooses to build with it.  We therefore
+# only record the result here and defer any hard error until the build compiler
+# is selected (see "Build compiler" below).
 case "$_clang_status" in
-    ok)
-        success "Found ${_def_cc} / ${_def_cxx}  (version ${_clang_ver})"
-        ;;
-    old)
-        _tty "\n  ${RED}Error:${NC} Found clang ${_clang_ver} but version >= ${MIN_CLANG_VER} is required.\n"
-        _tty "  Please install a newer clang, e.g.:\n"
-        _tty "    sudo apt install clang-${MIN_CLANG_VER} clang++-${MIN_CLANG_VER}\n\n"
-        exit 1
-        ;;
-    none)
-        _tty "\n  ${RED}Error:${NC} No clang/clang++ compiler found in PATH.\n"
-        _tty "  Please install clang >= ${MIN_CLANG_VER}, e.g.:\n"
-        _tty "    sudo apt install clang-${MIN_CLANG_VER} clang++-${MIN_CLANG_VER}\n\n"
-        exit 1
-        ;;
+    ok)   success "Found ${_def_cc} / ${_def_cxx}  (version ${_clang_ver})" ;;
+    old)  warn "Found clang ${_clang_ver}, but >= ${MIN_CLANG_VER} is needed to build the libraries." ;;
+    none) warn "No clang >= ${MIN_CLANG_VER} found in PATH." ;;
 esac
+[[ "$_clang_status" == "ok" ]] || \
+    info "You can still proceed by installing the custom LLVM and building with it."
+
+# Pick a sensible default *bootstrap* compiler (any compiler is fine for that):
+# prefer a detected clang >= MIN_CLANG_VER, else any clang, else gcc, else cc/c++.
+if [[ "$_clang_status" == "ok" ]]; then
+    _boot_cc_default="$_def_cc"; _boot_cxx_default="$_def_cxx"
+else
+    _boot_cc_default="$(command -v clang  || command -v gcc || command -v cc  || echo cc)"
+    _boot_cxx_default="$(command -v clang++ || command -v g++ || command -v c++ || echo c++)"
+fi
 
 # ── LLVM (custom patched) ─────────────────────────────────────────────────────
-step "LLVM  [cmake; optional custom patched toolchain — anlsys/llvm-project]"
+step "LLVM  [cmake; custom patched toolchain — anlsys/llvm-project; dependency of opencg]"
 _tty "\n"
-_tty "  The anlsys fork adds new OpenMP pragma support (access clauses, etc.).\n"
-_tty "  This patched clang is intended for end users of xkrt, not for building\n"
-_tty "  the libraries below — those will always use the system clang detected above.\n\n"
+_tty "  The anlsys fork adds new OpenMP pragma support (access clauses, etc.) and\n"
+_tty "  provides the LLVM that opencg depends on.\n"
+_tty "  It can be bootstrapped with any compiler.  You may optionally use it to\n"
+_tty "  build opencg/xkrt/xkblas/xkomp — those require an LLVM >= ${MIN_CLANG_VER}\n"
+_tty "  (the custom one, or a system clang >= ${MIN_CLANG_VER} detected above).\n\n"
 
 INSTALL_LLVM=false
 LLVM_BRANCH="" LLVM_BUILD_TYPE=""
@@ -442,6 +453,8 @@ LLVM_PROJECTS="" LLVM_RUNTIMES=""
 LLVM_CMAKE_TARGETS="" LLVM_CMAKE_RUNTIME_TARGETS=""
 LLVM_EXTRA_CMAKE_OPTS=""
 LLVM_GPU_SUMMARY=""   # human-readable, for summary display
+USE_LLVM_FOR_BUILD=false                      # use custom LLVM to build the libs?
+LLVM_BOOTSTRAP_CC="" LLVM_BOOTSTRAP_CXX=""    # compiler used to build LLVM itself
 
 if prompt_yn "Install custom patched LLVM?" "no"; then
     INSTALL_LLVM=true
@@ -528,12 +541,49 @@ if prompt_yn "Install custom patched LLVM?" "no"; then
     read -r _llvm_extra </dev/tty
     LLVM_EXTRA_CMAKE_OPTS="${_llvm_extra:-}"
 
+    # ── Bootstrap compiler (any compiler may build LLVM) ──────────────────────
+    _tty "\n  ${BOLD}Bootstrap compiler${NC} — used only to compile LLVM itself.\n"
+    _tty "  ${DIM}Any C/C++ compiler works here; no minimum version.${NC}\n"
+    LLVM_BOOTSTRAP_CC=$(prompt_value  "Bootstrap C compiler"   "$_boot_cc_default")
+    LLVM_BOOTSTRAP_CXX=$(prompt_value "Bootstrap C++ compiler" "$_boot_cxx_default")
+
+    # ── Use the custom LLVM to build the libraries? ───────────────────────────
+    _tty "\n"
+    if prompt_yn "Use this custom LLVM to build opencg/xkrt/xkblas/xkomp?" "yes"; then
+        USE_LLVM_FOR_BUILD=true
+    else
+        USE_LLVM_FOR_BUILD=false
+    fi
+
 fi
 
-# Always ask: the system clang is used to build all libraries regardless of LLVM.
-_tty "\n"
-CC=$(prompt_value  "C compiler (for building libraries)" "$_def_cc")
-CXX=$(prompt_value "C++ compiler (for building libraries)" "$_def_cxx")
+# ── Build compiler ────────────────────────────────────────────────────────────
+# opencg/xkrt/xkblas/xkomp must be built with an LLVM >= MIN_CLANG_VER: either
+# the custom LLVM (built above) or a system clang >= MIN_CLANG_VER.
+step "Build compiler  [for opencg · xkrt · xkblas · xkomp]"
+if [[ "$INSTALL_LLVM" == "true" && "$USE_LLVM_FOR_BUILD" == "true" ]]; then
+    # The custom LLVM provides clang >= 20.  Its exact path depends on the git
+    # hash, so CC/CXX are resolved in Phase 2 right after LLVM is installed.
+    CC="" CXX=""
+    success "Libraries will be built with the custom LLVM (clang/clang++)."
+else
+    # Not using the custom LLVM → a system clang >= MIN_CLANG_VER is required.
+    if [[ "$_clang_status" != "ok" ]]; then
+        _tty "\n  ${RED}Error:${NC} building the libraries needs an LLVM >= ${MIN_CLANG_VER}.\n"
+        if [[ "$_clang_status" == "old" ]]; then
+            _tty "  Found clang ${_clang_ver}, which is too old.\n"
+        else
+            _tty "  No clang/clang++ was found in PATH.\n"
+        fi
+        _tty "  Either install a newer clang, e.g.:\n"
+        _tty "    sudo apt install clang-${MIN_CLANG_VER} clang++-${MIN_CLANG_VER}\n"
+        _tty "  or re-run, install the custom LLVM and choose to build with it.\n\n"
+        exit 1
+    fi
+    _tty "\n"
+    CC=$(prompt_value  "C compiler (LLVM >= ${MIN_CLANG_VER})"   "$_def_cc")
+    CXX=$(prompt_value "C++ compiler (LLVM >= ${MIN_CLANG_VER})" "$_def_cxx")
+fi
 export CC CXX
 
 # ── hwloc ─────────────────────────────────────────────────────────────────────
@@ -625,8 +675,15 @@ if [[ "$INSTALL_LLVM" == "true" ]]; then
     _tty "          projects: %-20s  runtimes: %s\n" \
          "$LLVM_PROJECTS" "${LLVM_RUNTIMES:-none}"
     _tty "          GPU targets: %s\n" "$LLVM_GPU_SUMMARY"
+    _tty "          bootstrap: %-20s  build libs with llvm: %s\n" \
+         "$LLVM_BOOTSTRAP_CC" "$USE_LLVM_FOR_BUILD"
 else
     _tty "  ${DIM}✗  %-10s  (skipped)${NC}\n" "llvm"
+fi
+if [[ "$INSTALL_LLVM" == "true" && "$USE_LLVM_FOR_BUILD" == "true" ]]; then
+    _tty "  ${DIM}library compiler: custom LLVM clang (resolved after LLVM build)${NC}\n"
+else
+    _tty "  ${DIM}library compiler: %s${NC}\n" "$CC"
 fi
 _lib_row "hwloc"  "$INSTALL_HWLOC"  "$HWLOC_BRANCH"  "autotools"
 _lib_row "opencg" "$INSTALL_OPENCG" "$OPENCG_BRANCH" "$OPENCG_BUILD_TYPE"
@@ -643,6 +700,13 @@ _write_cache "$CACHE_FILE"
 success "Configuration saved → $CACHE_FILE"
 
 fi # REUSE_CACHE — end of Phase 1
+
+# Edge-safe defaults — also covers reusing a cache written by an older version
+# of this script that predates the LLVM-as-build-compiler options.
+: "${INSTALL_LLVM:=false}"
+: "${USE_LLVM_FOR_BUILD:=false}"
+: "${LLVM_BOOTSTRAP_CC:=${CC:-cc}}"
+: "${LLVM_BOOTSTRAP_CXX:=${CXX:-c++}}"
 
 # ─────────────────────────────────────────────────────────────────────────────
 # PHASE 2 – BUILD & INSTALL
@@ -701,7 +765,8 @@ if [[ "$INSTALL_LLVM" == "true" ]]; then
         _llvm_rtgt_flag="-DLLVM_RUNTIME_TARGETS=${LLVM_CMAKE_RUNTIME_TARGETS}"
 
         # shellcheck disable=SC2086
-        CC="$CC" CXX="$CXX" \
+        # LLVM is bootstrapped with the (any-version) bootstrap compiler.
+        CC="$LLVM_BOOTSTRAP_CC" CXX="$LLVM_BOOTSTRAP_CXX" \
         cmake \
             -DCMAKE_BUILD_TYPE="$LLVM_BUILD_TYPE" \
             -DCMAKE_INSTALL_PREFIX="$LLVM_INSTALL_DIR" \
@@ -719,6 +784,17 @@ if [[ "$INSTALL_LLVM" == "true" ]]; then
 
     info "Building LLVM (this may take a while) …"
     make install -j "$(nproc)"
+
+    # If the user opted to build the libraries with the custom LLVM, switch the
+    # build compiler to it now and activate its prefix so opencg (which depends
+    # on LLVM) and the others find its clang, headers, libraries and cmake config.
+    if [[ "$USE_LLVM_FOR_BUILD" == "true" ]]; then
+        CC="$LLVM_INSTALL_DIR/bin/clang"
+        CXX="$LLVM_INSTALL_DIR/bin/clang++"
+        export CC CXX
+        _activate_prefix "$LLVM_INSTALL_DIR" "llvm" "$LLVM_HASH/$LLVM_BUILD_TYPE"
+        success "Libraries will be built with: $CC"
+    fi
 
     # ── Module file ───────────────────────────────────────────────────────────
     LLVM_MOD_DIR="$MODULES_DIR/llvm/$LLVM_HASH"
@@ -817,7 +893,13 @@ if [[ "$INSTALL_OPENCG" == "true" ]]; then
 
     # Activate opencg so xkrt finds its headers, libs and cmake config.
     OPENCG_MOD="$MODULES_DIR/opencg/$OPENCG_HASH/$OPENCG_BUILD_TYPE"
-    generate_modulefile "opencg" "$OPENCG_INSTALL_DIR" "OPENCG_HOME" "$OPENCG_MOD"
+    # opencg depends on LLVM; declare the dependency when it was built with the
+    # custom LLVM (a system LLVM, like a system hwloc, ships no module to load).
+    declare -a _opencg_deps=()
+    [[ "$INSTALL_LLVM" == "true" && "$USE_LLVM_FOR_BUILD" == "true" ]] && \
+        _opencg_deps+=("llvm/$LLVM_HASH/$LLVM_BUILD_TYPE")
+    generate_modulefile "opencg" "$OPENCG_INSTALL_DIR" "OPENCG_HOME" "$OPENCG_MOD" \
+        ${_opencg_deps[@]+"${_opencg_deps[@]}"}
     _activate_prefix "$OPENCG_INSTALL_DIR" "opencg" "$OPENCG_HASH/$OPENCG_BUILD_TYPE"
     MOD_LOAD+=("module load opencg/$OPENCG_HASH/$OPENCG_BUILD_TYPE")
     success "opencg installed → $OPENCG_INSTALL_DIR"
