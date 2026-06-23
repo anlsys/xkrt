@@ -446,7 +446,7 @@ LLVM_GPU_SUMMARY=""   # human-readable, for summary display
 if prompt_yn "Install custom patched LLVM?" "no"; then
     INSTALL_LLVM=true
     LLVM_BRANCH=$(prompt_value "Branch" "main")
-    LLVM_BUILD_TYPE=$(prompt_value "Build type (Release/Debug)" "Release")
+    LLVM_BUILD_TYPE=$(prompt_value "Build type (Release/Debug/RelWithDebInfo)" "Release")
 
     # ── Host LLVM backend (auto-detected from uname -m) ──────────────────────
     _host_tgt=$(_llvm_host_target)
