@@ -34,12 +34,12 @@
 ** knowledge of the CeCILL-C license and that you accept its terms.
 **/
 
-// This file nd OpenCG data structures for XKRT needs
+// This file nd CGIR data structures for XKRT needs
 
 #ifndef __XKRT_COMMAND_H__
 # define __XKRT_COMMAND_H__
 
-# include <opencg/opencg.hpp>
+# include <cgir/cgir.hpp>
 
 # include <xkrt/callback.h>
 # include <xkrt/namespace.h>
@@ -77,7 +77,7 @@ operator|(command_flag_t a, command_flag_t b)
 }
 
 /* commands */
-struct command_t : ocg::command_t
+struct command_t : cgir::command_t
 {
     /* flags of the command */
     command_flag_t flags;
@@ -90,10 +90,10 @@ struct command_t : ocg::command_t
 
     /* constructor */
     command_t(
-        ocg::command_type_t type,
+        cgir::command_type_t type,
         command_flag_t flags
     ) :
-        ocg::command_t(type),
+        cgir::command_t(type),
         flags(flags),
         callbacks{}
     {}
@@ -139,7 +139,7 @@ enum command_graph_node_state_t
 };
 
 /* a node */
-struct command_graph_node_t : ocg::command_graph_node_t
+struct command_graph_node_t : cgir::command_graph_node_t
 {
     /* replay counter */
     command_graph_rc_t rc;
@@ -155,10 +155,10 @@ struct command_graph_node_t : ocg::command_graph_node_t
 
     /* constructor/destructor */
     command_graph_node_t(
-        const ocg::device_unique_id_t device_unique_id,
-        const ocg::command_graph_node_type_t type
+        const cgir::device_unique_id_t device_unique_id,
+        const cgir::command_graph_node_type_t type
     ) :
-        ocg::command_graph_node_t(device_unique_id, type),
+        cgir::command_graph_node_t(device_unique_id, type),
         rc(0),
         wc(0),
         state(COMMAND_GRAPH_NODE_STATE_INIT),
@@ -166,10 +166,10 @@ struct command_graph_node_t : ocg::command_graph_node_t
     {}
 
     command_graph_node_t(
-        const ocg::device_unique_id_t device_unique_id,
-        ocg::command_t * command
+        const cgir::device_unique_id_t device_unique_id,
+        cgir::command_t * command
     ) :
-        ocg::command_graph_node_t(device_unique_id, command),
+        cgir::command_graph_node_t(device_unique_id, command),
         rc(0),
         wc(0),
         state(COMMAND_GRAPH_NODE_STATE_INIT),
@@ -178,7 +178,7 @@ struct command_graph_node_t : ocg::command_graph_node_t
 };
 
 /* Additional storage for the `command_graph_t` type */
-struct command_graph_t : ocg::command_graph_t
+struct command_graph_t : cgir::command_graph_t
 {
     /* command allocator */
     memory_pool_t<command_t> commands;

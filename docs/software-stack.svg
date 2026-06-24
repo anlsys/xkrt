@@ -23,9 +23,9 @@
      inkscape:pagecheckerboard="0"
      inkscape:document-units="mm"
      showgrid="false"
-     inkscape:zoom="0.19442866"
-     inkscape:cx="1977.5891"
-     inkscape:cy="-383.17396"
+     inkscape:zoom="0.27496365"
+     inkscape:cx="2343.9462"
+     inkscape:cy="-34.550022"
      inkscape:window-width="1850"
      inkscape:window-height="1016"
      inkscape:window-x="0"
@@ -228,7 +228,7 @@
           <rect
              style="font-variation-settings:normal;fill:#b5c3de;fill-opacity:1;stroke:#00001c;stroke-width:1.83189;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;paint-order:fill markers stroke;stop-color:#000000"
              id="rect7513-2"
-             width="682.33551"
+             width="618.37659"
              height="75.029106"
              x="-92.980431"
              y="-14.885384"
@@ -236,9 +236,9 @@
           <rect
              style="font-variation-settings:normal;fill:#b5c3de;fill-opacity:1;stroke:#00001c;stroke-width:1.83153;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;paint-order:fill markers stroke;stop-color:#000000"
              id="rect7513-2-0"
-             width="596.91052"
-             height="75.029297"
-             x="589.3551"
+             width="660.86945"
+             height="75.029305"
+             x="525.39618"
              y="-14.885384"
              transform="translate(-2.5006102)" />
           <g
@@ -285,38 +285,42 @@
                     <g
                        id="g14619"
                        transform="translate(-49.678935,-1.1585013)">
-                      <text
-                         xml:space="preserve"
-                         style="font-style:normal;font-weight:normal;font-size:10.5833px;line-height:1.25;font-family:sans-serif;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.264583"
-                         x="459.336"
-                         y="165.98195"
-                         id="text4752"><tspan
-                           sodipodi:role="line"
-                           style="font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;font-family:sans-serif;-inkscape-font-specification:'sans-serif Bold';text-align:center;text-anchor:middle;stroke-width:0.264583"
+                      <g
+                         id="g9509"
+                         transform="translate(-19.09032)">
+                        <text
+                           xml:space="preserve"
+                           style="font-style:normal;font-weight:normal;font-size:10.5833px;line-height:1.25;font-family:sans-serif;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.264583"
                            x="459.336"
                            y="165.98195"
-                           id="tspan4748">OpenCG Library</tspan><tspan
-                           sodipodi:role="line"
-                           style="text-align:center;text-anchor:middle;stroke-width:0.264583"
-                           x="459.336"
-                           y="179.21107"
-                           id="tspan4750" /></text>
-                      <text
-                         xml:space="preserve"
-                         style="font-style:normal;font-weight:normal;font-size:10.5833px;line-height:1.25;font-family:sans-serif;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.264583"
-                         x="459.59439"
-                         y="178.53918"
-                         id="text4756"><tspan
-                           sodipodi:role="line"
-                           style="text-align:center;text-anchor:middle;stroke-width:0.264583"
+                           id="text4752"><tspan
+                             sodipodi:role="line"
+                             style="font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;font-family:sans-serif;-inkscape-font-specification:'sans-serif Bold';text-align:center;text-anchor:middle;stroke-width:0.264583"
+                             x="459.336"
+                             y="165.98195"
+                             id="tspan4748">CGIR Library</tspan><tspan
+                             sodipodi:role="line"
+                             style="text-align:center;text-anchor:middle;stroke-width:0.264583"
+                             x="459.336"
+                             y="179.21107"
+                             id="tspan4750" /></text>
+                        <text
+                           xml:space="preserve"
+                           style="font-style:normal;font-weight:normal;font-size:10.5833px;line-height:1.25;font-family:sans-serif;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.264583"
                            x="459.59439"
                            y="178.53918"
-                           id="tspan9304">An IR for optimizing graph of commands on</tspan><tspan
-                           sodipodi:role="line"
-                           style="text-align:center;text-anchor:middle;stroke-width:0.264583"
-                           x="459.59439"
-                           y="191.76831"
-                           id="tspan2181">multi-devices systems. Custom POD IR and MLIR JIT with LLVM.</tspan></text>
+                           id="text4756"><tspan
+                             sodipodi:role="line"
+                             style="text-align:center;text-anchor:middle;stroke-width:0.264583"
+                             x="459.59439"
+                             y="178.53918"
+                             id="tspan2181">An IR for optimizing graph of commands on multi-devices systems.</tspan><tspan
+                             sodipodi:role="line"
+                             style="text-align:center;text-anchor:middle;stroke-width:0.264583"
+                             x="459.59439"
+                             y="191.76831"
+                             id="tspan8866">Custom POD and MLIR representation. JIT with LLVM.</tspan></text>
+                      </g>
                       <text
                          xml:space="preserve"
                          style="font-style:normal;font-weight:normal;font-size:10.5833px;line-height:1.25;font-family:sans-serif;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.264583"

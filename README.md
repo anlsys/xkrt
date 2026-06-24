@@ -12,7 +12,7 @@ This repository hosts the XKRT runtime system.
 Other repository hosts specialization layers built on top of the runtime:
 - [Drava](https://github.com/anlsys/drava) is an event-driven programming model and runtime system, for real-time high-throughput data processing.
 - [LLVM-ANLSYS](https://github.com/anlsys/llvm-project/) is a fork of LLVM with extensions for OpenMP, targeting [XKOMP](https://github.com/anlsys/xkomp)
-- [OpenCG](https://github.com/JLESC-Tasking-Group/opencg) is a library for optimizing graph of commands targeting multi-devices systems.
+- [CGIR](https://github.com/JLESC-Tasking-Group/cgir) is a library for optimizing graph of commands targeting multi-devices systems.
 - [XK.jl](https://github.com/anlsys/XK.jl) Julia bindings of XKRT and XKBlas
 - [XKBlas](https://gitlab.inria.fr/xkblas/dev/-/tree/v2.0) is a multi-gpu BLAS implementation that allows the tiling and composition of kernels, with asynchronous overlap of computation/transfers.
 - [XKOMP](https://github.com/anlsys/xkomp) is an experimental OpenMP runtime built on top of XKRT.
@@ -24,7 +24,7 @@ Other repository hosts specialization layers built on top of the runtime:
 ## Requirements
 - A C/C++ compiler with support for C++20 (the only compiler tested is LLVM >=20.x)
 - hwloc - https://github.com/open-mpi/hwloc
-- OpenCG release/v0.1 - https://github.com/JLESC-Tasking-Group/opencg
+- CGIR release/v0.1 - https://github.com/JLESC-Tasking-Group/cgir
 
 ## Optional
 - Cuda, HIP, Level Zero, SYCL, OpenCL

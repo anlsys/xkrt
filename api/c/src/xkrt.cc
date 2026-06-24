@@ -1006,7 +1006,7 @@ xkrt_task_prog_launch(
     device_t * dev = (device_t *) device;
 
     constexpr command_queue_type_t qtype = XKRT_QUEUE_TYPE_KERN;
-    constexpr ocg::command_type_t  ctype = ocg::COMMAND_TYPE_PROG;
+    constexpr cgir::command_type_t  ctype = cgir::COMMAND_TYPE_PROG;
     const     command_flag_t       flags = synchronous ? COMMAND_FLAG_SYNCHRONOUS : COMMAND_FLAG_NONE;
     rt->task_emit_command(
         dev->unique_id,
@@ -1015,10 +1015,10 @@ xkrt_task_prog_launch(
         flags,
         [&] (xkrt::command_t * cmd) {
             /* create a new kernel command */
-            cmd->prog.launcher.fixed.fn = (void (*)(void * [OCG_CALLBACK_ARGS_MAX])) launcher;
+            cmd->prog.launcher.fixed.fn = (void (*)(void * [CGIR_CALLBACK_ARGS_MAX])) launcher;
             cmd->prog.launcher.fixed.args[0] = rt;
             cmd->prog.launcher.fixed.args[1] = task;
-            static_assert(OCG_CALLBACK_ARGS_MAX >= 2);
+            static_assert(CGIR_CALLBACK_ARGS_MAX >= 2);
 
             /* program launcher */
             cmd->flags = cmd->flags | COMMAND_FLAG_PROG_LAUNCHER;

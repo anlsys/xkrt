@@ -592,15 +592,15 @@ XKRT_DRIVER_ENTRYPOINT(command_queue_launch)(
 
     switch (cmd->type)
     {
-        case (ocg::COMMAND_TYPE_PROG):
+        case (cgir::COMMAND_TYPE_PROG):
         {
             LOGGER_FATAL("IMPL ME");
             break ;
         }
 
-        case (ocg::COMMAND_TYPE_COPY_H2D_1D):
-        case (ocg::COMMAND_TYPE_COPY_D2H_1D):
-        case (ocg::COMMAND_TYPE_COPY_D2D_1D):
+        case (cgir::COMMAND_TYPE_COPY_H2D_1D):
+        case (cgir::COMMAND_TYPE_COPY_D2H_1D):
+        case (cgir::COMMAND_TYPE_COPY_D2D_1D):
         {
             const size_t count  = cmd->copy_1D.size;
             assert(count > 0);
@@ -610,19 +610,19 @@ XKRT_DRIVER_ENTRYPOINT(command_queue_launch)(
 
             switch (cmd->type)
             {
-                case (ocg::COMMAND_TYPE_COPY_H2D_1D):
+                case (cgir::COMMAND_TYPE_COPY_H2D_1D):
                 {
                     HIP_SAFE_CALL(hipMemcpyHtoDAsync((hipDeviceptr_t) dst, src, count, handle));
                     break ;
                 }
 
-                case (ocg::COMMAND_TYPE_COPY_D2H_1D):
+                case (cgir::COMMAND_TYPE_COPY_D2H_1D):
                 {
                     HIP_SAFE_CALL(hipMemcpyDtoHAsync(dst, (hipDeviceptr_t) src, count, handle));
                     break ;
                 }
 
-                case (ocg::COMMAND_TYPE_COPY_D2D_1D):
+                case (cgir::COMMAND_TYPE_COPY_D2D_1D):
                 {
                     HIP_SAFE_CALL(hipMemcpyDtoDAsync((hipDeviceptr_t) dst, (hipDeviceptr_t) src, count, handle));
                     break ;
@@ -639,9 +639,9 @@ XKRT_DRIVER_ENTRYPOINT(command_queue_launch)(
             return EINPROGRESS;
         }
 
-        case (ocg::COMMAND_TYPE_COPY_H2D_2D):
-        case (ocg::COMMAND_TYPE_COPY_D2H_2D):
-        case (ocg::COMMAND_TYPE_COPY_D2D_2D):
+        case (cgir::COMMAND_TYPE_COPY_H2D_2D):
+        case (cgir::COMMAND_TYPE_COPY_D2H_2D):
+        case (cgir::COMMAND_TYPE_COPY_D2D_2D):
         {
             hipDeviceptr_t src_deviceptr, dst_deviceptr;
             hipMemoryType src_type, dst_type;
@@ -652,7 +652,7 @@ XKRT_DRIVER_ENTRYPOINT(command_queue_launch)(
 
             switch (cmd->type)
             {
-                case (ocg::COMMAND_TYPE_COPY_H2D_2D):
+                case (cgir::COMMAND_TYPE_COPY_H2D_2D):
                 {
                     src_type = hipMemoryTypeHost;
                     dst_type = hipMemoryTypeDevice;
@@ -666,7 +666,7 @@ XKRT_DRIVER_ENTRYPOINT(command_queue_launch)(
                     break ;
                 }
 
-                case (ocg::COMMAND_TYPE_COPY_D2H_2D):
+                case (cgir::COMMAND_TYPE_COPY_D2H_2D):
                 {
                     src_type = hipMemoryTypeDevice;
                     dst_type = hipMemoryTypeHost;
@@ -680,7 +680,7 @@ XKRT_DRIVER_ENTRYPOINT(command_queue_launch)(
                     break ;
                 }
 
-                case (ocg::COMMAND_TYPE_COPY_D2D_2D):
+                case (cgir::COMMAND_TYPE_COPY_D2D_2D):
                 {
                     src_type = hipMemoryTypeDevice;
                     dst_type = hipMemoryTypeDevice;
@@ -785,15 +785,15 @@ XKRT_DRIVER_ENTRYPOINT(command_queue_progress)(
 
         switch (cmd->type)
         {
-            case (ocg::COMMAND_TYPE_PROG):
-            case (ocg::COMMAND_TYPE_COPY_H2H_1D):
-            case (ocg::COMMAND_TYPE_COPY_H2D_1D):
-            case (ocg::COMMAND_TYPE_COPY_D2H_1D):
-            case (ocg::COMMAND_TYPE_COPY_D2D_1D):
-            case (ocg::COMMAND_TYPE_COPY_H2H_2D):
-            case (ocg::COMMAND_TYPE_COPY_H2D_2D):
-            case (ocg::COMMAND_TYPE_COPY_D2H_2D):
-            case (ocg::COMMAND_TYPE_COPY_D2D_2D):
+            case (cgir::COMMAND_TYPE_PROG):
+            case (cgir::COMMAND_TYPE_COPY_H2H_1D):
+            case (cgir::COMMAND_TYPE_COPY_H2D_1D):
+            case (cgir::COMMAND_TYPE_COPY_D2H_1D):
+            case (cgir::COMMAND_TYPE_COPY_D2D_1D):
+            case (cgir::COMMAND_TYPE_COPY_H2H_2D):
+            case (cgir::COMMAND_TYPE_COPY_H2D_2D):
+            case (cgir::COMMAND_TYPE_COPY_D2H_2D):
+            case (cgir::COMMAND_TYPE_COPY_D2D_2D):
             {
                 hipEvent_t event = queue->hip.events.buffer[p];
                 hipError_t res = hipEventQuery(event);

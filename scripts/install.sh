@@ -1,23 +1,23 @@
 #!/usr/bin/env bash
 # ============================================================================
-# Interactive installer: llvm · hwloc · opencg · xkrt · xkblas · xkomp
+# Interactive installer: llvm · hwloc · cgir · xkrt · xkblas · xkomp
 #
 # Dependency order:
-#   llvm ─▶ opencg ─┐
+#   llvm ─▶ cgir ─┐
 #                    ├─▶  xkrt  ─┬─▶  xkblas
 #   hwloc ───────────┘           └─▶  xkomp
 #
-# The custom LLVM (anlsys/llvm-project) is a dependency of opencg and may
-# optionally be used to build opencg/xkrt/xkblas/xkomp.  It can be bootstrapped
+# The custom LLVM (anlsys/llvm-project) is a dependency of cgir and may
+# optionally be used to build cgir/xkrt/xkblas/xkomp.  It can be bootstrapped
 # with any compiler, but building those libraries requires an LLVM >= 20 (the
 # custom one, or a system clang >= 20).
 #
 # The custom libomptarget (the LLVM "offload" runtime) forwards OpenMP target
 # calls to XKRT and XKOMP, creating a build loop (libomptarget → xkrt + xkomp →
-# opencg → clang).  It is therefore built in two stages: LLVM is first built
+# cgir → clang).  It is therefore built in two stages: LLVM is first built
 # WITHOUT offload, then (after xkrt + xkomp are installed) the offload runtime is
 # added in place:
-#   llvm (no offload) ─▶ opencg ─▶ xkrt ─▶ xkomp ─▶ llvm offload/libomptarget
+#   llvm (no offload) ─▶ cgir ─▶ xkrt ─▶ xkomp ─▶ llvm offload/libomptarget
 #
 # Requires: cmake >= 3.17, a C/C++ compiler, git, autoconf/automake (for hwloc)
 # ============================================================================
@@ -185,7 +185,7 @@ _write_cache() {
                    LLVM_CMAKE_TARGETS LLVM_CMAKE_RUNTIME_TARGETS \
                    LLVM_EXTRA_CMAKE_OPTS LLVM_GPU_SUMMARY \
                    USE_LLVM_FOR_BUILD LLVM_BOOTSTRAP_CC LLVM_BOOTSTRAP_CXX
-        declare -p INSTALL_HWLOC HWLOC_BRANCH
+        declare -p INSTALL_HWLOC HWLOC_BRANCH HWLOC_CONFIGURE_OPTS
         declare -p INSTALL_OPENCG OPENCG_BRANCH OPENCG_BUILD_TYPE OPENCG_CMAKE_OPTS
         declare -p INSTALL_XKRT  XKRT_BRANCH  XKRT_BUILD_TYPE  XKRT_CMAKE_OPTS
         declare -p INSTALL_XKBLAS XKBLAS_BRANCH XKBLAS_BUILD_TYPE XKBLAS_CMAKE_OPTS
@@ -448,7 +448,7 @@ if [[ "$REUSE_CACHE" == "false" ]]; then
 _tty "\n"
 hr
 _tty "  ${BOLD}xkrt ecosystem – interactive installer${NC}\n"
-_tty "  llvm  ·  hwloc  ·  opencg  ·  xkrt  ·  xkblas  ·  xkomp\n"
+_tty "  llvm  ·  hwloc  ·  cgir  ·  xkrt  ·  xkblas  ·  xkomp\n"
 hr
 _tty "\n"
 
@@ -551,12 +551,12 @@ else
 fi
 
 # ── LLVM (custom patched) ─────────────────────────────────────────────────────
-step "LLVM  [cmake; custom patched toolchain — anlsys/llvm-project; dependency of opencg]"
+step "LLVM  [cmake; custom patched toolchain — anlsys/llvm-project; dependency of cgir]"
 _tty "\n"
 _tty "  The anlsys fork adds new OpenMP pragma support (access clauses, etc.) and\n"
-_tty "  provides the LLVM that opencg depends on.\n"
+_tty "  provides the LLVM that cgir depends on.\n"
 _tty "  It can be bootstrapped with any compiler.  You may optionally use it to\n"
-_tty "  build opencg/xkrt/xkblas/xkomp — those require an LLVM >= ${MIN_CLANG_VER}\n"
+_tty "  build cgir/xkrt/xkblas/xkomp — those require an LLVM >= ${MIN_CLANG_VER}\n"
 _tty "  (the custom one, or a system clang >= ${MIN_CLANG_VER} detected above).\n\n"
 
 INSTALL_LLVM=false
@@ -629,7 +629,7 @@ if prompt_yn "Install custom patched LLVM?" "no"; then
     # ── Projects ─────────────────────────────────────────────────────────────
     _tty "\n  ${BOLD}LLVM projects${NC} (clang is always included):\n"
     _projects="clang"
-    if prompt_yn "  Include MLIR  (recommended for OpenCG)?" "yes"; then
+    if prompt_yn "  Include MLIR  (recommended for CGIR)?" "yes"; then
         _projects="${_projects};mlir"
     fi
     if prompt_yn "  Include lld  (LLVM linker — recommended for GPU offload)?" "yes"; then
@@ -666,7 +666,7 @@ if prompt_yn "Install custom patched LLVM?" "no"; then
 
     # ── Use the custom LLVM to build the libraries? ───────────────────────────
     _tty "\n"
-    if prompt_yn "Use this custom LLVM to build opencg/xkrt/xkblas/xkomp?" "yes"; then
+    if prompt_yn "Use this custom LLVM to build cgir/xkrt/xkblas/xkomp?" "yes"; then
         USE_LLVM_FOR_BUILD=true
     else
         USE_LLVM_FOR_BUILD=false
@@ -675,9 +675,9 @@ if prompt_yn "Install custom patched LLVM?" "no"; then
 fi
 
 # ── Build compiler ────────────────────────────────────────────────────────────
-# opencg/xkrt/xkblas/xkomp must be built with an LLVM >= MIN_CLANG_VER: either
+# cgir/xkrt/xkblas/xkomp must be built with an LLVM >= MIN_CLANG_VER: either
 # the custom LLVM (built above) or a system clang >= MIN_CLANG_VER.
-step "Build compiler  [for opencg · xkrt · xkblas · xkomp]"
+step "Build compiler  [for cgir · xkrt · xkblas · xkomp]"
 if [[ "$INSTALL_LLVM" == "true" && "$USE_LLVM_FOR_BUILD" == "true" ]]; then
     # The custom LLVM provides clang >= 20.  Its exact path depends on the git
     # hash, so CC/CXX are resolved in Phase 2 right after LLVM is installed.
@@ -709,28 +709,35 @@ _tty "\n"
 _tty "  hwloc is required by xkrt for hardware topology discovery.\n"
 _tty "  If you skip this step, xkrt will attempt to use a system-installed hwloc\n"
 _tty "  (searched in standard paths by Findhwloc.cmake).\n\n"
+_tty "  hwloc's optional GPU backends (cuda/nvml/rsmi/opencl/levelzero) make\n"
+_tty "  libhwloc hard-link GPU libraries that are often not on the linker/loader\n"
+_tty "  path, which breaks downstream links.  They are disabled by default; pass\n"
+_tty "  e.g. '--enable-rsmi --with-rocm=/opt/rocm' below to re-enable any you need.\n\n"
 
-INSTALL_HWLOC=false; HWLOC_BRANCH=""
+INSTALL_HWLOC=false; HWLOC_BRANCH=""; HWLOC_CONFIGURE_OPTS=""
 if prompt_yn "Install hwloc?" "yes"; then
     INSTALL_HWLOC=true
     HWLOC_BRANCH=$(prompt_value "Branch / tag" "v2.14")
+    _tty "  ${BOLD}${BLUE}?${NC} Extra hwloc configure flags (or Enter to skip): "
+    read -r HWLOC_CONFIGURE_OPTS </dev/tty
+    HWLOC_CONFIGURE_OPTS="${HWLOC_CONFIGURE_OPTS:-}"
 fi
 
-# ── opencg ────────────────────────────────────────────────────────────────────
-step "opencg  [cmake; no runtime dependencies; parallel to hwloc]"
+# ── cgir ────────────────────────────────────────────────────────────────────
+step "cgir  [cmake; no runtime dependencies; parallel to hwloc]"
 INSTALL_OPENCG=false
 OPENCG_BRANCH=""; OPENCG_BUILD_TYPE=""; OPENCG_CMAKE_OPTS=""
-if prompt_yn "Install opencg?" "yes"; then
+if prompt_yn "Install cgir?" "yes"; then
     INSTALL_OPENCG=true
     OPENCG_BRANCH=$(prompt_value "Branch" "release/latest")
     OPENCG_BUILD_TYPE=$(prompt_value "Build type (Release/Debug)" "Release")
-    clone_or_update "https://github.com/JLESC-Tasking-Group/opencg" \
-        "$REPO_DIR/opencg" "$OPENCG_BRANCH"
-    OPENCG_CMAKE_OPTS=$(ask_cmake_opts "opencg" "$REPO_DIR/opencg/CMakeLists.txt")
+    clone_or_update "https://github.com/JLESC-Tasking-Group/cgir" \
+        "$REPO_DIR/cgir" "$OPENCG_BRANCH"
+    OPENCG_CMAKE_OPTS=$(ask_cmake_opts "cgir" "$REPO_DIR/cgir/CMakeLists.txt")
 fi
 
 # ── xkrt ──────────────────────────────────────────────────────────────────────
-step "xkrt  [cmake; depends on hwloc + opencg]"
+step "xkrt  [cmake; depends on hwloc + cgir]"
 INSTALL_XKRT=false
 XKRT_BRANCH=""; XKRT_BUILD_TYPE=""; XKRT_CMAKE_OPTS=""
 if prompt_yn "Install xkrt?" "yes"; then
@@ -803,7 +810,7 @@ else
     _tty "  ${DIM}library compiler: %s${NC}\n" "$CC"
 fi
 _lib_row "hwloc"  "$INSTALL_HWLOC"  "$HWLOC_BRANCH"  "autotools"
-_lib_row "opencg" "$INSTALL_OPENCG" "$OPENCG_BRANCH" "$OPENCG_BUILD_TYPE"
+_lib_row "cgir" "$INSTALL_OPENCG" "$OPENCG_BRANCH" "$OPENCG_BUILD_TYPE"
 _lib_row "xkrt"   "$INSTALL_XKRT"   "$XKRT_BRANCH"   "$XKRT_BUILD_TYPE"
 _lib_row "xkblas" "$INSTALL_XKBLAS" "$XKBLAS_BRANCH" "$XKBLAS_BUILD_TYPE"
 _lib_row "xkomp"  "$INSTALL_XKOMP"  "$XKOMP_BRANCH"  "$XKOMP_BUILD_TYPE"
@@ -824,6 +831,7 @@ fi # REUSE_CACHE — end of Phase 1
 : "${USE_LLVM_FOR_BUILD:=false}"
 : "${LLVM_BOOTSTRAP_CC:=${CC:-cc}}"
 : "${LLVM_BOOTSTRAP_CXX:=${CXX:-c++}}"
+: "${HWLOC_CONFIGURE_OPTS:=}"
 
 # ─────────────────────────────────────────────────────────────────────────────
 # PHASE 2 – BUILD & INSTALL
@@ -875,9 +883,9 @@ if [[ "$INSTALL_LLVM" == "true" ]]; then
     mkdir -p "$LLVM_BUILD_DIR"
 
     # The custom libomptarget (the "offload" runtime) forwards OpenMP target
-    # calls to XKRT, so it depends on XKRT → OpenCG → clang.  To break that loop
+    # calls to XKRT, so it depends on XKRT → CGIR → clang.  To break that loop
     # we build LLVM now WITHOUT offload, and (re)build the offload runtime later,
-    # after OpenCG and XKRT are installed (see "custom libomptarget" below).
+    # after CGIR and XKRT are installed (see "custom libomptarget" below).
     if _list_contains "$LLVM_RUNTIMES" offload; then
         LLVM_BUILD_OFFLOAD=true
     else
@@ -892,12 +900,12 @@ if [[ "$INSTALL_LLVM" == "true" ]]; then
         build_llvm "$LLVM_STAGE1_RUNTIMES" "single stage"
     fi
 
-    # Pin this EXACT LLVM/MLIR for every downstream build (opencg directly, and
+    # Pin this EXACT LLVM/MLIR for every downstream build (cgir directly, and
     # the rest transitively), independently of whether it is also the compiler.
     # _activate_prefix puts the prefix on CMAKE_PREFIX_PATH; LLVM_DIR / MLIR_DIR
     # point find_package() straight at this build's cmake packages.  Both env
     # vars are read by find_package and inherited by every downstream cmake
-    # (including transitive find_dependency(LLVM) pulled in via opencg).
+    # (including transitive find_dependency(LLVM) pulled in via cgir).
     _activate_prefix "$LLVM_INSTALL_DIR" "llvm" "$LLVM_HASH/$LLVM_BUILD_TYPE"
     if   [[ -d "$LLVM_INSTALL_DIR/lib/cmake/llvm"   ]]; then export LLVM_DIR="$LLVM_INSTALL_DIR/lib/cmake/llvm"
     elif [[ -d "$LLVM_INSTALL_DIR/lib64/cmake/llvm" ]]; then export LLVM_DIR="$LLVM_INSTALL_DIR/lib64/cmake/llvm"
@@ -909,7 +917,7 @@ if [[ "$INSTALL_LLVM" == "true" ]]; then
     if [[ -n "${MLIR_DIR:-}" ]]; then
         info "Pinned MLIR_DIR=$MLIR_DIR"
     else
-        warn "No MLIR cmake package under $LLVM_INSTALL_DIR — enable the 'mlir' LLVM project if opencg needs MLIR."
+        warn "No MLIR cmake package under $LLVM_INSTALL_DIR — enable the 'mlir' LLVM project if cgir needs MLIR."
     fi
 
     # If the user opted to build the libraries with the custom LLVM, also switch
@@ -982,7 +990,16 @@ if [[ "$INSTALL_HWLOC" == "true" ]]; then
         ./autogen.sh
     fi
     info "Configuring …"
-    ./configure --prefix="$HWLOC_INSTALL_DIR" --quiet
+    # Disable hwloc's optional GPU backends by default — they make libhwloc
+    # hard-depend on GPU libraries (librocm_smi64, libcudart, …) that are often
+    # not on the linker/loader search path and break downstream links (xkrt).
+    # Any user HWLOC_CONFIGURE_OPTS come last so they can re-enable a specific
+    # backend, e.g. "--enable-rsmi --with-rocm=/opt/rocm".
+    # shellcheck disable=SC2086
+    ./configure --prefix="$HWLOC_INSTALL_DIR" --quiet \
+        --disable-cuda --disable-nvml --disable-rsmi \
+        --disable-opencl --disable-levelzero \
+        $HWLOC_CONFIGURE_OPTS
     info "Building …"
     make -j "$(nproc)"
     info "Installing …"
@@ -999,50 +1016,50 @@ if [[ "$INSTALL_HWLOC" == "true" ]]; then
     success "module file      → $HWLOC_MOD"
 fi
 
-# ── opencg ────────────────────────────────────────────────────────────────────
+# ── cgir ────────────────────────────────────────────────────────────────────
 if [[ "$INSTALL_OPENCG" == "true" ]]; then
-    step "Building & installing opencg"
+    step "Building & installing cgir"
     clone_or_update \
-        "https://github.com/JLESC-Tasking-Group/opencg" \
-        "$REPO_DIR/opencg" \
+        "https://github.com/JLESC-Tasking-Group/cgir" \
+        "$REPO_DIR/cgir" \
         "$OPENCG_BRANCH"
 
-    OPENCG_HASH=$(git -C "$REPO_DIR/opencg" rev-parse HEAD | cut -c1-12)
-    OPENCG_INSTALL_DIR="$INSTALL_DIR/opencg/$OPENCG_HASH/$OPENCG_BUILD_TYPE"
-    OPENCG_BUILD_DIR="$REPO_DIR/opencg/build/$OPENCG_HASH/$OPENCG_BUILD_TYPE"
+    OPENCG_HASH=$(git -C "$REPO_DIR/cgir" rev-parse HEAD | cut -c1-12)
+    OPENCG_INSTALL_DIR="$INSTALL_DIR/cgir/$OPENCG_HASH/$OPENCG_BUILD_TYPE"
+    OPENCG_BUILD_DIR="$REPO_DIR/cgir/build/$OPENCG_HASH/$OPENCG_BUILD_TYPE"
 
     rm -rf "$OPENCG_BUILD_DIR" && mkdir -p "$OPENCG_BUILD_DIR"
     cd "$OPENCG_BUILD_DIR"
 
-    # If a custom LLVM was built, force opencg's find_package(LLVM)/find_package(MLIR)
+    # If a custom LLVM was built, force cgir's find_package(LLVM)/find_package(MLIR)
     # onto that exact build so it can never silently fall back to a system LLVM/MLIR.
-    _opencg_llvm_flags=""
+    _cgir_llvm_flags=""
     if [[ "$INSTALL_LLVM" == "true" ]]; then
-        [[ -n "${LLVM_DIR:-}" ]] && _opencg_llvm_flags="-DLLVM_DIR=$LLVM_DIR"
-        [[ -n "${MLIR_DIR:-}" ]] && _opencg_llvm_flags="${_opencg_llvm_flags:+$_opencg_llvm_flags }-DMLIR_DIR=$MLIR_DIR"
+        [[ -n "${LLVM_DIR:-}" ]] && _cgir_llvm_flags="-DLLVM_DIR=$LLVM_DIR"
+        [[ -n "${MLIR_DIR:-}" ]] && _cgir_llvm_flags="${_cgir_llvm_flags:+$_cgir_llvm_flags }-DMLIR_DIR=$MLIR_DIR"
     fi
 
     # shellcheck disable=SC2086
-    cmake $OPENCG_CMAKE_OPTS $_opencg_llvm_flags \
+    cmake $OPENCG_CMAKE_OPTS $_cgir_llvm_flags \
         -DCMAKE_BUILD_TYPE="$OPENCG_BUILD_TYPE" \
         -DCMAKE_INSTALL_PREFIX="$OPENCG_INSTALL_DIR" \
-        "$REPO_DIR/opencg"
+        "$REPO_DIR/cgir"
     make install -j "$(nproc)"
 
-    # Activate opencg so xkrt finds its headers, libs and cmake config.
-    OPENCG_MOD="$MODULES_DIR/opencg/$OPENCG_HASH/$OPENCG_BUILD_TYPE"
-    # opencg builds against (and links) the custom LLVM/MLIR whenever one was
+    # Activate cgir so xkrt finds its headers, libs and cmake config.
+    OPENCG_MOD="$MODULES_DIR/cgir/$OPENCG_HASH/$OPENCG_BUILD_TYPE"
+    # cgir builds against (and links) the custom LLVM/MLIR whenever one was
     # built, so its module must load that llvm module at runtime — regardless of
     # whether the custom LLVM was also used as the compiler.  (A system LLVM, like
     # a system hwloc, ships no module to load.)
-    declare -a _opencg_deps=()
+    declare -a _cgir_deps=()
     [[ "$INSTALL_LLVM" == "true" ]] && \
-        _opencg_deps+=("llvm/$LLVM_HASH/$LLVM_BUILD_TYPE")
-    generate_modulefile "opencg" "$OPENCG_INSTALL_DIR" "OPENCG_HOME" "$OPENCG_MOD" \
-        ${_opencg_deps[@]+"${_opencg_deps[@]}"}
-    _activate_prefix "$OPENCG_INSTALL_DIR" "opencg" "$OPENCG_HASH/$OPENCG_BUILD_TYPE"
-    MOD_LOAD+=("module load opencg/$OPENCG_HASH/$OPENCG_BUILD_TYPE")
-    success "opencg installed → $OPENCG_INSTALL_DIR"
+        _cgir_deps+=("llvm/$LLVM_HASH/$LLVM_BUILD_TYPE")
+    generate_modulefile "cgir" "$OPENCG_INSTALL_DIR" "OPENCG_HOME" "$OPENCG_MOD" \
+        ${_cgir_deps[@]+"${_cgir_deps[@]}"}
+    _activate_prefix "$OPENCG_INSTALL_DIR" "cgir" "$OPENCG_HASH/$OPENCG_BUILD_TYPE"
+    MOD_LOAD+=("module load cgir/$OPENCG_HASH/$OPENCG_BUILD_TYPE")
+    success "cgir installed → $OPENCG_INSTALL_DIR"
     success "module file      → $OPENCG_MOD"
 fi
 
@@ -1070,10 +1087,10 @@ if [[ "$INSTALL_XKRT" == "true" ]]; then
 
     # Activate xkrt so xkblas and xkomp find its headers, libs and cmake config.
     XKRT_MOD="$MODULES_DIR/xkrt/$XKRT_HASH/$XKRT_BUILD_TYPE"
-    # Build the dependency list: opencg is always required; hwloc only when
+    # Build the dependency list: cgir is always required; hwloc only when
     # it was installed from source by this script (otherwise it is system-provided).
     declare -a _xkrt_deps=()
-    [[ "$INSTALL_OPENCG" == "true" ]] && _xkrt_deps+=("opencg/$OPENCG_HASH/$OPENCG_BUILD_TYPE")
+    [[ "$INSTALL_OPENCG" == "true" ]] && _xkrt_deps+=("cgir/$OPENCG_HASH/$OPENCG_BUILD_TYPE")
     [[ "$INSTALL_HWLOC"  == "true" ]] && _xkrt_deps+=("hwloc/$HWLOC_HASH/default")
     generate_modulefile "xkrt" "$XKRT_INSTALL_DIR" "XKRT_HOME" "$XKRT_MOD" \
         ${_xkrt_deps[@]+"${_xkrt_deps[@]}"}

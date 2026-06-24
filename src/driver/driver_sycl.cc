@@ -370,15 +370,15 @@ XKRT_DRIVER_ENTRYPOINT(command_queue_launch)(
 
     switch (cmd->type)
     {
-        case (ocg::COMMAND_TYPE_PROG):
+        case (cgir::COMMAND_TYPE_PROG):
         {
             LOGGER_FATAL("IMPL ME");
             break ;
         }
 
-        case (ocg::COMMAND_TYPE_COPY_H2D_1D):
-        case (ocg::COMMAND_TYPE_COPY_D2H_1D):
-        case (ocg::COMMAND_TYPE_COPY_D2D_1D):
+        case (cgir::COMMAND_TYPE_COPY_H2D_1D):
+        case (cgir::COMMAND_TYPE_COPY_D2H_1D):
+        case (cgir::COMMAND_TYPE_COPY_D2D_1D):
         {
             void * src = (void *) cmd->copy_1D.src_device_addr;
             void * dst = (void *) cmd->copy_1D.dst_device_addr;
@@ -391,9 +391,9 @@ XKRT_DRIVER_ENTRYPOINT(command_queue_launch)(
             return EINPROGRESS;
         }
 
-        case (ocg::COMMAND_TYPE_COPY_H2D_2D):
-        case (ocg::COMMAND_TYPE_COPY_D2H_2D):
-        case (ocg::COMMAND_TYPE_COPY_D2D_2D):
+        case (cgir::COMMAND_TYPE_COPY_H2D_2D):
+        case (cgir::COMMAND_TYPE_COPY_D2H_2D):
+        case (cgir::COMMAND_TYPE_COPY_D2D_2D):
         {
                   void * dst    = (      void *) cmd->copy_2D.dst_addr;
             const void * src    = (const void *) cmd->copy_2D.src_addr;
@@ -527,15 +527,15 @@ XKRT_DRIVER_ENTRYPOINT(command_queue_progress)(
 
         switch (cmd->type)
         {
-            case (ocg::COMMAND_TYPE_PROG):
-            case (ocg::COMMAND_TYPE_COPY_H2H_1D):
-            case (ocg::COMMAND_TYPE_COPY_H2D_1D):
-            case (ocg::COMMAND_TYPE_COPY_D2H_1D):
-            case (ocg::COMMAND_TYPE_COPY_D2D_1D):
-            case (ocg::COMMAND_TYPE_COPY_H2H_2D):
-            case (ocg::COMMAND_TYPE_COPY_H2D_2D):
-            case (ocg::COMMAND_TYPE_COPY_D2H_2D):
-            case (ocg::COMMAND_TYPE_COPY_D2D_2D):
+            case (cgir::COMMAND_TYPE_PROG):
+            case (cgir::COMMAND_TYPE_COPY_H2H_1D):
+            case (cgir::COMMAND_TYPE_COPY_H2D_1D):
+            case (cgir::COMMAND_TYPE_COPY_D2H_1D):
+            case (cgir::COMMAND_TYPE_COPY_D2D_1D):
+            case (cgir::COMMAND_TYPE_COPY_H2H_2D):
+            case (cgir::COMMAND_TYPE_COPY_H2D_2D):
+            case (cgir::COMMAND_TYPE_COPY_D2H_2D):
+            case (cgir::COMMAND_TYPE_COPY_D2D_2D):
             {
                 sycl::event * e = queue->sycl.events.buffer + p;
                 auto status = e->get_info<sycl::info::event::command_execution_status>();

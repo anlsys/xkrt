@@ -577,7 +577,7 @@ driver_device_command_queue_launch_ready(
 
         LOGGER_DEBUG(
             "Decoding command `%s` on queue %p of type `%s` - p=%u, r=%u, w=%u",
-            ocg::command_type_to_str(cmd->type),
+            cgir::command_type_to_str(cmd->type),
             queue,
             command_queue_type_to_str(queue->type),
             p,
@@ -589,8 +589,8 @@ driver_device_command_queue_launch_ready(
         switch (cmd->type)
         {
             /* Empty commands need not to execute anything */
-            case (ocg::COMMAND_TYPE_COPY_H2H_1D):
-            case (ocg::COMMAND_TYPE_COPY_H2H_2D):
+            case (cgir::COMMAND_TYPE_COPY_H2H_1D):
+            case (cgir::COMMAND_TYPE_COPY_H2H_2D):
             {
                 LOGGER_FATAL("Not implemented");
                 break ;
@@ -600,7 +600,7 @@ driver_device_command_queue_launch_ready(
             /* launch commands via driver */
             /******************************/
 
-            case (ocg::COMMAND_TYPE_PROG):
+            case (cgir::COMMAND_TYPE_PROG):
             {
                 /* If it is a program launcher, just execute the user routine
                  * on the device's host thread */
@@ -615,15 +615,15 @@ driver_device_command_queue_launch_ready(
                 /* else, fallthrough so the driver launch the program */
             }
 
-            case (ocg::COMMAND_TYPE_BATCH):
-            case (ocg::COMMAND_TYPE_COPY_H2D_1D):
-            case (ocg::COMMAND_TYPE_COPY_D2H_1D):
-            case (ocg::COMMAND_TYPE_COPY_D2D_1D):
-            case (ocg::COMMAND_TYPE_COPY_H2D_2D):
-            case (ocg::COMMAND_TYPE_COPY_D2H_2D):
-            case (ocg::COMMAND_TYPE_COPY_D2D_2D):
-            case (ocg::COMMAND_TYPE_FD_READ):
-            case (ocg::COMMAND_TYPE_FD_WRITE):
+            case (cgir::COMMAND_TYPE_BATCH):
+            case (cgir::COMMAND_TYPE_COPY_H2D_1D):
+            case (cgir::COMMAND_TYPE_COPY_D2H_1D):
+            case (cgir::COMMAND_TYPE_COPY_D2D_1D):
+            case (cgir::COMMAND_TYPE_COPY_H2D_2D):
+            case (cgir::COMMAND_TYPE_COPY_D2H_2D):
+            case (cgir::COMMAND_TYPE_COPY_D2D_2D):
+            case (cgir::COMMAND_TYPE_FD_READ):
+            case (cgir::COMMAND_TYPE_FD_WRITE):
             default:
             {
                 int err = driver->f_command_queue_launch(device->driver_id, queue, cmd, p);
@@ -637,7 +637,7 @@ driver_device_command_queue_launch_ready(
 
                     case (ENOSYS):
                     {
-                        LOGGER_FATAL("Command `%s` not implemented", ocg::command_type_to_str(cmd->type));
+                        LOGGER_FATAL("Command `%s` not implemented", cgir::command_type_to_str(cmd->type));
                         break ;
                     }
 

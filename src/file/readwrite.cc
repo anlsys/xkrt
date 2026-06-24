@@ -67,7 +67,7 @@ body_file_async_callback(void * vargs [XKRT_CALLBACK_ARGS_MAX])
     runtime->task_detachable_decr(task);
 }
 
-template<ocg::command_type_t T>
+template<cgir::command_type_t T>
 static void
 body_file_async(
     runtime_t * runtime,
@@ -96,7 +96,7 @@ body_file_async(
 }
 
 // TODO: reimplement using partitionned dependencies
-template<ocg::command_type_t T>
+template<cgir::command_type_t T>
 static inline int
 file_async(
     runtime_t * runtime,
@@ -108,7 +108,7 @@ file_async(
     if (n > XKRT_IO_URING_DEPTH)
         LOGGER_WARN("Spawning n=%d tasks, while io_uring queues were configured with a XKRT_IO_URING_DEPTH=%d", n, XKRT_IO_URING_DEPTH);
 
-    static_assert(T == ocg::COMMAND_TYPE_FD_READ || T == ocg::COMMAND_TYPE_FD_WRITE);
+    static_assert(T == cgir::COMMAND_TYPE_FD_READ || T == cgir::COMMAND_TYPE_FD_WRITE);
     assert(n > 0);
 
     // compute number of commands to spawn
@@ -124,7 +124,7 @@ file_async(
     assert(thread);
 
     // get task format
-    const task_format_id_t fmtid = (T == ocg::COMMAND_TYPE_FD_READ) ? runtime->formats.file_read_async : runtime->formats.file_write_async;
+    const task_format_id_t fmtid = (T == cgir::COMMAND_TYPE_FD_READ) ? runtime->formats.file_read_async : runtime->formats.file_write_async;
 
     const uintptr_t p = (const uintptr_t) buffer;
 
@@ -155,7 +155,7 @@ file_async(
         new (dev) task_dev_info_t(XKRT_HOST_DEVICE_UNIQUE_ID, XKRT_UNSPECIFIED_TASK_ACCESS);
 
         # if XKRT_SUPPORT_DEBUG
-        snprintf(task->label, sizeof(task->label), T == ocg::COMMAND_TYPE_FD_READ ? "fread" : "fwrite");
+        snprintf(task->label, sizeof(task->label), T == cgir::COMMAND_TYPE_FD_READ ? "fread" : "fwrite");
         # endif
 
         // detached virtual write onto the memory segment
@@ -178,7 +178,7 @@ runtime_t::file_read_async(
     const size_t size,
     int n
 ) {
-    return file_async<ocg::COMMAND_TYPE_FD_READ>(this, fd, buffer, size, n);
+    return file_async<cgir::COMMAND_TYPE_FD_READ>(this, fd, buffer, size, n);
 }
 
 int
@@ -188,7 +188,7 @@ runtime_t::file_write_async(
     const size_t size,
     int n
 ) {
-    return file_async<ocg::COMMAND_TYPE_FD_WRITE>(this, fd, buffer, size, n);
+    return file_async<cgir::COMMAND_TYPE_FD_WRITE>(this, fd, buffer, size, n);
 }
 
 void
@@ -197,7 +197,7 @@ file_async_register_format(runtime_t * runtime)
     {
         task_format_t format;
         memset(&format, 0, sizeof(format));
-        format.f[XKRT_TASK_FORMAT_TARGET_HOST] = (task_format_func_t) body_file_async<ocg::COMMAND_TYPE_FD_READ>;
+        format.f[XKRT_TASK_FORMAT_TARGET_HOST] = (task_format_func_t) body_file_async<cgir::COMMAND_TYPE_FD_READ>;
         snprintf(format.label, sizeof(format.label), "file_read_async");
         runtime->formats.file_read_async = runtime->task_format_create(&format);
     }
@@ -205,7 +205,7 @@ file_async_register_format(runtime_t * runtime)
     {
         task_format_t format;
         memset(&format, 0, sizeof(format));
-        format.f[XKRT_TASK_FORMAT_TARGET_HOST] = (task_format_func_t) body_file_async<ocg::COMMAND_TYPE_FD_WRITE>;
+        format.f[XKRT_TASK_FORMAT_TARGET_HOST] = (task_format_func_t) body_file_async<cgir::COMMAND_TYPE_FD_WRITE>;
         snprintf(format.label, sizeof(format.label), "file_write_async");
         runtime->formats.file_write_async = runtime->task_format_create(&format);
     }

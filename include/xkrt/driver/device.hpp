@@ -211,7 +211,7 @@ typedef struct  device_t
     /* create a new command */
     void offloader_queue_command_new(
         const command_queue_type_t qtype,   /* IN  */
-        const ocg::command_type_t ctype,         /* IN  */
+        const cgir::command_type_t ctype,         /* IN  */
         const command_flag_t flags,         /* IN  */
         thread_t ** pthread,                /* OUT */
         command_queue_t ** pqueue,          /* OUT */
@@ -227,7 +227,7 @@ typedef struct  device_t
     );
 
     /* submit a file I/O command */
-    template <ocg::command_type_t T>
+    template <cgir::command_type_t T>
     command_t * offloader_queue_command_submit_file(
         int    fd,
         void * buffer,
@@ -236,13 +236,13 @@ typedef struct  device_t
         const std::optional<callback_t> & callback = std::nullopt
     ) {
         static_assert(
-            T == ocg::COMMAND_TYPE_FD_READ ||
-            T == ocg::COMMAND_TYPE_FD_WRITE
+            T == cgir::COMMAND_TYPE_FD_READ ||
+            T == cgir::COMMAND_TYPE_FD_WRITE
         );
 
         /* create a new command and retrieve its offload queue */
-        constexpr command_queue_type_t   qtype = (T == ocg::COMMAND_TYPE_FD_READ) ? XKRT_QUEUE_TYPE_FD_READ : XKRT_QUEUE_TYPE_FD_WRITE;
-        constexpr ocg::command_type_t ctype = T;
+        constexpr command_queue_type_t   qtype = (T == cgir::COMMAND_TYPE_FD_READ) ? XKRT_QUEUE_TYPE_FD_READ : XKRT_QUEUE_TYPE_FD_WRITE;
+        constexpr cgir::command_type_t ctype = T;
         constexpr command_flag_t flags = COMMAND_FLAG_NONE;
 
         thread_t * thread;
@@ -280,7 +280,7 @@ typedef struct  device_t
         const DEVICE_VIEW_T             & dst_device_view,
         const device_unique_id_t          src_device_unique_id,
         const DEVICE_VIEW_T             & src_device_view,
-        ocg::command_type_t & ctype,    /* out */
+        cgir::command_type_t & ctype,    /* out */
         command_queue_type_t & qtype    /* out */
     ) {
         /* find the command type */
@@ -293,11 +293,11 @@ typedef struct  device_t
             assert(host_view);
             assert(dst_device_view);
             assert(src_device_view);
-            ctype = ( src_is_host &&  dst_is_host) ? ocg::COMMAND_TYPE_COPY_H2H_1D :
-                    ( src_is_host && !dst_is_host) ? ocg::COMMAND_TYPE_COPY_H2D_1D :
-                    (!src_is_host &&  dst_is_host) ? ocg::COMMAND_TYPE_COPY_D2H_1D :
-                    (!src_is_host && !dst_is_host) ? ocg::COMMAND_TYPE_COPY_D2D_1D :
-                    ocg::COMMAND_TYPE_MAX;
+            ctype = ( src_is_host &&  dst_is_host) ? cgir::COMMAND_TYPE_COPY_H2H_1D :
+                    ( src_is_host && !dst_is_host) ? cgir::COMMAND_TYPE_COPY_H2D_1D :
+                    (!src_is_host &&  dst_is_host) ? cgir::COMMAND_TYPE_COPY_D2H_1D :
+                    (!src_is_host && !dst_is_host) ? cgir::COMMAND_TYPE_COPY_D2D_1D :
+                    cgir::COMMAND_TYPE_MAX;
         } else if constexpr(IS_2D) {
             assert(host_view.m);
             assert(host_view.n);
@@ -309,11 +309,11 @@ typedef struct  device_t
             assert(src_device_view.addr);
             assert(src_device_view.ld);
 
-            ctype = ( src_is_host &&  dst_is_host) ? ocg::COMMAND_TYPE_COPY_H2H_2D :
-                    ( src_is_host && !dst_is_host) ? ocg::COMMAND_TYPE_COPY_H2D_2D :
-                    (!src_is_host &&  dst_is_host) ? ocg::COMMAND_TYPE_COPY_D2H_2D :
-                    (!src_is_host && !dst_is_host) ? ocg::COMMAND_TYPE_COPY_D2D_2D :
-                    ocg::COMMAND_TYPE_MAX;
+            ctype = ( src_is_host &&  dst_is_host) ? cgir::COMMAND_TYPE_COPY_H2H_2D :
+                    ( src_is_host && !dst_is_host) ? cgir::COMMAND_TYPE_COPY_H2D_2D :
+                    (!src_is_host &&  dst_is_host) ? cgir::COMMAND_TYPE_COPY_D2H_2D :
+                    (!src_is_host && !dst_is_host) ? cgir::COMMAND_TYPE_COPY_D2D_2D :
+                    cgir::COMMAND_TYPE_MAX;
         } else {
             LOGGER_FATAL("Wrong parameters");
         }
@@ -321,24 +321,24 @@ typedef struct  device_t
         /* find the type of queue to use */
         switch(ctype)
         {
-            case (ocg::COMMAND_TYPE_COPY_H2H_1D):
-            case (ocg::COMMAND_TYPE_COPY_H2D_1D):
-            case (ocg::COMMAND_TYPE_COPY_H2H_2D):
-            case (ocg::COMMAND_TYPE_COPY_H2D_2D):
+            case (cgir::COMMAND_TYPE_COPY_H2H_1D):
+            case (cgir::COMMAND_TYPE_COPY_H2D_1D):
+            case (cgir::COMMAND_TYPE_COPY_H2H_2D):
+            case (cgir::COMMAND_TYPE_COPY_H2D_2D):
             {
                qtype = XKRT_QUEUE_TYPE_H2D;
                break ;
             }
 
-            case (ocg::COMMAND_TYPE_COPY_D2H_1D):
-            case (ocg::COMMAND_TYPE_COPY_D2H_2D):
+            case (cgir::COMMAND_TYPE_COPY_D2H_1D):
+            case (cgir::COMMAND_TYPE_COPY_D2H_2D):
             {
                 qtype = XKRT_QUEUE_TYPE_D2H;
                 break ;
             }
 
-            case (ocg::COMMAND_TYPE_COPY_D2D_1D):
-            case (ocg::COMMAND_TYPE_COPY_D2D_2D):
+            case (cgir::COMMAND_TYPE_COPY_D2D_1D):
+            case (cgir::COMMAND_TYPE_COPY_D2D_2D):
             {
                 qtype = (src_device_unique_id == dst_device_unique_id) ? XKRT_QUEUE_TYPE_D2D : XKRT_QUEUE_TYPE_P2P;
                 break ;
@@ -365,7 +365,7 @@ typedef struct  device_t
     ) {
         assert(this->unique_id == dst_device_unique_id || this->unique_id == src_device_unique_id);
 
-        ocg::command_type_t ctype;
+        cgir::command_type_t ctype;
         command_queue_type_t qtype;
         device_t::offloader_command_types(host_view, dst_device_unique_id, dst_device_view, src_device_unique_id, src_device_view, ctype, qtype);
 

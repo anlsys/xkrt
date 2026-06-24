@@ -290,15 +290,15 @@ XKRT_DRIVER_ENTRYPOINT(command_queue_launch)(
     (void)device_driver_id;
 
     assert(
-        cmd->type == ocg::COMMAND_TYPE_FD_READ  ||
-        cmd->type == ocg::COMMAND_TYPE_FD_WRITE ||
-        cmd->type == ocg::COMMAND_TYPE_BATCH
+        cmd->type == cgir::COMMAND_TYPE_FD_READ  ||
+        cmd->type == cgir::COMMAND_TYPE_FD_WRITE ||
+        cmd->type == cgir::COMMAND_TYPE_BATCH
     );
 
     queue_host_t * queue = (queue_host_t *)iqueue;
 
     // enqueue iouring events
-    if (cmd->type == ocg::COMMAND_TYPE_FD_READ || cmd->type == ocg::COMMAND_TYPE_FD_WRITE)
+    if (cmd->type == cgir::COMMAND_TYPE_FD_READ || cmd->type == cgir::COMMAND_TYPE_FD_WRITE)
     {
         if (__builtin_expect(queue->io_uring.sq_ptr == NULL, 0))
             XKRT_DRIVER_ENTRYPOINT(io_uring_init)(queue);
@@ -310,7 +310,7 @@ XKRT_DRIVER_ENTRYPOINT(command_queue_launch)(
 
         /* Zero-fill and populate — clearing avoids stale flags from prior use */
         memset(sqe, 0, sizeof(*sqe));
-        sqe->opcode    = (cmd->type == ocg::COMMAND_TYPE_FD_READ)
+        sqe->opcode    = (cmd->type == cgir::COMMAND_TYPE_FD_READ)
                              ? IORING_OP_READ
                              : IORING_OP_WRITE;
         sqe->fd        = cmd->file.fd;
@@ -338,7 +338,7 @@ XKRT_DRIVER_ENTRYPOINT(command_queue_launch)(
     // batch commands = emit all sub-cg commands
     else
     {
-        assert(cmd->type == ocg::COMMAND_TYPE_BATCH);
+        assert(cmd->type == cgir::COMMAND_TYPE_BATCH);
         assert(cmd->batch.cg);
         LOGGER_FATAL("TODO");
     }

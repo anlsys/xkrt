@@ -78,7 +78,7 @@ typedef struct  device_stats_t
     struct {
         stats_int_t commited;
         stats_int_t completed;
-    } commands[ocg::COMMAND_TYPE_MAX];
+    } commands[cgir::COMMAND_TYPE_MAX];
 
 }               device_stats_t;
 
@@ -108,7 +108,7 @@ stats_device_agg(device_stats_t * src, device_stats_t * agg)
         agg->queues[stype].transfered += src->queues[stype].transfered;
     }
 
-    for (int cmd_type = 0 ; cmd_type < ocg::COMMAND_TYPE_MAX ; ++cmd_type)
+    for (int cmd_type = 0 ; cmd_type < cgir::COMMAND_TYPE_MAX ; ++cmd_type)
     {
         agg->commands[cmd_type].commited += src->commands[cmd_type].commited;
         agg->commands[cmd_type].completed += src->commands[cmd_type].completed;
@@ -169,18 +169,18 @@ stats_device_report(device_stats_t * stats)
     {
         # if 0
         metric_byte(buffer, sizeof(buffer), stats->queues[stype].transfered.load());
-        LOGGER_WARN("    `%4s` - with %2lu queues - transfered %s", ocg::command_type_to_str((queue_type_t) stype), stats->queues[stype].n.load(), buffer);
+        LOGGER_WARN("    `%4s` - with %2lu queues - transfered %s", cgir::command_type_to_str((queue_type_t) stype), stats->queues[stype].n.load(), buffer);
         # else
         LOGGER_WARN("    `%8s` - with %2lu queues - transfered %zuB", command_queue_type_to_str((command_queue_type_t) stype), stats->queues[stype].n.load(), stats->queues[stype].transfered.load());
         # endif
     }
 
     LOGGER_WARN("  Commands");
-    for (int cmd_type = 0 ; cmd_type < ocg::COMMAND_TYPE_MAX ; ++cmd_type)
+    for (int cmd_type = 0 ; cmd_type < cgir::COMMAND_TYPE_MAX ; ++cmd_type)
     {
         LOGGER_WARN(
             "    `%13s` - commited %6zu - completed %6zu",
-            ocg::command_type_to_str((ocg::command_type_t) cmd_type),
+            cgir::command_type_to_str((cgir::command_type_t) cmd_type),
             stats->commands[cmd_type].commited.load(),
             stats->commands[cmd_type].completed.load()
         );
@@ -206,7 +206,7 @@ stats_device_gather(
             for (int queue_id = 0 ; queue_id < device->count[stype] ; ++queue_id)
             {
                 command_queue_t * queue = device->queues[device_tid][stype][queue_id];
-                for (int cmd_type = 0 ; cmd_type < ocg::COMMAND_TYPE_MAX ; ++cmd_type)
+                for (int cmd_type = 0 ; cmd_type < cgir::COMMAND_TYPE_MAX ; ++cmd_type)
                 {
                     stats->commands[cmd_type].commited += queue->stats.commands[cmd_type].commited.load();
                     stats->commands[cmd_type].completed += queue->stats.commands[cmd_type].completed.load();

@@ -172,15 +172,15 @@ main(void)
 
     /* remove useless nodes */
     //  # pragma omp taskgraph optimize(reduce_nodes)
-    cg.optimize(ocg::COMMAND_GRAPH_PASS_REDUCE_NODE);
+    cg.optimize(cgir::COMMAND_GRAPH_PASS_REDUCE_NODE);
 
     /* remove redundant edges */
     //  # pragma omp taskgraph optimize(reduce_edges)
-    cg.optimize(ocg::COMMAND_GRAPH_PASS_REDUCE_EDGE);
+    cg.optimize(cgir::COMMAND_GRAPH_PASS_REDUCE_EDGE);
 
     /* contract the cg */
     //  # pragma omp taskgraph optimize(batch)
-    cg.optimize(ocg::COMMAND_GRAPH_PASS_BATCH);
+    cg.optimize(cgir::COMMAND_GRAPH_PASS_BATCH);
 
     uint64_t t5 = get_nanotime();
 

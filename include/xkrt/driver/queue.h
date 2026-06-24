@@ -140,7 +140,7 @@ struct command_queue_t
         struct {
             stats_int_t commited;
             stats_int_t completed;
-        } commands[ocg::COMMAND_TYPE_MAX];
+        } commands[cgir::COMMAND_TYPE_MAX];
         stats_int_t transfered;
     } stats;
     # endif /* XKRT_SUPPORT_STATS */
@@ -155,7 +155,7 @@ struct command_queue_t
      *  Allocate a new command to the queue (must then be commited via 'commit') later
      *  Threading: called by any thread
      */
-    command_t * command_new(const ocg::command_type_t ctype, const command_flag_t flags);
+    command_t * command_new(const cgir::command_type_t ctype, const command_flag_t flags);
 
     /**
      *  Commit a command previously allocated via 'command_new'

@@ -619,9 +619,9 @@ XKRT_DRIVER_ENTRYPOINT(command_queue_suggest)(
 void *
 xkrt_cuda_driver_command_batch_init(
     device_driver_id_t device_driver_id,
-    ocg::command_t * command
+    cgir::command_t * command
 ) {
-    assert(command->type == ocg::COMMAND_TYPE_BATCH);
+    assert(command->type == cgir::COMMAND_TYPE_BATCH);
     assert(command->batch.cg);
 
     /* set context */
@@ -642,9 +642,9 @@ xkrt_cuda_driver_command_batch_init(
      * a node is processed, all its predecessors have already been processed,
      * so we can set CUDA dependencies */
     struct pls_t { CUgraphNode cu_node; };
-    using iterator_t = ocg::command_graph_t::node_iterator_t<pls_t>;
-    constexpr ocg::command_graph_walk_direction_t direction          = ocg::COMMAND_GRAPH_WALK_DIRECTION_FORWARD;
-    constexpr ocg::command_graph_walk_search_t    search             = ocg::COMMAND_GRAPH_WALK_SEARCH_BFS;
+    using iterator_t = cgir::command_graph_t::node_iterator_t<pls_t>;
+    constexpr cgir::command_graph_walk_direction_t direction          = cgir::COMMAND_GRAPH_WALK_DIRECTION_FORWARD;
+    constexpr cgir::command_graph_walk_search_t    search             = cgir::COMMAND_GRAPH_WALK_SEARCH_BFS;
     constexpr bool                                include_entry_exit = false;
 
     std::vector<iterator_t> iterators = command->batch.cg->create_node_iterators<pls_t, include_entry_exit, direction, search>();
@@ -653,7 +653,7 @@ xkrt_cuda_driver_command_batch_init(
     for (iterator_t & it : iterators)
     {
         /* get command graph node */
-        ocg::command_graph_node_t * node = it.node;
+        cgir::command_graph_node_t * node = it.node;
 
         /* get cugraph node */
         CUgraphNode * cu_node = &it.data.cu_node;
@@ -664,18 +664,18 @@ xkrt_cuda_driver_command_batch_init(
 
         switch (node->type)
         {
-            case (ocg::COMMAND_GRAPH_NODE_TYPE_EMPTY):
+            case (cgir::COMMAND_GRAPH_NODE_TYPE_EMPTY):
             {
                 cudaGraphAddEmptyNode(cu_node, handle->graph, deps, ndeps);
                 break ;
             }
 
-            case (ocg::COMMAND_GRAPH_NODE_TYPE_COMMAND):
+            case (cgir::COMMAND_GRAPH_NODE_TYPE_COMMAND):
             {
-                ocg::command_t * command = node->command;
+                cgir::command_t * command = node->command;
                 switch (command->type)
                 {
-                    case (ocg::COMMAND_TYPE_PROG):
+                    case (cgir::COMMAND_TYPE_PROG):
                     {
                         CUDA_KERNEL_NODE_PARAMS params;
                         memset(&params, 0, sizeof(params));
@@ -705,7 +705,7 @@ xkrt_cuda_driver_command_batch_init(
                         break ;
                     }
 
-                    case (ocg::COMMAND_TYPE_COPY_H2D_1D):
+                    case (cgir::COMMAND_TYPE_COPY_H2D_1D):
                     {
                         CUDA_MEMCPY3D cpy = {0};
 
@@ -728,7 +728,7 @@ xkrt_cuda_driver_command_batch_init(
                         break;
                     }
 
-                    case (ocg::COMMAND_TYPE_COPY_D2H_1D):
+                    case (cgir::COMMAND_TYPE_COPY_D2H_1D):
                     {
                         CUDA_MEMCPY3D cpy = {0};
 
@@ -751,7 +751,7 @@ xkrt_cuda_driver_command_batch_init(
                         break ;
                     }
 
-                    case (ocg::COMMAND_TYPE_COPY_D2D_1D):
+                    case (cgir::COMMAND_TYPE_COPY_D2D_1D):
                     {
                         CUDA_MEMCPY3D cpy;
                         memset(&cpy, 0, sizeof(cpy));
@@ -766,9 +766,9 @@ xkrt_cuda_driver_command_batch_init(
                         break ;
                     }
 
-                    case (ocg::COMMAND_TYPE_COPY_H2D_2D):
-                    case (ocg::COMMAND_TYPE_COPY_D2H_2D):
-                    case (ocg::COMMAND_TYPE_COPY_D2D_2D):
+                    case (cgir::COMMAND_TYPE_COPY_H2D_2D):
+                    case (cgir::COMMAND_TYPE_COPY_D2H_2D):
+                    case (cgir::COMMAND_TYPE_COPY_D2D_2D):
                     {
                         CUmemorytype src_type, dst_type;
                         CUdeviceptr src_deviceptr = 0, dst_deviceptr = 0;
@@ -779,15 +779,15 @@ xkrt_cuda_driver_command_batch_init(
 
                         switch (command->type)
                         {
-                            case (ocg::COMMAND_TYPE_COPY_H2D_2D):
+                            case (cgir::COMMAND_TYPE_COPY_H2D_2D):
                                 src_type = CU_MEMORYTYPE_HOST;   src_host = src;
                                 dst_type = CU_MEMORYTYPE_DEVICE; dst_deviceptr = (CUdeviceptr) dst;
                                 break ;
-                            case (ocg::COMMAND_TYPE_COPY_D2H_2D):
+                            case (cgir::COMMAND_TYPE_COPY_D2H_2D):
                                 src_type = CU_MEMORYTYPE_DEVICE; src_deviceptr = (CUdeviceptr) src;
                                 dst_type = CU_MEMORYTYPE_HOST;   dst_host = dst;
                                 break ;
-                            case (ocg::COMMAND_TYPE_COPY_D2D_2D):
+                            case (cgir::COMMAND_TYPE_COPY_D2D_2D):
                                 src_type = CU_MEMORYTYPE_DEVICE; src_deviceptr = (CUdeviceptr) src;
                                 dst_type = CU_MEMORYTYPE_DEVICE; dst_deviceptr = (CUdeviceptr) dst;
                                 break ;
@@ -819,7 +819,7 @@ xkrt_cuda_driver_command_batch_init(
                         break ;
                     }
 
-                    case (ocg::COMMAND_TYPE_BATCH):
+                    case (cgir::COMMAND_TYPE_BATCH):
                     {
                         // assert(command->batch.cg == false);
 
@@ -840,17 +840,17 @@ xkrt_cuda_driver_command_batch_init(
                     {
                         /* unsupported command type for CUDA graph batching:
                          * abort the contraction */
-                        LOGGER_FATAL("Cannot batch command type %s into CUDA graph", ocg::command_type_to_str(command->type));
+                        LOGGER_FATAL("Cannot batch command type %s into CUDA graph", cgir::command_type_to_str(command->type));
                         CU_SAFE_CALL(cuGraphDestroy(handle->graph));
                         return NULL;
                     }
                 } /* switch command->type */
 
                 break ;
-            } /* case ocg::COMMAND_GRAPH_NODE_TYPE_COMMAND */
+            } /* case cgir::COMMAND_GRAPH_NODE_TYPE_COMMAND */
 
-            case (ocg::COMMAND_GRAPH_NODE_TYPE_COMMAND_GRAPH):
-            case (ocg::COMMAND_GRAPH_NODE_TYPE_CONDITION):
+            case (cgir::COMMAND_GRAPH_NODE_TYPE_COMMAND_GRAPH):
+            case (cgir::COMMAND_GRAPH_NODE_TYPE_CONDITION):
             default:
             {
                 LOGGER_FATAL("Not supported");
@@ -860,19 +860,19 @@ xkrt_cuda_driver_command_batch_init(
     } /* for each iterator */
 
     assert(command->batch.cg);
-    ocg::command_graph_node_t * entry = command->batch.cg->node_get_entry();
+    cgir::command_graph_node_t * entry = command->batch.cg->node_get_entry();
 
     /* iterate a second time to set dependencies */
     for (iterator_t & it : iterators)
     {
         /* get command graph node */
-        ocg::command_graph_node_t * node = it.node;
+        cgir::command_graph_node_t * node = it.node;
 
         /* get cugraph node */
         CUgraphNode * cu_node = &it.data.cu_node;
 
         /* Add dependencies */
-        for (ocg::command_graph_node_t * pred : node->predecessors)
+        for (cgir::command_graph_node_t * pred : node->predecessors)
         {
             /* must skip edges to entry, as it is not included in the cuda graph */
             if (pred == entry)
@@ -896,7 +896,7 @@ xkrt_cuda_driver_command_batch_init(
 void
 xkrt_cuda_driver_command_batch_deinit(
     device_driver_id_t device_driver_id,
-    const ocg::command_t * command
+    const cgir::command_t * command
 ) {
     command_batch_cu_handle_t * handle = (command_batch_cu_handle_t *) command->batch.driver_handle;
 
@@ -919,7 +919,7 @@ XKRT_DRIVER_ENTRYPOINT(command_launch_with_stream)(
 ) {
     switch (command->type)
     {
-        case (ocg::COMMAND_TYPE_PROG):
+        case (cgir::COMMAND_TYPE_PROG):
         {
             constexpr size_t sharedmemory = 0;
             void * conf[] = {
@@ -949,9 +949,9 @@ XKRT_DRIVER_ENTRYPOINT(command_launch_with_stream)(
             return EINPROGRESS;
         }
 
-        case (ocg::COMMAND_TYPE_COPY_H2D_1D):
-        case (ocg::COMMAND_TYPE_COPY_D2H_1D):
-        case (ocg::COMMAND_TYPE_COPY_D2D_1D):
+        case (cgir::COMMAND_TYPE_COPY_H2D_1D):
+        case (cgir::COMMAND_TYPE_COPY_D2H_1D):
+        case (cgir::COMMAND_TYPE_COPY_D2D_1D):
         {
             const size_t count  = command->copy_1D.size;
             assert(count > 0);
@@ -961,19 +961,19 @@ XKRT_DRIVER_ENTRYPOINT(command_launch_with_stream)(
 
             switch (command->type)
             {
-                case (ocg::COMMAND_TYPE_COPY_H2D_1D):
+                case (cgir::COMMAND_TYPE_COPY_H2D_1D):
                 {
                     CU_SAFE_CALL(cuMemcpyHtoDAsync((CUdeviceptr) dst, src, count, stream));
                     break ;
                 }
 
-                case (ocg::COMMAND_TYPE_COPY_D2H_1D):
+                case (cgir::COMMAND_TYPE_COPY_D2H_1D):
                 {
                     CU_SAFE_CALL(cuMemcpyDtoHAsync(dst, (CUdeviceptr) src, count, stream));
                     break ;
                 }
 
-                case (ocg::COMMAND_TYPE_COPY_D2D_1D):
+                case (cgir::COMMAND_TYPE_COPY_D2D_1D):
                 {
                     CU_SAFE_CALL(cuMemcpyDtoDAsync((CUdeviceptr) dst, (CUdeviceptr) src, count, stream));
                     break ;
@@ -989,9 +989,9 @@ XKRT_DRIVER_ENTRYPOINT(command_launch_with_stream)(
             return EINPROGRESS;
         }
 
-        case (ocg::COMMAND_TYPE_COPY_H2D_2D):
-        case (ocg::COMMAND_TYPE_COPY_D2H_2D):
-        case (ocg::COMMAND_TYPE_COPY_D2D_2D):
+        case (cgir::COMMAND_TYPE_COPY_H2D_2D):
+        case (cgir::COMMAND_TYPE_COPY_D2H_2D):
+        case (cgir::COMMAND_TYPE_COPY_D2D_2D):
         {
             CUdeviceptr src_deviceptr, dst_deviceptr;
             CUmemorytype src_type, dst_type;
@@ -1002,7 +1002,7 @@ XKRT_DRIVER_ENTRYPOINT(command_launch_with_stream)(
 
             switch (command->type)
             {
-                case (ocg::COMMAND_TYPE_COPY_H2D_2D):
+                case (cgir::COMMAND_TYPE_COPY_H2D_2D):
                 {
                     src_type = CU_MEMORYTYPE_HOST;
                     dst_type = CU_MEMORYTYPE_DEVICE;
@@ -1016,7 +1016,7 @@ XKRT_DRIVER_ENTRYPOINT(command_launch_with_stream)(
                     break ;
                 }
 
-                case (ocg::COMMAND_TYPE_COPY_D2H_2D):
+                case (cgir::COMMAND_TYPE_COPY_D2H_2D):
                 {
                     src_type = CU_MEMORYTYPE_DEVICE;
                     dst_type = CU_MEMORYTYPE_HOST;
@@ -1030,7 +1030,7 @@ XKRT_DRIVER_ENTRYPOINT(command_launch_with_stream)(
                     break ;
                 }
 
-                case (ocg::COMMAND_TYPE_COPY_D2D_2D):
+                case (cgir::COMMAND_TYPE_COPY_D2D_2D):
                 {
                     src_type = CU_MEMORYTYPE_DEVICE;
                     dst_type = CU_MEMORYTYPE_DEVICE;
@@ -1081,7 +1081,7 @@ XKRT_DRIVER_ENTRYPOINT(command_launch_with_stream)(
             return EINPROGRESS;
         }
 
-        case (ocg::COMMAND_TYPE_BATCH):
+        case (cgir::COMMAND_TYPE_BATCH):
         {
             /* initialize cuda graph on first encounter */
             if (command->batch.driver_handle == NULL)
@@ -1182,16 +1182,16 @@ XKRT_DRIVER_ENTRYPOINT(command_queue_progress)(
 
         switch (command->type)
         {
-            case (ocg::COMMAND_TYPE_PROG):
-            case (ocg::COMMAND_TYPE_COPY_H2H_1D):
-            case (ocg::COMMAND_TYPE_COPY_H2D_1D):
-            case (ocg::COMMAND_TYPE_COPY_D2H_1D):
-            case (ocg::COMMAND_TYPE_COPY_D2D_1D):
-            case (ocg::COMMAND_TYPE_COPY_H2H_2D):
-            case (ocg::COMMAND_TYPE_COPY_H2D_2D):
-            case (ocg::COMMAND_TYPE_COPY_D2H_2D):
-            case (ocg::COMMAND_TYPE_COPY_D2D_2D):
-            case (ocg::COMMAND_TYPE_BATCH):
+            case (cgir::COMMAND_TYPE_PROG):
+            case (cgir::COMMAND_TYPE_COPY_H2H_1D):
+            case (cgir::COMMAND_TYPE_COPY_H2D_1D):
+            case (cgir::COMMAND_TYPE_COPY_D2H_1D):
+            case (cgir::COMMAND_TYPE_COPY_D2D_1D):
+            case (cgir::COMMAND_TYPE_COPY_H2H_2D):
+            case (cgir::COMMAND_TYPE_COPY_H2D_2D):
+            case (cgir::COMMAND_TYPE_COPY_D2H_2D):
+            case (cgir::COMMAND_TYPE_COPY_D2D_2D):
+            case (cgir::COMMAND_TYPE_BATCH):
             {
                 CUevent event = queue->cu.events.buffer[p];
                 CUresult res = cuEventQuery(event);

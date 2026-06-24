@@ -290,7 +290,7 @@ int
 runtime_t::task_emit_command(
     const device_unique_id_t device_unique_id,
     const command_queue_type_t qtype,
-    const ocg::command_type_t ctype,
+    const cgir::command_type_t ctype,
     const command_flag_t flags,
     const std::function<void(command_t *)> builder
 ) {

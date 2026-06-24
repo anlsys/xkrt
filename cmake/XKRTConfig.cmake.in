@@ -1,6 +1,6 @@
 @PACKAGE_INIT@
 
 include(CMakeFindDependencyMacro)
-find_dependency(OpenCG)
+find_dependency(CGIR)
 
 include("${CMAKE_CURRENT_LIST_DIR}/XKRTTargets.cmake")

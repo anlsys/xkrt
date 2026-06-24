@@ -43,7 +43,7 @@
 #  include <stdint.h>
 #  include <stdlib.h>
 
-#  include <opencg/c/api.h>
+#  include <cgir/c/api.h>
 
 # ifdef __cplusplus
 #  define xkstatic_assert(X) static_assert(X)
@@ -61,8 +61,8 @@
 # define XKRT_COMMAND_CALLBACKS_MAX (2)
 
 /* device ids */
-# define XKRT_HOST_DEVICE_UNIQUE_ID         ((ocg_device_unique_id_t)0)
-# define XKRT_UNSPECIFIED_DEVICE_UNIQUE_ID  OCG_UNSPECIFIED_DEVICE_UNIQUE_ID
+# define XKRT_HOST_DEVICE_UNIQUE_ID         ((cgir_device_unique_id_t)0)
+# define XKRT_UNSPECIFIED_DEVICE_UNIQUE_ID  CGIR_UNSPECIFIED_DEVICE_UNIQUE_ID
 xkstatic_assert(XKRT_HOST_DEVICE_UNIQUE_ID != XKRT_UNSPECIFIED_DEVICE_UNIQUE_ID);
 
 /* maximum number of performance ranks between devices. */
@@ -98,7 +98,7 @@ xkstatic_assert(XKRT_HOST_DEVICE_UNIQUE_ID != XKRT_UNSPECIFIED_DEVICE_UNIQUE_ID)
 typedef uint8_t xkrt_device_driver_id_t;
 xkstatic_assert(XKRT_DEVICES_MAX <= (1UL << (sizeof(xkrt_device_driver_id_t)*8)));
 
-typedef ocg_device_unique_id_t xkrt_device_unique_id_t;
+typedef cgir_device_unique_id_t xkrt_device_unique_id_t;
 xkstatic_assert(XKRT_DEVICES_MAX <= (1UL << (sizeof(xkrt_device_unique_id_t)*8)));
 
 typedef uint16_t xkrt_device_unique_id_bitfield_t;

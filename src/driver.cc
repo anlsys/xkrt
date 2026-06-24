@@ -68,34 +68,34 @@ runtime_t::devices_get(const driver_type_t type)
 
 static inline command_queue_type_t
 command_type_to_queue_type(
-    ocg::command_type_t ctype
+    cgir::command_type_t ctype
 ) {
     switch (ctype)
     {
-        case (ocg::COMMAND_TYPE_PROG):
-        case (ocg::COMMAND_TYPE_BATCH):
+        case (cgir::COMMAND_TYPE_PROG):
+        case (cgir::COMMAND_TYPE_BATCH):
             return XKRT_QUEUE_TYPE_KERN;
 
-        case (ocg::COMMAND_TYPE_COPY_H2H_1D):
-        case (ocg::COMMAND_TYPE_COPY_H2H_2D):
+        case (cgir::COMMAND_TYPE_COPY_H2H_1D):
+        case (cgir::COMMAND_TYPE_COPY_H2H_2D):
             return XKRT_QUEUE_TYPE_H2D;
 
-        case (ocg::COMMAND_TYPE_COPY_H2D_1D):
-        case (ocg::COMMAND_TYPE_COPY_H2D_2D):
+        case (cgir::COMMAND_TYPE_COPY_H2D_1D):
+        case (cgir::COMMAND_TYPE_COPY_H2D_2D):
             return XKRT_QUEUE_TYPE_H2D;
 
-        case (ocg::COMMAND_TYPE_COPY_D2H_1D):
-        case (ocg::COMMAND_TYPE_COPY_D2H_2D):
+        case (cgir::COMMAND_TYPE_COPY_D2H_1D):
+        case (cgir::COMMAND_TYPE_COPY_D2H_2D):
             return XKRT_QUEUE_TYPE_D2H;
 
-        case (ocg::COMMAND_TYPE_COPY_D2D_1D):
-        case (ocg::COMMAND_TYPE_COPY_D2D_2D):
+        case (cgir::COMMAND_TYPE_COPY_D2D_1D):
+        case (cgir::COMMAND_TYPE_COPY_D2D_2D):
             return XKRT_QUEUE_TYPE_D2D;
 
-        case (ocg::COMMAND_TYPE_FD_READ):
+        case (cgir::COMMAND_TYPE_FD_READ):
             return XKRT_QUEUE_TYPE_FD_READ;
 
-        case (ocg::COMMAND_TYPE_FD_WRITE):
+        case (cgir::COMMAND_TYPE_FD_WRITE):
             return XKRT_QUEUE_TYPE_FD_WRITE;
 
         default:
@@ -124,7 +124,7 @@ runtime_t::command_submit(
 
         switch (command->type)
         {
-            case (ocg::COMMAND_TYPE_PROG):
+            case (cgir::COMMAND_TYPE_PROG):
             {
                 if (device_unique_id == XKRT_HOST_DEVICE_UNIQUE_ID)
                 {
@@ -133,13 +133,13 @@ runtime_t::command_submit(
                 }
                 // intentionally fallthrough
             }
-            case (ocg::COMMAND_TYPE_COPY_H2D_1D):
-            case (ocg::COMMAND_TYPE_COPY_D2H_1D):
-            case (ocg::COMMAND_TYPE_COPY_D2D_1D):
-            case (ocg::COMMAND_TYPE_COPY_H2H_2D):
-            case (ocg::COMMAND_TYPE_COPY_H2D_2D):
-            case (ocg::COMMAND_TYPE_COPY_D2H_2D):
-            case (ocg::COMMAND_TYPE_COPY_D2D_2D):
+            case (cgir::COMMAND_TYPE_COPY_H2D_1D):
+            case (cgir::COMMAND_TYPE_COPY_D2H_1D):
+            case (cgir::COMMAND_TYPE_COPY_D2D_1D):
+            case (cgir::COMMAND_TYPE_COPY_H2H_2D):
+            case (cgir::COMMAND_TYPE_COPY_H2D_2D):
+            case (cgir::COMMAND_TYPE_COPY_D2H_2D):
+            case (cgir::COMMAND_TYPE_COPY_D2D_2D):
             {
                 driver_t * driver = this->driver_get(device->driver_type);
                 assert(driver);

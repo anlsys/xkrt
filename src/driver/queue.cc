@@ -132,7 +132,7 @@ command_queue_deinit(command_queue_t * queue)
 
 command_t *
 command_queue_t::command_new(
-    const ocg::command_type_t ctype,
+    const cgir::command_type_t ctype,
     const command_flag_t flags
 ) {
     if (this->ready.is_full())
@@ -171,7 +171,7 @@ command_queue_t::commit(const command_t * cmd)
     XKRT_STATS_INCR(this->stats.commands[cmd->type].commited, 1);
     LOGGER_DEBUG(
         "Commited a command of type `%s` (%d ready, %d pending)`",
-        ocg::command_type_to_str(cmd->type),
+        cgir::command_type_to_str(cmd->type),
         this->ready.size(),
         this->pending.size()
     );
@@ -196,7 +196,7 @@ __complete_command_internal(
 
     LOGGER_DEBUG(
         "Completed command `%s` on queue %p of type `%s`",
-        ocg::command_type_to_str(cmd->type),
+        cgir::command_type_to_str(cmd->type),
         queue,
         command_queue_type_to_str(queue->type)
     );
@@ -207,19 +207,19 @@ __complete_command_internal(
 
     switch (cmd->type)
     {
-        case (ocg::COMMAND_TYPE_COPY_H2H_1D):
-        case (ocg::COMMAND_TYPE_COPY_H2D_1D):
-        case (ocg::COMMAND_TYPE_COPY_D2H_1D):
-        case (ocg::COMMAND_TYPE_COPY_D2D_1D):
+        case (cgir::COMMAND_TYPE_COPY_H2H_1D):
+        case (cgir::COMMAND_TYPE_COPY_H2D_1D):
+        case (cgir::COMMAND_TYPE_COPY_D2H_1D):
+        case (cgir::COMMAND_TYPE_COPY_D2D_1D):
         {
             XKRT_STATS_INCR(queue->stats.transfered, cmd->copy_1D.size);
             break ;
         }
 
-        case (ocg::COMMAND_TYPE_COPY_H2H_2D):
-        case (ocg::COMMAND_TYPE_COPY_H2D_2D):
-        case (ocg::COMMAND_TYPE_COPY_D2H_2D):
-        case (ocg::COMMAND_TYPE_COPY_D2D_2D):
+        case (cgir::COMMAND_TYPE_COPY_H2H_2D):
+        case (cgir::COMMAND_TYPE_COPY_H2D_2D):
+        case (cgir::COMMAND_TYPE_COPY_D2H_2D):
+        case (cgir::COMMAND_TYPE_COPY_D2D_2D):
         {
             XKRT_STATS_INCR(queue->stats.transfered, cmd->copy_2D.m * cmd->copy_2D.n * cmd->copy_2D.sizeof_type);
             break ;

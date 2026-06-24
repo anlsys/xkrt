@@ -169,7 +169,7 @@ device_t::offloader_queue_next(
 void
 device_t::offloader_queue_command_new(
     const command_queue_type_t qtype,   /* IN  */
-    const ocg::command_type_t ctype,         /* IN  */
+    const cgir::command_type_t ctype,         /* IN  */
     const command_flag_t flags,         /* IN  */
     thread_t ** pthread,                /* OUT */
     command_queue_t ** pqueue,          /* OUT */

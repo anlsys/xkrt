@@ -335,15 +335,15 @@ XKRT_DRIVER_ENTRYPOINT(command_queue_launch)(
 
     switch (cmd->type)
     {
-        case (ocg::COMMAND_TYPE_PROG):
+        case (cgir::COMMAND_TYPE_PROG):
         {
             LOGGER_FATAL("IMPL ME");
             break ;
         }
 
-        case (ocg::COMMAND_TYPE_COPY_H2D_1D):
-        case (ocg::COMMAND_TYPE_COPY_D2H_1D):
-        case (ocg::COMMAND_TYPE_COPY_D2D_1D):
+        case (cgir::COMMAND_TYPE_COPY_H2D_1D):
+        case (cgir::COMMAND_TYPE_COPY_D2H_1D):
+        case (cgir::COMMAND_TYPE_COPY_D2D_1D):
         {
             const uintptr_t dst = cmd->copy_1D.dst_device_addr;
             const uintptr_t src = cmd->copy_1D.src_device_addr;
@@ -356,7 +356,7 @@ XKRT_DRIVER_ENTRYPOINT(command_queue_launch)(
 
             switch (cmd->type)
             {
-                case (ocg::COMMAND_TYPE_COPY_H2D_1D):
+                case (cgir::COMMAND_TYPE_COPY_H2D_1D):
                 {
                     cl_mem dst_buffer;
                     size_t dst_offset;
@@ -378,7 +378,7 @@ XKRT_DRIVER_ENTRYPOINT(command_queue_launch)(
                     break ;
                 }
 
-                case (ocg::COMMAND_TYPE_COPY_D2H_1D):
+                case (cgir::COMMAND_TYPE_COPY_D2H_1D):
                 {
                     size_t src_offset;
                     cl_mem src_buffer;
@@ -400,7 +400,7 @@ XKRT_DRIVER_ENTRYPOINT(command_queue_launch)(
                     break ;
                 }
 
-                case (ocg::COMMAND_TYPE_COPY_D2D_1D):
+                case (cgir::COMMAND_TYPE_COPY_D2D_1D):
                 {
                     cl_mem src_buffer;
                     size_t src_offset;
@@ -435,9 +435,9 @@ XKRT_DRIVER_ENTRYPOINT(command_queue_launch)(
             break ;
         }
 
-        case (ocg::COMMAND_TYPE_COPY_H2D_2D):
-        case (ocg::COMMAND_TYPE_COPY_D2H_2D):
-        case (ocg::COMMAND_TYPE_COPY_D2D_2D):
+        case (cgir::COMMAND_TYPE_COPY_H2D_2D):
+        case (cgir::COMMAND_TYPE_COPY_D2H_2D):
+        case (cgir::COMMAND_TYPE_COPY_D2D_2D):
         {
             const uintptr_t dst     = cmd->copy_2D.dst_device_view.addr;
             const uintptr_t src     = cmd->copy_2D.src_device_view.addr;
@@ -465,7 +465,7 @@ XKRT_DRIVER_ENTRYPOINT(command_queue_launch)(
 
             switch (cmd->type)
             {
-                case (ocg::COMMAND_TYPE_COPY_H2D_2D):
+                case (cgir::COMMAND_TYPE_COPY_H2D_2D):
                 {
                     cl_mem dst_buffer;
                     driver_cl_get_buffer_and_offset_2D(queue->device, (uintptr_t) dst, dst_row_pitch, &dst_buffer, dst_origin);
@@ -491,7 +491,7 @@ XKRT_DRIVER_ENTRYPOINT(command_queue_launch)(
                     break ;
                 }
 
-                case (ocg::COMMAND_TYPE_COPY_D2H_2D):
+                case (cgir::COMMAND_TYPE_COPY_D2H_2D):
                 {
                     cl_mem src_buffer;
                     driver_cl_get_buffer_and_offset_2D(queue->device, (uintptr_t) src, src_row_pitch, &src_buffer, src_origin);
@@ -517,7 +517,7 @@ XKRT_DRIVER_ENTRYPOINT(command_queue_launch)(
                     break ;
                 }
 
-                case (ocg::COMMAND_TYPE_COPY_D2D_2D):
+                case (cgir::COMMAND_TYPE_COPY_D2D_2D):
                 {
                     cl_mem src_buffer;
                     device_cl_t * src_device = device_cl_get_from_addr(src);
@@ -605,15 +605,15 @@ XKRT_DRIVER_ENTRYPOINT(command_queue_progress)(
 
         switch (cmd->type)
         {
-            case (ocg::COMMAND_TYPE_PROG):
-            case (ocg::COMMAND_TYPE_COPY_H2D_1D):
-            case (ocg::COMMAND_TYPE_COPY_H2H_1D):
-            case (ocg::COMMAND_TYPE_COPY_D2H_1D):
-            case (ocg::COMMAND_TYPE_COPY_D2D_1D):
-            case (ocg::COMMAND_TYPE_COPY_H2D_2D):
-            case (ocg::COMMAND_TYPE_COPY_H2H_2D):
-            case (ocg::COMMAND_TYPE_COPY_D2H_2D):
-            case (ocg::COMMAND_TYPE_COPY_D2D_2D):
+            case (cgir::COMMAND_TYPE_PROG):
+            case (cgir::COMMAND_TYPE_COPY_H2D_1D):
+            case (cgir::COMMAND_TYPE_COPY_H2H_1D):
+            case (cgir::COMMAND_TYPE_COPY_D2H_1D):
+            case (cgir::COMMAND_TYPE_COPY_D2D_1D):
+            case (cgir::COMMAND_TYPE_COPY_H2D_2D):
+            case (cgir::COMMAND_TYPE_COPY_H2H_2D):
+            case (cgir::COMMAND_TYPE_COPY_D2H_2D):
+            case (cgir::COMMAND_TYPE_COPY_D2D_2D):
             {
                 /* poll event */
                 cl_event event = queue->cl.events[p];

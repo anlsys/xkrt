@@ -522,15 +522,15 @@ XKRT_DRIVER_ENTRYPOINT(command_queue_launch)(
 
     switch (cmd->type)
     {
-        case (ocg::COMMAND_TYPE_PROG):
+        case (cgir::COMMAND_TYPE_PROG):
         {
             LOGGER_FATAL("IMPL ME");
             break ;
         }
 
-        case (ocg::COMMAND_TYPE_COPY_H2D_1D):
-        case (ocg::COMMAND_TYPE_COPY_D2H_1D):
-        case (ocg::COMMAND_TYPE_COPY_D2D_1D):
+        case (cgir::COMMAND_TYPE_COPY_H2D_1D):
+        case (cgir::COMMAND_TYPE_COPY_D2H_1D):
+        case (cgir::COMMAND_TYPE_COPY_D2D_1D):
         {
                   void * dst    = (      void *) cmd->copy_1D.dst_device_addr;
             const void * src    = (const void *) cmd->copy_1D.src_device_addr;
@@ -549,9 +549,9 @@ XKRT_DRIVER_ENTRYPOINT(command_queue_launch)(
             break ;
         }
 
-        case (ocg::COMMAND_TYPE_COPY_H2D_2D):
-        case (ocg::COMMAND_TYPE_COPY_D2H_2D):
-        case (ocg::COMMAND_TYPE_COPY_D2D_2D):
+        case (cgir::COMMAND_TYPE_COPY_H2D_2D):
+        case (cgir::COMMAND_TYPE_COPY_D2H_2D):
+        case (cgir::COMMAND_TYPE_COPY_D2D_2D):
         {
                   void * dst    = (      void *) cmd->copy_2D.dst_addr;
             const void * src    = (const void *) cmd->copy_2D.src_addr;
@@ -684,15 +684,15 @@ XKRT_DRIVER_ENTRYPOINT(command_queue_progress)(
 
         switch (cmd->type)
         {
-            case (ocg::COMMAND_TYPE_PROG):
-            case (ocg::COMMAND_TYPE_COPY_H2H_1D):
-            case (ocg::COMMAND_TYPE_COPY_H2D_1D):
-            case (ocg::COMMAND_TYPE_COPY_D2H_1D):
-            case (ocg::COMMAND_TYPE_COPY_D2D_1D):
-            case (ocg::COMMAND_TYPE_COPY_H2H_2D):
-            case (ocg::COMMAND_TYPE_COPY_H2D_2D):
-            case (ocg::COMMAND_TYPE_COPY_D2H_2D):
-            case (ocg::COMMAND_TYPE_COPY_D2D_2D):
+            case (cgir::COMMAND_TYPE_PROG):
+            case (cgir::COMMAND_TYPE_COPY_H2H_1D):
+            case (cgir::COMMAND_TYPE_COPY_H2D_1D):
+            case (cgir::COMMAND_TYPE_COPY_D2H_1D):
+            case (cgir::COMMAND_TYPE_COPY_D2D_1D):
+            case (cgir::COMMAND_TYPE_COPY_H2H_2D):
+            case (cgir::COMMAND_TYPE_COPY_H2D_2D):
+            case (cgir::COMMAND_TYPE_COPY_D2H_2D):
+            case (cgir::COMMAND_TYPE_COPY_D2D_2D):
             {
                 ze_event_handle_t event = queue->ze.events.list[p];
                 ze_result_t res = zeEventQueryStatus(event);
@@ -852,7 +852,7 @@ XKRT_DRIVER_ENTRYPOINT(command_queue_create)(
         .mode       = ZE_COMMAND_QUEUE_MODE_ASYNCHRONOUS,
         .priority   = ZE_COMMAND_QUEUE_PRIORITY_NORMAL // ZE_COMMAND_QUEUE_PRIORITY_PRIORITY_LOW
     };
-    LOGGER_DEBUG("Creating queue of type `%4s` with (ordinal, index) = (%d, %d)", ocg::command_type_to_str((ocg::command_type_t)type), ordinal, index);
+    LOGGER_DEBUG("Creating queue of type `%4s` with (ordinal, index) = (%d, %d)", cgir::command_type_to_str((cgir::command_type_t)type), ordinal, index);
 
     # if 0 /* use a command list and command queue */
     ZE_SAFE_CALL(

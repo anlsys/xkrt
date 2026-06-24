@@ -127,14 +127,14 @@ set(XKRT_TARGETS ${XKRT})
 # DEPENDENCES #
 ###############
 
-# OpenCG
+# CGIR
 
-find_package(OpenCG REQUIRED)
-target_link_libraries(${XKRT} PUBLIC OpenCG::opencg)
+find_package(CGIR REQUIRED)
+target_link_libraries(${XKRT} PUBLIC CGIR::cgir)
 
-# add_subdirectory(opencg/)
-# target_link_libraries(${XKRT} PUBLIC opencg)
-# include_directories(${CMAKE_SOURCE_DIR}/opencg/include/)
+# add_subdirectory(cgir/)
+# target_link_libraries(${XKRT} PUBLIC cgir)
+# include_directories(${CMAKE_SOURCE_DIR}/cgir/include/)
 
 # PTHREAD
 set(THREADS_PREFER_PTHREAD_FLAG ON)

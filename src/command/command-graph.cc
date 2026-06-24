@@ -46,7 +46,7 @@ XKRT_NAMESPACE_USE;
 static command_t *
 command_new(
     command_graph_t * cg,
-    const ocg::command_type_t type
+    const cgir::command_type_t type
 ) {
     return cg->commands.put(type, COMMAND_FLAG_NONE);
 }
@@ -55,7 +55,7 @@ static command_graph_node_t *
 command_graph_node_new(
     command_graph_t * cg,
     const device_unique_id_t device_unique_id,
-    const ocg::command_graph_node_type_t type
+    const cgir::command_graph_node_type_t type
 ) {
     return cg->nodes.put(device_unique_id, type);
 }
@@ -76,9 +76,9 @@ command_graph_init(command_graph_t * cg)
 {
     new (cg) command_graph_t();
     cg->init(
-        (ocg::command_constructor_t)            command_new,
-        (ocg::command_graph_node_constructor_t) command_graph_node_new,
-        (ocg::command_graph_constructor_t)      command_graph_new
+        (cgir::command_constructor_t)            command_new,
+        (cgir::command_graph_node_constructor_t) command_graph_node_new,
+        (cgir::command_graph_constructor_t)      command_graph_new
     );
 }
 
@@ -89,7 +89,7 @@ xkrt_command_graph_node_new(
     command_t * command
 ) {
     assert(command);
-    command_graph_node_t * node = (command_graph_node_t *) command_graph_node_new(cg, device_unique_id, ocg::COMMAND_GRAPH_NODE_TYPE_COMMAND);
+    command_graph_node_t * node = (command_graph_node_t *) command_graph_node_new(cg, device_unique_id, cgir::COMMAND_GRAPH_NODE_TYPE_COMMAND);
     assert(node);
     node->command = command;
     return node;
@@ -100,7 +100,7 @@ xkrt_command_graph_node_new(
     command_graph_t * cg,
     const device_unique_id_t device_unique_id
 ) {
-    command_graph_node_t * node = (command_graph_node_t *) command_graph_node_new(cg, device_unique_id, ocg::COMMAND_GRAPH_NODE_TYPE_EMPTY);
+    command_graph_node_t * node = (command_graph_node_t *) command_graph_node_new(cg, device_unique_id, cgir::COMMAND_GRAPH_NODE_TYPE_EMPTY);
     assert(node);
     return node;
 }
@@ -190,27 +190,27 @@ runtime_t::command_graph_from_task_dependency_graph(
                 // and spawned device commands that were recorded (e.g., mcc coherence, or prefetching)
                 // We want to replay them on the implicit team of threads of the actual device: not on the host team.
 
-                case (ocg::COMMAND_TYPE_COPY_H2D_1D):
+                case (cgir::COMMAND_TYPE_COPY_H2D_1D):
                 {
                     cmd_device_unique_id = rec.command.copy_1D.dst_device_unique_id;
                     break ;
                 }
 
-                case (ocg::COMMAND_TYPE_COPY_D2H_1D):
-                case (ocg::COMMAND_TYPE_COPY_D2D_1D):
+                case (cgir::COMMAND_TYPE_COPY_D2H_1D):
+                case (cgir::COMMAND_TYPE_COPY_D2D_1D):
                 {
                     cmd_device_unique_id = rec.command.copy_1D.src_device_unique_id;
                     break ;
                 }
 
-                case (ocg::COMMAND_TYPE_COPY_H2D_2D):
+                case (cgir::COMMAND_TYPE_COPY_H2D_2D):
                 {
                     cmd_device_unique_id = rec.command.copy_2D.dst_device_unique_id;
                     break ;
                 }
 
-                case (ocg::COMMAND_TYPE_COPY_D2H_2D):
-                case (ocg::COMMAND_TYPE_COPY_D2D_2D):
+                case (cgir::COMMAND_TYPE_COPY_D2H_2D):
+                case (cgir::COMMAND_TYPE_COPY_D2D_2D):
                 {
                     cmd_device_unique_id = rec.command.copy_2D.src_device_unique_id;
                     break ;
@@ -359,7 +359,7 @@ command_graph_replay_process_node(
         // first time processing this node for that replay: reinitialize the node
         if (xkrt_compare_and_swap(node->rc, cg->rc))
         {
-            if (node->type == ocg::COMMAND_GRAPH_NODE_TYPE_COMMAND)
+            if (node->type == cgir::COMMAND_GRAPH_NODE_TYPE_COMMAND)
             {
                 assert(node->command);
 
@@ -393,14 +393,14 @@ command_graph_replay_process_node(
         // if the node holds a command
         switch (node->type)
         {
-            case (ocg::COMMAND_GRAPH_NODE_TYPE_EMPTY):
+            case (cgir::COMMAND_GRAPH_NODE_TYPE_EMPTY):
             {
                 // completes it without submitting any command
                 command_graph_replay_node_complete(runtime, cg, node);
                 break ;
             }
 
-            case (ocg::COMMAND_GRAPH_NODE_TYPE_COMMAND):
+            case (cgir::COMMAND_GRAPH_NODE_TYPE_COMMAND):
             {
                 // replay the command
                 assert(node->command);
@@ -410,8 +410,8 @@ command_graph_replay_process_node(
                 break ;
             }
 
-            case (ocg::COMMAND_GRAPH_NODE_TYPE_COMMAND_GRAPH):
-            case (ocg::COMMAND_GRAPH_NODE_TYPE_CONDITION):
+            case (cgir::COMMAND_GRAPH_NODE_TYPE_COMMAND_GRAPH):
+            case (cgir::COMMAND_GRAPH_NODE_TYPE_CONDITION):
             default:
             {
                 LOGGER_FATAL("Not supported");
@@ -428,7 +428,7 @@ command_graph_replay_node_complete(
     command_graph_node_t * node
 ) {
     // submit successor nodes
-    node->foreach_successor([&] (ocg::command_graph_node_t * succ) {
+    node->foreach_successor([&] (cgir::command_graph_node_t * succ) {
         command_graph_replay_process_node<1>(runtime, cg, (command_graph_node_t *) succ);
     });
 
