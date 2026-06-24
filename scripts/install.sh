@@ -186,7 +186,7 @@ _write_cache() {
                    LLVM_EXTRA_CMAKE_OPTS LLVM_GPU_SUMMARY \
                    USE_LLVM_FOR_BUILD LLVM_BOOTSTRAP_CC LLVM_BOOTSTRAP_CXX
         declare -p INSTALL_HWLOC HWLOC_BRANCH HWLOC_CONFIGURE_OPTS
-        declare -p INSTALL_OPENCG OPENCG_BRANCH OPENCG_BUILD_TYPE OPENCG_CMAKE_OPTS
+        declare -p INSTALL_CGIR CGIR_BRANCH CGIR_BUILD_TYPE CGIR_CMAKE_OPTS
         declare -p INSTALL_XKRT  XKRT_BRANCH  XKRT_BUILD_TYPE  XKRT_CMAKE_OPTS
         declare -p INSTALL_XKBLAS XKBLAS_BRANCH XKBLAS_BUILD_TYPE XKBLAS_CMAKE_OPTS
         declare -p INSTALL_XKOMP  XKOMP_BRANCH  XKOMP_BUILD_TYPE  XKOMP_CMAKE_OPTS
@@ -725,15 +725,15 @@ fi
 
 # ── cgir ────────────────────────────────────────────────────────────────────
 step "cgir  [cmake; no runtime dependencies; parallel to hwloc]"
-INSTALL_OPENCG=false
-OPENCG_BRANCH=""; OPENCG_BUILD_TYPE=""; OPENCG_CMAKE_OPTS=""
+INSTALL_CGIR=false
+CGIR_BRANCH=""; CGIR_BUILD_TYPE=""; CGIR_CMAKE_OPTS=""
 if prompt_yn "Install cgir?" "yes"; then
-    INSTALL_OPENCG=true
-    OPENCG_BRANCH=$(prompt_value "Branch" "release/latest")
-    OPENCG_BUILD_TYPE=$(prompt_value "Build type (Release/Debug)" "Release")
-    clone_or_update "https://github.com/JLESC-Tasking-Group/cgir" \
-        "$REPO_DIR/cgir" "$OPENCG_BRANCH"
-    OPENCG_CMAKE_OPTS=$(ask_cmake_opts "cgir" "$REPO_DIR/cgir/CMakeLists.txt")
+    INSTALL_CGIR=true
+    CGIR_BRANCH=$(prompt_value "Branch" "release/latest")
+    CGIR_BUILD_TYPE=$(prompt_value "Build type (Release/Debug)" "Release")
+    clone_or_update "https://github.com/JLESC-Tasking-Group/opencg" \
+        "$REPO_DIR/cgir" "$CGIR_BRANCH"
+    CGIR_CMAKE_OPTS=$(ask_cmake_opts "cgir" "$REPO_DIR/cgir/CMakeLists.txt")
 fi
 
 # ── xkrt ──────────────────────────────────────────────────────────────────────
@@ -810,7 +810,7 @@ else
     _tty "  ${DIM}library compiler: %s${NC}\n" "$CC"
 fi
 _lib_row "hwloc"  "$INSTALL_HWLOC"  "$HWLOC_BRANCH"  "autotools"
-_lib_row "cgir" "$INSTALL_OPENCG" "$OPENCG_BRANCH" "$OPENCG_BUILD_TYPE"
+_lib_row "cgir" "$INSTALL_CGIR" "$CGIR_BRANCH" "$CGIR_BUILD_TYPE"
 _lib_row "xkrt"   "$INSTALL_XKRT"   "$XKRT_BRANCH"   "$XKRT_BUILD_TYPE"
 _lib_row "xkblas" "$INSTALL_XKBLAS" "$XKBLAS_BRANCH" "$XKBLAS_BUILD_TYPE"
 _lib_row "xkomp"  "$INSTALL_XKOMP"  "$XKOMP_BRANCH"  "$XKOMP_BUILD_TYPE"
@@ -1017,19 +1017,19 @@ if [[ "$INSTALL_HWLOC" == "true" ]]; then
 fi
 
 # ── cgir ────────────────────────────────────────────────────────────────────
-if [[ "$INSTALL_OPENCG" == "true" ]]; then
+if [[ "$INSTALL_CGIR" == "true" ]]; then
     step "Building & installing cgir"
     clone_or_update \
         "https://github.com/JLESC-Tasking-Group/cgir" \
         "$REPO_DIR/cgir" \
-        "$OPENCG_BRANCH"
+        "$CGIR_BRANCH"
 
-    OPENCG_HASH=$(git -C "$REPO_DIR/cgir" rev-parse HEAD | cut -c1-12)
-    OPENCG_INSTALL_DIR="$INSTALL_DIR/cgir/$OPENCG_HASH/$OPENCG_BUILD_TYPE"
-    OPENCG_BUILD_DIR="$REPO_DIR/cgir/build/$OPENCG_HASH/$OPENCG_BUILD_TYPE"
+    CGIR_HASH=$(git -C "$REPO_DIR/cgir" rev-parse HEAD | cut -c1-12)
+    CGIR_INSTALL_DIR="$INSTALL_DIR/cgir/$CGIR_HASH/$CGIR_BUILD_TYPE"
+    CGIR_BUILD_DIR="$REPO_DIR/cgir/build/$CGIR_HASH/$CGIR_BUILD_TYPE"
 
-    rm -rf "$OPENCG_BUILD_DIR" && mkdir -p "$OPENCG_BUILD_DIR"
-    cd "$OPENCG_BUILD_DIR"
+    rm -rf "$CGIR_BUILD_DIR" && mkdir -p "$CGIR_BUILD_DIR"
+    cd "$CGIR_BUILD_DIR"
 
     # If a custom LLVM was built, force cgir's find_package(LLVM)/find_package(MLIR)
     # onto that exact build so it can never silently fall back to a system LLVM/MLIR.
@@ -1040,14 +1040,14 @@ if [[ "$INSTALL_OPENCG" == "true" ]]; then
     fi
 
     # shellcheck disable=SC2086
-    cmake $OPENCG_CMAKE_OPTS $_cgir_llvm_flags \
-        -DCMAKE_BUILD_TYPE="$OPENCG_BUILD_TYPE" \
-        -DCMAKE_INSTALL_PREFIX="$OPENCG_INSTALL_DIR" \
+    cmake $CGIR_CMAKE_OPTS $_cgir_llvm_flags \
+        -DCMAKE_BUILD_TYPE="$CGIR_BUILD_TYPE" \
+        -DCMAKE_INSTALL_PREFIX="$CGIR_INSTALL_DIR" \
         "$REPO_DIR/cgir"
     make install -j "$(nproc)"
 
     # Activate cgir so xkrt finds its headers, libs and cmake config.
-    OPENCG_MOD="$MODULES_DIR/cgir/$OPENCG_HASH/$OPENCG_BUILD_TYPE"
+    CGIR_MOD="$MODULES_DIR/cgir/$CGIR_HASH/$CGIR_BUILD_TYPE"
     # cgir builds against (and links) the custom LLVM/MLIR whenever one was
     # built, so its module must load that llvm module at runtime — regardless of
     # whether the custom LLVM was also used as the compiler.  (A system LLVM, like
@@ -1055,12 +1055,12 @@ if [[ "$INSTALL_OPENCG" == "true" ]]; then
     declare -a _cgir_deps=()
     [[ "$INSTALL_LLVM" == "true" ]] && \
         _cgir_deps+=("llvm/$LLVM_HASH/$LLVM_BUILD_TYPE")
-    generate_modulefile "cgir" "$OPENCG_INSTALL_DIR" "OPENCG_HOME" "$OPENCG_MOD" \
+    generate_modulefile "cgir" "$CGIR_INSTALL_DIR" "CGIR_HOME" "$CGIR_MOD" \
         ${_cgir_deps[@]+"${_cgir_deps[@]}"}
-    _activate_prefix "$OPENCG_INSTALL_DIR" "cgir" "$OPENCG_HASH/$OPENCG_BUILD_TYPE"
-    MOD_LOAD+=("module load cgir/$OPENCG_HASH/$OPENCG_BUILD_TYPE")
-    success "cgir installed → $OPENCG_INSTALL_DIR"
-    success "module file      → $OPENCG_MOD"
+    _activate_prefix "$CGIR_INSTALL_DIR" "cgir" "$CGIR_HASH/$CGIR_BUILD_TYPE"
+    MOD_LOAD+=("module load cgir/$CGIR_HASH/$CGIR_BUILD_TYPE")
+    success "cgir installed → $CGIR_INSTALL_DIR"
+    success "module file      → $CGIR_MOD"
 fi
 
 # ── xkrt ──────────────────────────────────────────────────────────────────────
@@ -1090,7 +1090,7 @@ if [[ "$INSTALL_XKRT" == "true" ]]; then
     # Build the dependency list: cgir is always required; hwloc only when
     # it was installed from source by this script (otherwise it is system-provided).
     declare -a _xkrt_deps=()
-    [[ "$INSTALL_OPENCG" == "true" ]] && _xkrt_deps+=("cgir/$OPENCG_HASH/$OPENCG_BUILD_TYPE")
+    [[ "$INSTALL_CGIR" == "true" ]] && _xkrt_deps+=("cgir/$CGIR_HASH/$CGIR_BUILD_TYPE")
     [[ "$INSTALL_HWLOC"  == "true" ]] && _xkrt_deps+=("hwloc/$HWLOC_HASH/default")
     generate_modulefile "xkrt" "$XKRT_INSTALL_DIR" "XKRT_HOME" "$XKRT_MOD" \
         ${_xkrt_deps[@]+"${_xkrt_deps[@]}"}
