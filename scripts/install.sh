@@ -351,9 +351,15 @@ build_llvm() {
     cd "$LLVM_BUILD_DIR"
 
     # shellcheck disable=SC2086
-    # The top-level LLVM build always uses the bootstrap compiler.
-    CC="$LLVM_BOOTSTRAP_CC" CXX="$LLVM_BOOTSTRAP_CXX" \
-    cmake \
+    # The top-level LLVM build always uses the bootstrap compiler.  LLVM_DIR /
+    # MLIR_DIR are scrubbed from the environment here (they are exported AFTER
+    # stage 1 to pin the XK* libraries to this LLVM) so building LLVM itself — and
+    # its runtimes sub-build, e.g. the deferred offload/libomptarget — never tries
+    # to resolve an external LLVM install.  XKRT_DIR / XKOMP_DIR / CMAKE_PREFIX_PATH
+    # are kept, so find_package(XKRT)/find_package(XKOMP) in libomptarget still work.
+    env -u LLVM_DIR -u MLIR_DIR \
+        CC="$LLVM_BOOTSTRAP_CC" CXX="$LLVM_BOOTSTRAP_CXX" \
+        cmake \
         -DCMAKE_BUILD_TYPE="$LLVM_BUILD_TYPE" \
         -DCMAKE_INSTALL_PREFIX="$LLVM_INSTALL_DIR" \
         -DLLVM_ENABLE_PROJECTS="$LLVM_PROJECTS" \
@@ -365,7 +371,7 @@ build_llvm() {
         "$LLVM_REPO_DIR/llvm"
 
     info "Building & installing LLVM (${label}) — this may take a while …"
-    make install -j "$(nproc)"
+    env -u LLVM_DIR -u MLIR_DIR make install -j "$(nproc)"
 }
 
 # ─── Error trap ───────────────────────────────────────────────────────────────
@@ -844,14 +850,32 @@ if [[ "$INSTALL_LLVM" == "true" ]]; then
         build_llvm "$LLVM_STAGE1_RUNTIMES" "single stage"
     fi
 
-    # If the user opted to build the libraries with the custom LLVM, switch the
-    # build compiler to it now and activate its prefix so opencg (which depends
-    # on LLVM) and the others find its clang, headers, libraries and cmake config.
+    # Pin this EXACT LLVM/MLIR for every downstream build (opencg directly, and
+    # the rest transitively), independently of whether it is also the compiler.
+    # _activate_prefix puts the prefix on CMAKE_PREFIX_PATH; LLVM_DIR / MLIR_DIR
+    # point find_package() straight at this build's cmake packages.  Both env
+    # vars are read by find_package and inherited by every downstream cmake
+    # (including transitive find_dependency(LLVM) pulled in via opencg).
+    _activate_prefix "$LLVM_INSTALL_DIR" "llvm" "$LLVM_HASH/$LLVM_BUILD_TYPE"
+    if   [[ -d "$LLVM_INSTALL_DIR/lib/cmake/llvm"   ]]; then export LLVM_DIR="$LLVM_INSTALL_DIR/lib/cmake/llvm"
+    elif [[ -d "$LLVM_INSTALL_DIR/lib64/cmake/llvm" ]]; then export LLVM_DIR="$LLVM_INSTALL_DIR/lib64/cmake/llvm"
+    fi
+    if   [[ -d "$LLVM_INSTALL_DIR/lib/cmake/mlir"   ]]; then export MLIR_DIR="$LLVM_INSTALL_DIR/lib/cmake/mlir"
+    elif [[ -d "$LLVM_INSTALL_DIR/lib64/cmake/mlir" ]]; then export MLIR_DIR="$LLVM_INSTALL_DIR/lib64/cmake/mlir"
+    fi
+    info "Pinned LLVM_DIR=${LLVM_DIR:-<not found>}"
+    if [[ -n "${MLIR_DIR:-}" ]]; then
+        info "Pinned MLIR_DIR=$MLIR_DIR"
+    else
+        warn "No MLIR cmake package under $LLVM_INSTALL_DIR — enable the 'mlir' LLVM project if opencg needs MLIR."
+    fi
+
+    # If the user opted to build the libraries with the custom LLVM, also switch
+    # the build compiler to its clang/clang++.
     if [[ "$USE_LLVM_FOR_BUILD" == "true" ]]; then
         CC="$LLVM_INSTALL_DIR/bin/clang"
         CXX="$LLVM_INSTALL_DIR/bin/clang++"
         export CC CXX
-        _activate_prefix "$LLVM_INSTALL_DIR" "llvm" "$LLVM_HASH/$LLVM_BUILD_TYPE"
         success "Libraries will be built with: $CC"
     fi
 
@@ -948,8 +972,16 @@ if [[ "$INSTALL_OPENCG" == "true" ]]; then
     rm -rf "$OPENCG_BUILD_DIR" && mkdir -p "$OPENCG_BUILD_DIR"
     cd "$OPENCG_BUILD_DIR"
 
+    # If a custom LLVM was built, force opencg's find_package(LLVM)/find_package(MLIR)
+    # onto that exact build so it can never silently fall back to a system LLVM/MLIR.
+    _opencg_llvm_flags=""
+    if [[ "$INSTALL_LLVM" == "true" ]]; then
+        [[ -n "${LLVM_DIR:-}" ]] && _opencg_llvm_flags="-DLLVM_DIR=$LLVM_DIR"
+        [[ -n "${MLIR_DIR:-}" ]] && _opencg_llvm_flags="${_opencg_llvm_flags:+$_opencg_llvm_flags }-DMLIR_DIR=$MLIR_DIR"
+    fi
+
     # shellcheck disable=SC2086
-    cmake $OPENCG_CMAKE_OPTS \
+    cmake $OPENCG_CMAKE_OPTS $_opencg_llvm_flags \
         -DCMAKE_BUILD_TYPE="$OPENCG_BUILD_TYPE" \
         -DCMAKE_INSTALL_PREFIX="$OPENCG_INSTALL_DIR" \
         "$REPO_DIR/opencg"
@@ -957,10 +989,12 @@ if [[ "$INSTALL_OPENCG" == "true" ]]; then
 
     # Activate opencg so xkrt finds its headers, libs and cmake config.
     OPENCG_MOD="$MODULES_DIR/opencg/$OPENCG_HASH/$OPENCG_BUILD_TYPE"
-    # opencg depends on LLVM; declare the dependency when it was built with the
-    # custom LLVM (a system LLVM, like a system hwloc, ships no module to load).
+    # opencg builds against (and links) the custom LLVM/MLIR whenever one was
+    # built, so its module must load that llvm module at runtime — regardless of
+    # whether the custom LLVM was also used as the compiler.  (A system LLVM, like
+    # a system hwloc, ships no module to load.)
     declare -a _opencg_deps=()
-    [[ "$INSTALL_LLVM" == "true" && "$USE_LLVM_FOR_BUILD" == "true" ]] && \
+    [[ "$INSTALL_LLVM" == "true" ]] && \
         _opencg_deps+=("llvm/$LLVM_HASH/$LLVM_BUILD_TYPE")
     generate_modulefile "opencg" "$OPENCG_INSTALL_DIR" "OPENCG_HOME" "$OPENCG_MOD" \
         ${_opencg_deps[@]+"${_opencg_deps[@]}"}
