@@ -13,10 +13,11 @@
 # custom one, or a system clang >= 20).
 #
 # The custom libomptarget (the LLVM "offload" runtime) forwards OpenMP target
-# calls to XKRT, creating a build loop (libomptarget → xkrt → opencg → clang).
-# It is therefore built in two stages: LLVM is first built WITHOUT offload, then
-# (after opencg + xkrt are installed) the offload runtime is added in place:
-#   llvm (no offload) ─▶ opencg ─▶ xkrt ─▶ llvm offload/libomptarget
+# calls to XKRT and XKOMP, creating a build loop (libomptarget → xkrt + xkomp →
+# opencg → clang).  It is therefore built in two stages: LLVM is first built
+# WITHOUT offload, then (after xkrt + xkomp are installed) the offload runtime is
+# added in place:
+#   llvm (no offload) ─▶ opencg ─▶ xkrt ─▶ xkomp ─▶ llvm offload/libomptarget
 #
 # Requires: cmake >= 3.17, a C/C++ compiler, git, autoconf/automake (for hwloc)
 # ============================================================================
@@ -599,8 +600,8 @@ if prompt_yn "Install custom patched LLVM?" "no"; then
     if prompt_yn "  Build openmp  (OpenMP host runtime)?" "yes"; then
         _runtimes="${_runtimes}${_runtimes:+;}openmp"
     fi
-    _tty "  ${DIM}Note: the custom libomptarget forwards OpenMP target calls to XKRT,\n"
-    _tty "  so when enabled it is built last — after OpenCG and XKRT.${NC}\n"
+    _tty "  ${DIM}Note: the custom libomptarget depends on XKRT and XKOMP,\n"
+    _tty "  so when enabled it is built last — after XKRT and XKOMP.${NC}\n"
     if prompt_yn "  Build offload (OpenMP GPU offload runtime / libomptarget)?" "yes"; then
         _runtimes="${_runtimes}${_runtimes:+;}offload"
     fi
@@ -1006,29 +1007,6 @@ if [[ "$INSTALL_XKRT" == "true" ]]; then
     success "module file      → $XKRT_MOD"
 fi
 
-# ── LLVM offload runtime (custom libomptarget) ─────────────────────────────────
-# Deferred from the LLVM step above: the custom libomptarget forwards OpenMP
-# target calls to XKRT, so it can only be built now that XKRT exists.  We
-# reconfigure the existing LLVM build to add the offload runtime and install it
-# into the same prefix (only the offload runtime is compiled — the rest of LLVM
-# is already built).
-if [[ "$INSTALL_LLVM" == "true" && "$LLVM_BUILD_OFFLOAD" == "true" ]]; then
-    step "Building & installing custom libomptarget (LLVM offload runtime)"
-
-    if [[ "$INSTALL_XKRT" == "true" ]]; then
-        # XKRT was just installed and its prefix is already active; also expose it
-        # via the XKRT_HOME convention in case the offload build looks for that.
-        export XKRT_HOME="$XKRT_INSTALL_DIR"
-        info "libomptarget will be linked against XKRT at $XKRT_INSTALL_DIR"
-    else
-        warn "XKRT was not installed by this script, but the custom libomptarget"
-        warn "depends on it — ensure XKRT is discoverable (CMAKE_PREFIX_PATH/XKRT_HOME)."
-    fi
-
-    build_llvm "$LLVM_RUNTIMES" "2/2 — with libomptarget"
-    success "libomptarget (offload) installed → $LLVM_INSTALL_DIR"
-fi
-
 # ── xkblas ────────────────────────────────────────────────────────────────────
 if [[ "$INSTALL_XKBLAS" == "true" ]]; then
     step "Building & installing xkblas"
@@ -1091,6 +1069,49 @@ if [[ "$INSTALL_XKOMP" == "true" ]]; then
     MOD_LOAD+=("module load xkomp/$XKOMP_HASH/$XKOMP_BUILD_TYPE")
     success "xkomp installed  → $XKOMP_INSTALL_DIR"
     success "module file      → $XKOMP_MOD"
+fi
+
+# ── LLVM offload runtime (custom libomptarget) ─────────────────────────────────
+# Deferred from the LLVM step above: the custom libomptarget depends on XKRT and
+# XKOMP (it forwards OpenMP target calls to them), so it can only be built now
+# that both exist.  We reconfigure the existing LLVM build to add the offload
+# runtime and install it into the same prefix (only the offload runtime is
+# compiled — the rest of LLVM is already built).
+if [[ "$INSTALL_LLVM" == "true" && "$LLVM_BUILD_OFFLOAD" == "true" ]]; then
+    step "Building & installing custom libomptarget (LLVM offload runtime)"
+
+    # libomptarget does find_package(XKRT) and find_package(XKOMP), so both must
+    # be discoverable BEFORE we reconfigure LLVM.  Explicitly (re)load their
+    # modules and export the variables find_package consults: it looks at
+    # <pkg>_DIR and CMAKE_PREFIX_PATH (NOT <pkg>_HOME).  _activate_prefix puts
+    # each prefix on CMAKE_PREFIX_PATH, and the LLVM runtimes sub-build inherits
+    # these environment variables, which is what resolves the lookups.
+    if [[ "$INSTALL_XKRT" == "true" ]]; then
+        info "Loading the XKRT module so libomptarget (offload) can find it …"
+        _activate_prefix "$XKRT_INSTALL_DIR" "xkrt" "$XKRT_HASH/$XKRT_BUILD_TYPE"
+        export XKRT_HOME="$XKRT_INSTALL_DIR"
+        export XKRT_DIR="$XKRT_INSTALL_DIR"          # find_package(XKRT) hint
+        success "XKRT activated (CMAKE_PREFIX_PATH now includes $XKRT_INSTALL_DIR)"
+    else
+        warn "XKRT was not installed by this script, but the custom libomptarget"
+        warn "depends on it — load your XKRT module (or put its prefix on"
+        warn "CMAKE_PREFIX_PATH, or set XKRT_DIR) before this step."
+    fi
+
+    if [[ "$INSTALL_XKOMP" == "true" ]]; then
+        info "Loading the XKOMP module so libomptarget (offload) can find it …"
+        _activate_prefix "$XKOMP_INSTALL_DIR" "xkomp" "$XKOMP_HASH/$XKOMP_BUILD_TYPE"
+        export XKOMP_HOME="$XKOMP_INSTALL_DIR"
+        export XKOMP_DIR="$XKOMP_INSTALL_DIR"        # find_package(XKOMP) hint
+        success "XKOMP activated (CMAKE_PREFIX_PATH now includes $XKOMP_INSTALL_DIR)"
+    else
+        warn "XKOMP was not installed by this script, but the custom libomptarget"
+        warn "depends on it — load your XKOMP module (or put its prefix on"
+        warn "CMAKE_PREFIX_PATH, or set XKOMP_DIR) before this step."
+    fi
+
+    build_llvm "$LLVM_RUNTIMES" "2/2 — with libomptarget"
+    success "libomptarget (offload) installed → $LLVM_INSTALL_DIR"
 fi
 
 # ─────────────────────────────────────────────────────────────────────────────
