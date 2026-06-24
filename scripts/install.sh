@@ -12,6 +12,12 @@
 # with any compiler, but building those libraries requires an LLVM >= 20 (the
 # custom one, or a system clang >= 20).
 #
+# The custom libomptarget (the LLVM "offload" runtime) forwards OpenMP target
+# calls to XKRT, creating a build loop (libomptarget → xkrt → opencg → clang).
+# It is therefore built in two stages: LLVM is first built WITHOUT offload, then
+# (after opencg + xkrt are installed) the offload runtime is added in place:
+#   llvm (no offload) ─▶ opencg ─▶ xkrt ─▶ llvm offload/libomptarget
+#
 # Requires: cmake >= 3.17, a C/C++ compiler, git, autoconf/automake (for hwloc)
 # ============================================================================
 
@@ -305,6 +311,62 @@ _llvm_host_target() {
     esac
 }
 
+# _list_contains LIST TOKEN
+# Returns 0 if the ';'-separated LIST contains TOKEN, 1 otherwise.
+_list_contains() {
+    local IFS=';' x
+    for x in $1; do [[ "$x" == "$2" ]] && return 0; done
+    return 1
+}
+
+# _strip_token LIST TOKEN
+# Prints the ';'-separated LIST with every occurrence of TOKEN (and empty
+# fields) removed.
+_strip_token() {
+    local IFS=';' x result=""
+    for x in $1; do
+        [[ -z "$x" || "$x" == "$2" ]] && continue
+        result="${result:+$result;}$x"
+    done
+    printf '%s' "$result"
+}
+
+# build_llvm RUNTIMES LABEL
+# (Re)configure, build and install LLVM in $LLVM_BUILD_DIR with the given
+# LLVM_ENABLE_RUNTIMES value (RUNTIMES may be empty to enable no runtimes).
+# cmake is always re-run, so this can be invoked twice for the staged build:
+# first without the offload runtime, then again to add the custom libomptarget
+# once XKRT exists.  The top-level build always uses the bootstrap compiler so a
+# second invocation is not seen as a compiler change (which forces a full rebuild).
+# Globals: LLVM_BUILD_DIR LLVM_INSTALL_DIR LLVM_REPO_DIR LLVM_BUILD_TYPE
+#   LLVM_PROJECTS LLVM_CMAKE_RUNTIME_TARGETS LLVM_CMAKE_TARGETS
+#   LLVM_EXTRA_CMAKE_OPTS LLVM_BOOTSTRAP_CC LLVM_BOOTSTRAP_CXX
+build_llvm() {
+    local runtimes="$1" label="$2"
+    local rt_flag=""
+    [[ -n "$runtimes" ]] && rt_flag="-DLLVM_ENABLE_RUNTIMES=${runtimes}"
+
+    info "Configuring LLVM (${label}) …"
+    cd "$LLVM_BUILD_DIR"
+
+    # shellcheck disable=SC2086
+    # The top-level LLVM build always uses the bootstrap compiler.
+    CC="$LLVM_BOOTSTRAP_CC" CXX="$LLVM_BOOTSTRAP_CXX" \
+    cmake \
+        -DCMAKE_BUILD_TYPE="$LLVM_BUILD_TYPE" \
+        -DCMAKE_INSTALL_PREFIX="$LLVM_INSTALL_DIR" \
+        -DLLVM_ENABLE_PROJECTS="$LLVM_PROJECTS" \
+        ${rt_flag:+"$rt_flag"} \
+        -DLLVM_RUNTIME_TARGETS="$LLVM_CMAKE_RUNTIME_TARGETS" \
+        -DLLVM_TARGETS_TO_BUILD="$LLVM_CMAKE_TARGETS" \
+        -DCMAKE_CXX_FLAGS="-Wno-c2y-extensions" \
+        $LLVM_EXTRA_CMAKE_OPTS \
+        "$LLVM_REPO_DIR/llvm"
+
+    info "Building & installing LLVM (${label}) — this may take a while …"
+    make install -j "$(nproc)"
+}
+
 # ─── Error trap ───────────────────────────────────────────────────────────────
 trap 'fatal "error on line $LINENO – aborting."' ERR
 
@@ -537,7 +599,9 @@ if prompt_yn "Install custom patched LLVM?" "no"; then
     if prompt_yn "  Build openmp  (OpenMP host runtime)?" "yes"; then
         _runtimes="${_runtimes}${_runtimes:+;}openmp"
     fi
-    if prompt_yn "  Build offload (OpenMP GPU offload runtime)?" "yes"; then
+    _tty "  ${DIM}Note: the custom libomptarget forwards OpenMP target calls to XKRT,\n"
+    _tty "  so when enabled it is built last — after OpenCG and XKRT.${NC}\n"
+    if prompt_yn "  Build offload (OpenMP GPU offload runtime / libomptarget)?" "yes"; then
         _runtimes="${_runtimes}${_runtimes:+;}offload"
     fi
     LLVM_RUNTIMES="$_runtimes"
@@ -761,38 +825,23 @@ if [[ "$INSTALL_LLVM" == "true" ]]; then
 
     mkdir -p "$LLVM_BUILD_DIR"
 
-    # Only run cmake if there is no existing cache (supports incremental rebuilds).
-    if [[ ! -f "$LLVM_BUILD_DIR/CMakeCache.txt" ]]; then
-        info "Configuring LLVM …"
-        cd "$LLVM_BUILD_DIR"
-
-        # Build a semicolon-separated runtimes string only if non-empty.
-        _llvm_runtime_flag=""
-        if [[ -n "$LLVM_RUNTIMES" ]]; then
-            _llvm_runtime_flag="-DLLVM_ENABLE_RUNTIMES=${LLVM_RUNTIMES}"
-        fi
-        _llvm_rtgt_flag="-DLLVM_RUNTIME_TARGETS=${LLVM_CMAKE_RUNTIME_TARGETS}"
-
-        # shellcheck disable=SC2086
-        # LLVM is bootstrapped with the (any-version) bootstrap compiler.
-        CC="$LLVM_BOOTSTRAP_CC" CXX="$LLVM_BOOTSTRAP_CXX" \
-        cmake \
-            -DCMAKE_BUILD_TYPE="$LLVM_BUILD_TYPE" \
-            -DCMAKE_INSTALL_PREFIX="$LLVM_INSTALL_DIR" \
-            -DLLVM_ENABLE_PROJECTS="$LLVM_PROJECTS" \
-            ${_llvm_runtime_flag:+"$_llvm_runtime_flag"} \
-            "$_llvm_rtgt_flag" \
-            -DLLVM_TARGETS_TO_BUILD="$LLVM_CMAKE_TARGETS" \
-            -DCMAKE_CXX_FLAGS="-Wno-c2y-extensions" \
-            $LLVM_EXTRA_CMAKE_OPTS \
-            "$LLVM_REPO_DIR/llvm"
+    # The custom libomptarget (the "offload" runtime) forwards OpenMP target
+    # calls to XKRT, so it depends on XKRT → OpenCG → clang.  To break that loop
+    # we build LLVM now WITHOUT offload, and (re)build the offload runtime later,
+    # after OpenCG and XKRT are installed (see "custom libomptarget" below).
+    if _list_contains "$LLVM_RUNTIMES" offload; then
+        LLVM_BUILD_OFFLOAD=true
     else
-        info "Reusing existing cmake cache (incremental build)."
-        cd "$LLVM_BUILD_DIR"
+        LLVM_BUILD_OFFLOAD=false
     fi
+    LLVM_STAGE1_RUNTIMES="$(_strip_token "$LLVM_RUNTIMES" offload)"
 
-    info "Building LLVM (this may take a while) …"
-    make install -j "$(nproc)"
+    if [[ "$LLVM_BUILD_OFFLOAD" == "true" ]]; then
+        info "offload/libomptarget requested → deferred until after XKRT (dependency loop)."
+        build_llvm "$LLVM_STAGE1_RUNTIMES" "1/2 — without libomptarget"
+    else
+        build_llvm "$LLVM_STAGE1_RUNTIMES" "single stage"
+    fi
 
     # If the user opted to build the libraries with the custom LLVM, switch the
     # build compiler to it now and activate its prefix so opencg (which depends
@@ -840,7 +889,12 @@ setenv LLVM_HOME "\$prefix"
 MODEOF
 
     MOD_LOAD+=("module load llvm/$LLVM_HASH/$LLVM_BUILD_TYPE")
-    success "LLVM  installed → $LLVM_INSTALL_DIR"
+    if [[ "$LLVM_BUILD_OFFLOAD" == "true" ]]; then
+        success "LLVM (without libomptarget) installed → $LLVM_INSTALL_DIR"
+        info    "libomptarget (offload) will be built after XKRT."
+    else
+        success "LLVM  installed → $LLVM_INSTALL_DIR"
+    fi
     success "module file     → $LLVM_MOD"
 fi
 
@@ -950,6 +1004,29 @@ if [[ "$INSTALL_XKRT" == "true" ]]; then
     MOD_LOAD+=("module load xkrt/$XKRT_HASH/$XKRT_BUILD_TYPE")
     success "xkrt  installed  → $XKRT_INSTALL_DIR"
     success "module file      → $XKRT_MOD"
+fi
+
+# ── LLVM offload runtime (custom libomptarget) ─────────────────────────────────
+# Deferred from the LLVM step above: the custom libomptarget forwards OpenMP
+# target calls to XKRT, so it can only be built now that XKRT exists.  We
+# reconfigure the existing LLVM build to add the offload runtime and install it
+# into the same prefix (only the offload runtime is compiled — the rest of LLVM
+# is already built).
+if [[ "$INSTALL_LLVM" == "true" && "$LLVM_BUILD_OFFLOAD" == "true" ]]; then
+    step "Building & installing custom libomptarget (LLVM offload runtime)"
+
+    if [[ "$INSTALL_XKRT" == "true" ]]; then
+        # XKRT was just installed and its prefix is already active; also expose it
+        # via the XKRT_HOME convention in case the offload build looks for that.
+        export XKRT_HOME="$XKRT_INSTALL_DIR"
+        info "libomptarget will be linked against XKRT at $XKRT_INSTALL_DIR"
+    else
+        warn "XKRT was not installed by this script, but the custom libomptarget"
+        warn "depends on it — ensure XKRT is discoverable (CMAKE_PREFIX_PATH/XKRT_HOME)."
+    fi
+
+    build_llvm "$LLVM_RUNTIMES" "2/2 — with libomptarget"
+    success "libomptarget (offload) installed → $LLVM_INSTALL_DIR"
 fi
 
 # ── xkblas ────────────────────────────────────────────────────────────────────
