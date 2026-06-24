@@ -67,6 +67,44 @@ prompt_value() {
     printf '%s' "${ans:-$2}"
 }
 
+# run_spinner MESSAGE [--] COMMAND [ARGS...]
+# Runs COMMAND in the background while animating a spinner + elapsed seconds on
+# /dev/tty, so long, quiet operations (e.g. a huge 'git checkout' updating the
+# working tree) don't look frozen.  COMMAND's output is captured and shown only
+# if it fails (then the script aborts via fatal).  On success the line is
+# replaced by a green check.  Use ONLY for non-interactive commands — output is
+# captured, so anything that might prompt (clone/fetch/pull on a private repo)
+# must NOT be wrapped or it would hang invisibly.
+run_spinner() {
+    local msg="$1"; shift
+    [[ "${1:-}" == "--" ]] && shift
+
+    local logf; logf="$(mktemp "${TMPDIR:-/tmp}/xkrt_spin.XXXXXX")"
+    # Reset the ERR trap in the subshell so a failure is reported by us (via the
+    # captured log below) rather than printing a FATAL from the background.
+    ( trap - ERR; "$@" ) >"$logf" 2>&1 &
+    local pid=$! rc=0
+    local frames='|/-\' i=0 start=$SECONDS
+
+    while kill -0 "$pid" 2>/dev/null; do
+        _tty "\r  ${BLUE}%s${NC} %s ${DIM}(%ds)${NC}\033[K" \
+             "${frames:i++%4:1}" "$msg" "$((SECONDS - start))"
+        sleep 0.2
+    done
+    wait "$pid" || rc=$?
+
+    if (( rc == 0 )); then
+        _tty "\r  ${GREEN}✓${NC} %s ${DIM}(%ds)${NC}\033[K\n" "$msg" "$((SECONDS - start))"
+        rm -f "$logf"
+    else
+        _tty "\r  ${RED}✗${NC} %s ${DIM}(failed after %ds)${NC}\033[K\n" "$msg" "$((SECONDS - start))"
+        _tty "  ${DIM}----- command output -----${NC}\n"
+        cat "$logf" >/dev/tty 2>/dev/null || true
+        rm -f "$logf"
+        fatal "command failed: $*"
+    fi
+}
+
 # ─── CMake option parsing ─────────────────────────────────────────────────────
 
 # parse_cmake_opts FILE
@@ -230,9 +268,11 @@ clone_or_update() {
         git -C "$dest" fetch --all --tags --progress
     fi
 
-    info "Checking out $ref"
-    # --progress shows the "Updating files" meter for big working trees.
-    git -C "$dest" checkout --progress "$ref"
+    # 'git checkout' can spend many seconds updating the working tree/index of a
+    # huge repo (LLVM) with no output of its own, so show a spinner.  It is a
+    # purely local operation, so capturing its output (in run_spinner) is safe.
+    run_spinner "Checking out $ref" \
+        git -C "$dest" checkout "$ref"
 
     # Pull only if this ref is a remote branch (tags are immutable)
     if git -C "$dest" ls-remote --exit-code --heads origin "$ref" >/dev/null 2>&1; then
@@ -820,8 +860,10 @@ if [[ "$INSTALL_LLVM" == "true" ]]; then
     # to make it obvious the fetch/checkout are working and not hung.
     info "Updating LLVM sources for branch '$LLVM_BRANCH' (large repo — this can take a while) …"
     git -C "$LLVM_REPO_DIR" fetch --all --tags --progress
-    info "Checking out '$LLVM_BRANCH' (updating the working tree) …"
-    git -C "$LLVM_REPO_DIR" checkout --progress "$LLVM_BRANCH"
+    # Checking out a branch in the LLVM tree rewrites a huge working tree and can
+    # sit silently for many seconds — show a spinner so it does not look hung.
+    run_spinner "Checking out '$LLVM_BRANCH' (updating the working tree)" \
+        git -C "$LLVM_REPO_DIR" checkout "$LLVM_BRANCH"
     if git -C "$LLVM_REPO_DIR" ls-remote --exit-code --heads origin "$LLVM_BRANCH" >/dev/null 2>&1; then
         git -C "$LLVM_REPO_DIR" pull --progress
     fi
