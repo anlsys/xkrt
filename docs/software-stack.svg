@@ -23,15 +23,15 @@
      inkscape:pagecheckerboard="0"
      inkscape:document-units="mm"
      showgrid="false"
-     inkscape:zoom="0.77771464"
-     inkscape:cx="4108.8335"
-     inkscape:cy="788.20684"
-     inkscape:window-width="1920"
-     inkscape:window-height="1043"
+     inkscape:zoom="0.19442866"
+     inkscape:cx="1977.5891"
+     inkscape:cy="-383.17396"
+     inkscape:window-width="1850"
+     inkscape:window-height="1016"
      inkscape:window-x="0"
      inkscape:window-y="0"
      inkscape:window-maximized="1"
-     inkscape:current-layer="g20948" />
+     inkscape:current-layer="g1784" />
   <defs
      id="defs3258" />
   <g
@@ -228,7 +228,7 @@
           <rect
              style="font-variation-settings:normal;fill:#b5c3de;fill-opacity:1;stroke:#00001c;stroke-width:1.83189;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;paint-order:fill markers stroke;stop-color:#000000"
              id="rect7513-2"
-             width="854.1983"
+             width="682.33551"
              height="75.029106"
              x="-92.980431"
              y="-14.885384"
@@ -236,10 +236,10 @@
           <rect
              style="font-variation-settings:normal;fill:#b5c3de;fill-opacity:1;stroke:#00001c;stroke-width:1.83153;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;paint-order:fill markers stroke;stop-color:#000000"
              id="rect7513-2-0"
-             width="434.21313"
-             height="74.939285"
-             x="752.05249"
-             y="-14.795389"
+             width="596.91052"
+             height="75.029297"
+             x="589.3551"
+             y="-14.885384"
              transform="translate(-2.5006102)" />
           <g
              id="g95913"
@@ -250,33 +250,29 @@
               <g
                  id="g30305"
                  transform="translate(-68.051049,4.3340282)">
-                <text
-                   xml:space="preserve"
-                   style="font-style:normal;font-weight:normal;font-size:10.5833px;line-height:1.25;font-family:sans-serif;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.264583"
-                   x="124.7401"
-                   y="163.71989"
-                   id="text40571"><tspan
-                     sodipodi:role="line"
-                     style="font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;font-family:sans-serif;-inkscape-font-specification:'sans-serif Bold';text-align:center;text-anchor:middle;stroke-width:0.264583"
-                     x="124.7401"
-                     y="163.71989"
-                     id="tspan40569">Hardware Vendors APIs </tspan><tspan
-                     sodipodi:role="line"
-                     style="text-align:center;text-anchor:middle;stroke-width:0.264583"
-                     x="124.7401"
-                     y="176.94902"
-                     id="tspan73763" /></text>
-                <text
-                   xml:space="preserve"
-                   style="font-style:normal;font-weight:normal;font-size:10.5833px;line-height:1.25;font-family:sans-serif;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.264583"
-                   x="-74.539093"
-                   y="178.53918"
-                   id="text77013"><tspan
-                     sodipodi:role="line"
-                     id="tspan77011"
-                     style="stroke-width:0.264583"
-                     x="-74.539093"
-                     y="178.53918">CUDA, HIP, Level Zero, OpenCL compatible-devices (e.g., CPU, GPU, FPGA)</tspan></text>
+                <g
+                   id="g14627"
+                   transform="translate(30.490669,-6.6420411)">
+                  <g
+                     id="g14635">
+                    <text
+                       xml:space="preserve"
+                       style="font-style:normal;font-weight:normal;font-size:10.5833px;line-height:1.25;font-family:sans-serif;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.264583"
+                       x="38.055744"
+                       y="177.24658"
+                       id="text77013"><tspan
+                         sodipodi:role="line"
+                         id="tspan77011"
+                         style="text-align:center;text-anchor:middle;stroke-width:0.264583"
+                         x="38.055744"
+                         y="177.24658">CUDA, HIP, Level Zero, OpenCL</tspan><tspan
+                         sodipodi:role="line"
+                         style="text-align:center;text-anchor:middle;stroke-width:0.264583"
+                         x="38.055748"
+                         y="190.47571"
+                         id="tspan5533">compatible-devices (e.g., CPU, GPU, FPGA)</tspan></text>
+                  </g>
+                </g>
               </g>
               <g
                  id="g14546">
@@ -286,38 +282,58 @@
                   <g
                      id="g30321"
                      transform="translate(-18.88054)">
-                    <text
-                       xml:space="preserve"
-                       style="font-style:normal;font-weight:normal;font-size:10.5833px;line-height:1.25;font-family:sans-serif;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.264583"
-                       x="459.336"
-                       y="165.98195"
-                       id="text4752"><tspan
-                         sodipodi:role="line"
-                         style="font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;font-family:sans-serif;-inkscape-font-specification:'sans-serif Bold';text-align:center;text-anchor:middle;stroke-width:0.264583"
+                    <g
+                       id="g14619"
+                       transform="translate(-49.678935,-1.1585013)">
+                      <text
+                         xml:space="preserve"
+                         style="font-style:normal;font-weight:normal;font-size:10.5833px;line-height:1.25;font-family:sans-serif;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.264583"
                          x="459.336"
                          y="165.98195"
-                         id="tspan4748">OpenCG Library</tspan><tspan
-                         sodipodi:role="line"
-                         style="text-align:center;text-anchor:middle;stroke-width:0.264583"
-                         x="459.336"
-                         y="179.21107"
-                         id="tspan4750" /></text>
-                    <text
-                       xml:space="preserve"
-                       style="font-style:normal;font-weight:normal;font-size:10.5833px;line-height:1.25;font-family:sans-serif;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.264583"
-                       x="459.47034"
-                       y="178.53918"
-                       id="text4756"><tspan
-                         sodipodi:role="line"
-                         id="tspan4754"
-                         style="text-align:center;text-anchor:middle;stroke-width:0.264583"
-                         x="459.47034"
-                         y="178.53918">An IR for optimizing graph of</tspan><tspan
-                         sodipodi:role="line"
-                         style="text-align:center;text-anchor:middle;stroke-width:0.264583"
-                         x="459.47034"
-                         y="191.76831"
-                         id="tspan9304">commands on multi-devices systems</tspan></text>
+                         id="text4752"><tspan
+                           sodipodi:role="line"
+                           style="font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;font-family:sans-serif;-inkscape-font-specification:'sans-serif Bold';text-align:center;text-anchor:middle;stroke-width:0.264583"
+                           x="459.336"
+                           y="165.98195"
+                           id="tspan4748">OpenCG Library</tspan><tspan
+                           sodipodi:role="line"
+                           style="text-align:center;text-anchor:middle;stroke-width:0.264583"
+                           x="459.336"
+                           y="179.21107"
+                           id="tspan4750" /></text>
+                      <text
+                         xml:space="preserve"
+                         style="font-style:normal;font-weight:normal;font-size:10.5833px;line-height:1.25;font-family:sans-serif;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.264583"
+                         x="459.59439"
+                         y="178.53918"
+                         id="text4756"><tspan
+                           sodipodi:role="line"
+                           style="text-align:center;text-anchor:middle;stroke-width:0.264583"
+                           x="459.59439"
+                           y="178.53918"
+                           id="tspan9304">An IR for optimizing graph of commands on</tspan><tspan
+                           sodipodi:role="line"
+                           style="text-align:center;text-anchor:middle;stroke-width:0.264583"
+                           x="459.59439"
+                           y="191.76831"
+                           id="tspan2181">multi-devices systems. Custom POD IR and MLIR JIT with LLVM.</tspan></text>
+                      <text
+                         xml:space="preserve"
+                         style="font-style:normal;font-weight:normal;font-size:10.5833px;line-height:1.25;font-family:sans-serif;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.264583"
+                         x="69.479378"
+                         y="165.98195"
+                         id="text14641"><tspan
+                           sodipodi:role="line"
+                           style="font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;font-family:sans-serif;-inkscape-font-specification:'sans-serif Bold';text-align:center;text-anchor:middle;stroke-width:0.264583"
+                           x="69.479378"
+                           y="165.98195"
+                           id="tspan14637">Hardware Vendors APIs </tspan><tspan
+                           sodipodi:role="line"
+                           style="text-align:center;text-anchor:middle;stroke-width:0.264583"
+                           x="69.479378"
+                           y="179.21107"
+                           id="tspan14639" /></text>
+                    </g>
                   </g>
                 </g>
               </g>
