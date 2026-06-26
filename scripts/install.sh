@@ -1203,8 +1203,32 @@ if [[ "$INSTALL_LLVM" == "true" && "$LLVM_BUILD_OFFLOAD" == "true" ]]; then
         warn "CMAKE_PREFIX_PATH, or set XKOMP_DIR) before this step."
     fi
 
+    # Force the LLVM runtimes to fully reconfigure & rebuild.  Stage 1 configured
+    # the runtimes WITHOUT offload; just re-running cmake with offload added does
+    # NOT reconfigure the already-stamped runtimes sub-build (see the cached
+    # runtimes-stamps/ under $LLVM_BUILD_DIR/runtimes), so the host libomptarget.so
+    # gets silently skipped while the device *.bc still build.  Removing the
+    # runtimes sub-build forces a clean openmp+offload build for every
+    # LLVM_RUNTIME_TARGETS entry, while keeping the already-built clang/llvm/mlir
+    # (far cheaper than wiping the whole LLVM build).
+    rm -rf "$LLVM_BUILD_DIR/runtimes"
     build_llvm "$LLVM_RUNTIMES" "2/2 — with libomptarget"
-    success "libomptarget (offload) installed → $LLVM_INSTALL_DIR"
+
+    # Sanity-check that the host offload runtime (libomptarget.so) was produced;
+    # without it, OpenMP target links fail with "unable to find library -lomptarget".
+    _llvm_omptarget=""
+    for _d in "$LLVM_INSTALL_DIR/lib" "$LLVM_INSTALL_DIR/lib64"; do
+        for _f in "$_d"/libomptarget.so*; do
+            [[ -e "$_f" ]] && { _llvm_omptarget="$_f"; break 2; }
+        done
+    done
+    if [[ -n "$_llvm_omptarget" ]]; then
+        success "libomptarget (offload) installed → $_llvm_omptarget"
+    else
+        warn "offload build finished but no host libomptarget.so was found under"
+        warn "$LLVM_INSTALL_DIR/lib{,64} — OpenMP target links (-lomptarget) will fail."
+        warn "Check the LLVM offload build output above."
+    fi
 fi
 
 # ─────────────────────────────────────────────────────────────────────────────
