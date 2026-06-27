@@ -258,7 +258,9 @@ static void run(void)
     NoopLPTree<K> tree;
     launch_tests(tree);
 
-    # if 1
+    // PDF export disabled for automated testing: export_pdf() shells out to
+    // `dot` and `pdflatex` and writes files. Re-enable for manual debugging.
+    # if 0
     std::cout << "Exporting pdf..." << std::endl;
     char buffer[128];
     snprintf(buffer, sizeof(buffer), "random-k-%d", K);

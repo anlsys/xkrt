@@ -39,6 +39,8 @@
 # include <xkrt/logger/logger.h>
 # include <xkrt/logger/metric.h>
 
+# include <common/skip.h>
+
 XKRT_NAMESPACE_USE;
 
 int
@@ -48,33 +50,28 @@ main(void)
 
     assert(runtime.init() == 0);
 
-    const size_t size = 10000;
-    void * ptr = calloc(1, size);
-    assert(ptr);
+    // requires GPUs: distribute_async() targets the (non-host) devices
+    XKRT_TEST_SKIP_IF_NO_GPU(runtime);
 
+    const size_t size = 1;
+    const unsigned int nchunks = 1;
+    const size_t h = 0;
+
+    void * ptr = calloc(1, 2*size);
+    assert(ptr);
     uintptr_t p = (uintptr_t) ptr;
 
-    // r[xxxxxxxxxxxxxxxxxx....................]
-    runtime.memory_register_async((void *)p, size / 2);
+    team_t * team = runtime.team_get_any(1 << XKRT_DRIVER_TYPE_HOST);
+    assert(team);
+
+    runtime.memory_register(ptr, size);
+
+    runtime.distribute_async(XKRT_DISTRIBUTION_TYPE_CYCLIC1D, ptr, 2*size, 2*size, h);
+    // runtime.distribute_async(XKRT_DISTRIBUTION_TYPE_CYCLIC1D, (void *) (p+0)   , size, size, h);
+    // runtime.distribute_async(XKRT_DISTRIBUTION_TYPE_CYCLIC1D, (void *) (p+size), size, size, h);
     runtime.task_wait();
 
-    // +
-    // r[.........xxxxxxxxxxxxxxxxxxx..........]
-    // =
-    // r[xxxxxxxxxxxxxxxxxxxxxxxxxxxx..........]
-    runtime.memory_register_async((void *) (p + size/4), size / 2);
-    runtime.task_wait();
-
-    // +
-    // r[..................xxxxxxxxxxxxxxxxxxxx]
-    // =
-    // r[xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx]
-    runtime.memory_register_async((void *) (p + size/2), size / 2);
-    runtime.task_wait();
-
-    // distribute the segment to all gpus
-    runtime.distribute_async(XKRT_DISTRIBUTION_TYPE_CYCLIC1D, ptr, size, size/64, 0);
-    runtime.task_wait();
+    runtime.memory_unregister(ptr, size);
 
     assert(runtime.deinit() == 0);
 

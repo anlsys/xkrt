@@ -35,38 +35,64 @@
 ** knowledge of the CeCILL-C license and that you accept its terms.
 **/
 
+/**
+ *  team_critical_begin / team_critical_end: mutual exclusion across team
+ *  threads. Every thread performs ITERS unprotected read-modify-writes of a
+ *  shared NON-atomic counter inside the critical section. A broken critical
+ *  section would lose updates and the final count would be < expected.
+ */
+
+# ifndef _GNU_SOURCE
+#  define _GNU_SOURCE
+# endif
+# include <sched.h>
+
 # include <xkrt/runtime.h>
 # include <xkrt/logger/logger.h>
-# include <xkrt/logger/metric.h>
+
+# include <assert.h>
 
 XKRT_NAMESPACE_USE;
+
+static const int ITERS = 200;
+
+/* deliberately NON-atomic: correctness relies on the critical section */
+static long counter = 0;
+
+static void *
+main_team(runtime_t * runtime, team_t * team, thread_t * thread)
+{
+    (void) thread;
+    for (int i = 0 ; i < ITERS ; ++i)
+    {
+        runtime->team_critical_begin(team);
+        long v = counter;
+        sched_yield();          // widen the race window
+        counter = v + 1;
+        runtime->team_critical_end(team);
+    }
+    return NULL;
+}
 
 int
 main(void)
 {
     runtime_t runtime;
-
     assert(runtime.init() == 0);
 
-    const size_t size = 1;
-    const unsigned int nchunks = 1;
-    const size_t h = 0;
+    team_t team;
+    team.desc.nthreads = 0;     // all cpus
+    team.desc.routine = (team_routine_t) main_team;
+    team.desc.master_is_member = true;
 
-    void * ptr = calloc(1, 2*size);
-    assert(ptr);
-    uintptr_t p = (uintptr_t) ptr;
+    counter = 0;
+    runtime.team_create(&team);
+    runtime.team_join(&team);
 
-    team_t * team = runtime.team_get_any(1 << XKRT_DRIVER_TYPE_HOST);
-    assert(team);
-
-    runtime.memory_register(ptr, size);
-
-    runtime.distribute_async(XKRT_DISTRIBUTION_TYPE_CYCLIC1D, ptr, 2*size, 2*size, h);
-    // runtime.distribute_async(XKRT_DISTRIBUTION_TYPE_CYCLIC1D, (void *) (p+0)   , size, size, h);
-    // runtime.distribute_async(XKRT_DISTRIBUTION_TYPE_CYCLIC1D, (void *) (p+size), size, size, h);
-    runtime.task_wait();
-
-    runtime.memory_unregister(ptr, size);
+    const long expected = (long) team.priv.nthreads * ITERS;
+    LOGGER_INFO("counter = %ld, expected = %ld (%d threads x %d iters)",
+            counter, expected, team.priv.nthreads, ITERS);
+    assert(counter == expected);
 
     assert(runtime.deinit() == 0);
 

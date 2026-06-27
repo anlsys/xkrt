@@ -41,6 +41,8 @@
 # include <xkrt/logger/logger.h>
 # include <xkrt/logger/metric.h>
 
+# include <common/skip.h>
+
 # if NDEBUG
 #  define assert(X) X
 # endif
@@ -53,6 +55,9 @@ main(void)
     runtime_t runtime;
 
     assert(runtime.init() == 0);
+
+    // requires GPUs: tasks are scheduled on (non-host) devices
+    XKRT_TEST_SKIP_IF_NO_GPU(runtime);
 
     constexpr size_t size = 1024;
     uintptr_t X = (uintptr_t) malloc(size);

@@ -35,33 +35,24 @@
 ** knowledge of the CeCILL-C license and that you accept its terms.
 **/
 
-# include <xkrt/memory/access/blas/dependency-tree.hpp>
+/**
+ *  Exercises runtime_t::memory_copy_async with a host<->device round-trip:
+ *      host(src) --H2D--> device --D2H--> host(dst)
+ *  and verifies that dst == src.
+ *
+ *  This requires a real (non-host) device and is skipped gracefully otherwise.
+ */
+
 # include <xkrt/runtime.h>
-# include <xkrt/task/format.h>
-# include <xkrt/task/task.hpp>
+# include <xkrt/logger/logger.h>
+
+# include <common/skip.h>
 
 # include <assert.h>
+# include <stdlib.h>
 # include <string.h>
 
 XKRT_NAMESPACE_USE;
-
-static int r = 0;
-
-static void
-func(task_t * task)
-{
-    r = 1;
-}
-
-static int *
-setup(int m, int n, int ld)
-{
-    int * mem = (int *) malloc(ld * ld * sizeof(int));
-    for (int i = 0 ; i < m ; ++i)
-        for (int j = 0 ; j < m ; ++j)
-            mem[i*ld+j] = 42;
-    return mem;
-}
 
 int
 main(void)
@@ -69,57 +60,56 @@ main(void)
     runtime_t runtime;
     assert(runtime.init() == 0);
 
-    // create an empty task format
-    task_format_id_t fmtid;
-    {
-        task_format_t format;
-        memset(&format, 0, sizeof(task_format_t));
-        format.f[XKRT_TASK_FORMAT_TARGET_HOST] = (task_format_func_t) func;
-        fmtid = runtime.task_format_create(&format);
-    }
-    assert(fmtid);
+    // memory_copy_async submits copies to a (non-host) device's queues
+    XKRT_TEST_SKIP_IF_NO_GPU(runtime);
 
-    thread_t * thread = thread_t::get_tls();
-    assert(thread);
+    const device_unique_id_t gpu     = 1;       // first non-host device
+    const size_t             size    = 1 << 20; // 1 MiB
+    const int                nchunks = 8;
 
-    // setup memory
-    const int  m = 1024;
-    const int  n = 1024;
-    const int ld = 4096;
-    int * mem = setup(m, n, ld);
+    // host buffers (registered for DMA)
+    unsigned char * src = (unsigned char *) malloc(size);
+    unsigned char * dst = (unsigned char *) malloc(size);
+    assert(src && dst);
+    for (size_t i = 0 ; i < size ; ++i)
+        src[i] = (unsigned char) ((i * 31 + 7) % 256);
+    memset(dst, 0, size);
 
-    // Create a task
-    constexpr task_flag_bitfield_t flags = TASK_FLAG_DEVICE | TASK_FLAG_ACCESSES;
-    constexpr void * args = NULL;
-    constexpr size_t args_size = 0;
-    constexpr task_access_counter_t AC = 1;
-    static_assert(AC <= XKRT_TASK_MAX_ACCESSES);
+    assert(runtime.memory_register(src, size) == 0);
+    assert(runtime.memory_register(dst, size) == 0);
 
-    task_t * task = runtime.task_new(fmtid, flags, args, args_size, AC);
+    // device scratch buffer
+    area_chunk_t * chunk = runtime.memory_device_allocate(gpu, size);
+    assert(chunk != NULL);
+    assert(chunk->size >= size);
 
-    task_dev_info_t * dev = TASK_DEV_INFO(task);
-    new (dev) task_dev_info_t(XKRT_UNSPECIFIED_DEVICE_UNIQUE_ID, XKRT_UNSPECIFIED_TASK_ACCESS);
-
-    task_acs_info_t * acs = TASK_ACS_INFO(task);
-    new (acs) task_acs_info_t(AC);
-
-    // set accesses
-    access_t * accesses = TASK_ACCESSES(task);
-    new (accesses + 0) access_t(task, MATRIX_COLMAJOR, mem, ld, 0, 0, m, n, sizeof(int), ACCESS_MODE_RW);
-
-    runtime.task_accesses_resolve(accesses, AC);
-
-    # undef AC
-
-    // submit it to the runtime
-    runtime.task_commit(task);
-
-    // wait
+    // H2D: host src -> device
+    runtime.memory_copy_async(
+        gpu, size,
+        /* dst */ gpu,                        chunk->ptr,
+        /* src */ XKRT_HOST_DEVICE_UNIQUE_ID, (uintptr_t) src,
+        nchunks);
     runtime.task_wait();
 
-    // deinit has an implicit taskwait
+    // D2H: device -> host dst
+    runtime.memory_copy_async(
+        gpu, size,
+        /* dst */ XKRT_HOST_DEVICE_UNIQUE_ID, (uintptr_t) dst,
+        /* src */ gpu,                        chunk->ptr,
+        nchunks);
+    runtime.task_wait();
+
+    // verify the round-trip
+    for (size_t i = 0 ; i < size ; ++i)
+        assert(dst[i] == src[i]);
+
+    runtime.memory_device_deallocate(gpu, chunk);
+    runtime.memory_unregister(src, size);
+    runtime.memory_unregister(dst, size);
+    free(src);
+    free(dst);
+
     assert(runtime.deinit() == 0);
-    assert(r == 1);
 
     return 0;
 }
