@@ -381,7 +381,7 @@ XKRT_DRIVER_ENTRYPOINT(memory_device_allocate)(
     # else
     hip_set_context(device_driver_id);
     hipDeviceptr_t device_ptr = (hipDeviceptr_t) NULL;
-    hipMalloc(&device_ptr, size);
+    HIP_SAFE_CALL(hipMalloc(&device_ptr, size));
     return (void *) device_ptr;
     # endif
 }
@@ -578,23 +578,40 @@ XKRT_DRIVER_ENTRYPOINT(command_queue_suggest)(
 }
 
 static int
-XKRT_DRIVER_ENTRYPOINT(command_queue_launch)(
+XKRT_DRIVER_ENTRYPOINT(command_launch_with_stream)(
     device_driver_id_t device_driver_id,
-    command_queue_t * iqueue,
-    command_t * cmd,
-    xkrt_command_queue_list_counter_t idx
+    hipStream_t stream,
+    command_t * command
 ) {
-    queue_hip_t * queue = (queue_hip_t *) iqueue;
-    assert(queue);
-
-    hipEvent_t event = queue->hip.events.buffer[idx];
-    hipStream_t handle = queue->hip.handle.high;
-
-    switch (cmd->type)
+    switch (command->type)
     {
         case (cgir::COMMAND_TYPE_PROG):
         {
-            LOGGER_FATAL("IMPL ME");
+            constexpr size_t sharedmemory = 0;
+            void * conf[] = {
+                HIP_LAUNCH_PARAM_BUFFER_POINTER,
+                command->prog.launcher.variadic.args,
+                HIP_LAUNCH_PARAM_BUFFER_SIZE,
+                (void *) &command->prog.launcher.variadic.args_size,
+                HIP_LAUNCH_PARAM_END
+            };
+
+            HIP_SAFE_CALL(
+                hipModuleLaunchKernel(
+                    (hipFunction_t) command->prog.launcher.variadic.fn,
+                    command->prog.grid.x,
+                    command->prog.grid.y,
+                    command->prog.grid.z,
+                    command->prog.block.x,
+                    command->prog.block.y,
+                    command->prog.block.z,
+                    sharedmemory,
+                    stream,
+                    nullptr,
+                    conf
+                )
+            );
+
             break ;
         }
 
@@ -602,29 +619,29 @@ XKRT_DRIVER_ENTRYPOINT(command_queue_launch)(
         case (cgir::COMMAND_TYPE_COPY_D2H_1D):
         case (cgir::COMMAND_TYPE_COPY_D2D_1D):
         {
-            const size_t count  = cmd->copy_1D.size;
+            const size_t count  = command->copy_1D.size;
             assert(count > 0);
 
-            void * src = (void *) cmd->copy_1D.src_device_addr;
-            void * dst = (void *) cmd->copy_1D.dst_device_addr;
+            void * src = (void *) command->copy_1D.src_device_addr;
+            void * dst = (void *) command->copy_1D.dst_device_addr;
 
-            switch (cmd->type)
+            switch (command->type)
             {
                 case (cgir::COMMAND_TYPE_COPY_H2D_1D):
                 {
-                    HIP_SAFE_CALL(hipMemcpyHtoDAsync((hipDeviceptr_t) dst, src, count, handle));
+                    HIP_SAFE_CALL(hipMemcpyHtoDAsync((hipDeviceptr_t) dst, src, count, stream));
                     break ;
                 }
 
                 case (cgir::COMMAND_TYPE_COPY_D2H_1D):
                 {
-                    HIP_SAFE_CALL(hipMemcpyDtoHAsync(dst, (hipDeviceptr_t) src, count, handle));
+                    HIP_SAFE_CALL(hipMemcpyDtoHAsync(dst, (hipDeviceptr_t) src, count, stream));
                     break ;
                 }
 
                 case (cgir::COMMAND_TYPE_COPY_D2D_1D):
                 {
-                    HIP_SAFE_CALL(hipMemcpyDtoDAsync((hipDeviceptr_t) dst, (hipDeviceptr_t) src, count, handle));
+                    HIP_SAFE_CALL(hipMemcpyDtoDAsync((hipDeviceptr_t) dst, (hipDeviceptr_t) src, count, stream));
                     break ;
                 }
 
@@ -635,7 +652,6 @@ XKRT_DRIVER_ENTRYPOINT(command_queue_launch)(
                 }
 
             }
-            HIP_SAFE_CALL(hipEventRecord(event, handle));
             return EINPROGRESS;
         }
 
@@ -647,10 +663,10 @@ XKRT_DRIVER_ENTRYPOINT(command_queue_launch)(
             hipMemoryType src_type, dst_type;
             void * src_host, * dst_host;
 
-            void * src = (void *) cmd->copy_2D.src_addr;
-            void * dst = (void *) cmd->copy_2D.dst_addr;
+            void * src = (void *) command->copy_2D.src_addr;
+            void * dst = (void *) command->copy_2D.dst_addr;
 
-            switch (cmd->type)
+            switch (command->type)
             {
                 case (cgir::COMMAND_TYPE_COPY_H2D_2D):
                 {
@@ -701,11 +717,11 @@ XKRT_DRIVER_ENTRYPOINT(command_queue_launch)(
                 }
             }
 
-            const size_t dpitch = cmd->copy_2D.dst_ld * cmd->copy_2D.sizeof_type;
-            const size_t spitch = cmd->copy_2D.src_ld * cmd->copy_2D.sizeof_type;
+            const size_t dpitch = command->copy_2D.dst_ld * command->copy_2D.sizeof_type;
+            const size_t spitch = command->copy_2D.src_ld * command->copy_2D.sizeof_type;
 
-            const size_t width  = cmd->copy_2D.m * cmd->copy_2D.sizeof_type;
-            const size_t height = cmd->copy_2D.n;
+            const size_t width  = command->copy_2D.m * command->copy_2D.sizeof_type;
+            const size_t height = command->copy_2D.n;
             assert(width > 0);
             assert(height > 0);
 
@@ -727,8 +743,7 @@ XKRT_DRIVER_ENTRYPOINT(command_queue_launch)(
                 .WidthInBytes   = width,
                 .Height         = height
             };
-            HIP_SAFE_CALL(hipMemcpyParam2DAsync(&cpy, handle));
-            HIP_SAFE_CALL(hipEventRecord(event, handle));
+            HIP_SAFE_CALL(hipMemcpyParam2DAsync(&cpy, stream));
             return EINPROGRESS;
         }
 
@@ -736,8 +751,40 @@ XKRT_DRIVER_ENTRYPOINT(command_queue_launch)(
             return EINVAL;
     }
 
-    /* unreachable code */
-    LOGGER_FATAL("Unreachable code");
+    LOGGER_FATAL("Unreachable");
+}
+
+int
+XKRT_DRIVER_ENTRYPOINT(command_execute)(
+    device_driver_id_t device_driver_id,
+    command_t * command
+) {
+    hip_set_context(device_driver_id);
+    hipStream_t stream = (hipStream_t) NULL;
+    XKRT_DRIVER_ENTRYPOINT(command_launch_with_stream)(device_driver_id, stream, command);
+    HIP_SAFE_CALL(hipStreamSynchronize(stream));
+    return 0;
+}
+
+static int
+XKRT_DRIVER_ENTRYPOINT(command_queue_launch)(
+    device_driver_id_t device_driver_id,
+    command_queue_t * iqueue,
+    command_t * command,
+    xkrt_command_queue_list_counter_t idx
+) {
+    queue_hip_t * queue = (queue_hip_t *) iqueue;
+    assert(queue);
+
+    hipStream_t stream = queue->hip.handle.high;
+
+    int r = XKRT_DRIVER_ENTRYPOINT(command_launch_with_stream)(device_driver_id, stream, command);
+    if (r == EINPROGRESS)
+    {
+        hipEvent_t event = queue->hip.events.buffer[idx];
+        HIP_SAFE_CALL(hipEventRecord(event, stream));
+    }
+    return r;
 }
 
 static inline int
@@ -756,7 +803,7 @@ XKRT_DRIVER_ENTRYPOINT(command_queue_wait_all)(
 static inline int
 XKRT_DRIVER_ENTRYPOINT(command_queue_wait)(
     command_queue_t * iqueue,
-    command_t * cmd,
+    command_t * command,
     xkrt_command_queue_list_counter_t idx
 ) {
     queue_hip_t * queue = (queue_hip_t *) iqueue;
@@ -781,9 +828,9 @@ XKRT_DRIVER_ENTRYPOINT(command_queue_progress)(
     queue_hip_t * queue = (queue_hip_t *) iqueue;
     int r = 0;
 
-    iqueue->progress([&] (command_t * cmd, xkrt_command_queue_list_counter_t p) {
+    iqueue->progress([&] (command_t * command, xkrt_command_queue_list_counter_t p) {
 
-        switch (cmd->type)
+        switch (command->type)
         {
             case (cgir::COMMAND_TYPE_PROG):
             case (cgir::COMMAND_TYPE_COPY_H2H_1D):
@@ -1052,8 +1099,7 @@ XKRT_DRIVER_ENTRYPOINT(create_driver)(void)
     REGISTER(command_queue_progress);
     REGISTER(command_queue_wait_all);
     REGISTER(command_queue_wait);
-
-    // REGISTER(command_execute); // TODO
+    REGISTER(command_execute);
 
     REGISTER(module_load);
     REGISTER(module_unload);
