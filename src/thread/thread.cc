@@ -531,9 +531,9 @@ get_ith_victim(int tid, int i, int n)
     //      F(2, 3, 4) = 1
 
     assert(0 <= (tid ^ i));
-    assert((tid ^ i) < n);
+    // assert((tid ^ i) < n); // may fail if not power of two
 
-    return (tid ^ i);
+    return (tid ^ i) % n;
 }
 
 task_t *

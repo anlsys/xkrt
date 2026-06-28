@@ -23,7 +23,8 @@ insert(
     NoopLPTree<K> & tree,
     Interval intervals[K]
 ) {
-    KHyperrect<K> h(intervals);
+    KHyperrect<K> h;
+    h.set_list(intervals);
     unused_type_t t;
     tree.insert(t, h);
     ++ninsert;
