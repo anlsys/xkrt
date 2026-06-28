@@ -21,22 +21,34 @@ if (NOT CMAKE_BUILD_TYPE STREQUAL "Debug")
         "meaningful, but building tests in Debug is recommended.")
 endif()
 
+# Default per-test timeout (seconds). Short on purpose: a test exceeding this
+# almost always indicates a hang/deadlock. Inherently long-running tests can
+# raise it via the TIMEOUT argument of xkrt_add_test.
+set(XKRT_TEST_DEFAULT_TIMEOUT 5)
+
 #
-# xkrt_add_test(NAME <name> SOURCE <file> [GPU] [LABELS <label>...])
+# xkrt_add_test(NAME <name> SOURCE <file> [GPU] [TIMEOUT <s>]
+#               [ARGS <arg>...] [LABELS <label>...])
 #
-#   NAME    unique test/target name
-#   SOURCE  test source file (.cc or .c)
-#   GPU     mark the test as requiring a GPU: it is given the `gpu` label and
-#           its `SKIP_RETURN_CODE` is set so that a test which detects no GPU
-#           (see common/skip.h, returns 77) is reported as "Skipped" rather
-#           than failing. Tests without GPU get the `host` label.
-#   LABELS  extra CTest labels (e.g. an area: task, memory, team, ...)
+#   NAME     unique test/target name
+#   SOURCE   test source file (.cc or .c)
+#   GPU      mark the test as requiring a GPU: it is given the `gpu` label and
+#            its `SKIP_RETURN_CODE` is set so that a test which detects no GPU
+#            (see common/skip.h, returns 77) is reported as "Skipped" rather
+#            than failing. Tests without GPU get the `host` label.
+#   TIMEOUT  per-test timeout in seconds (default ${XKRT_TEST_DEFAULT_TIMEOUT})
+#   ARGS     command-line arguments passed to the test executable
+#   LABELS   extra CTest labels (e.g. an area: task, memory, team, ...)
 #
 function(xkrt_add_test)
-    cmake_parse_arguments(T "GPU" "NAME;SOURCE" "LABELS" ${ARGN})
+    cmake_parse_arguments(T "GPU" "NAME;SOURCE;TIMEOUT" "LABELS;ARGS" ${ARGN})
 
     if (NOT T_NAME OR NOT T_SOURCE)
         message(FATAL_ERROR "xkrt_add_test requires NAME and SOURCE")
+    endif()
+
+    if (NOT T_TIMEOUT)
+        set(T_TIMEOUT ${XKRT_TEST_DEFAULT_TIMEOUT})
     endif()
 
     add_executable(${T_NAME} ${T_SOURCE})
@@ -46,7 +58,7 @@ function(xkrt_add_test)
     # always keep assertions active in tests
     target_compile_options(${T_NAME} PRIVATE -UNDEBUG -g)
 
-    add_test(NAME ${T_NAME} COMMAND ${T_NAME})
+    add_test(NAME ${T_NAME} COMMAND ${T_NAME} ${T_ARGS})
 
     set(_labels ${T_LABELS})
     if (T_GPU)
@@ -58,7 +70,7 @@ function(xkrt_add_test)
 
     set_tests_properties(${T_NAME} PROPERTIES
         LABELS "${_labels}"
-        TIMEOUT 600)
+        TIMEOUT ${T_TIMEOUT})
 endfunction()
 
 # Feature areas

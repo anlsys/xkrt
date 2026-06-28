@@ -51,7 +51,7 @@
 XKRT_NAMESPACE_USE;
 
 constexpr const char * filename = "/tmp/file.bin";              // filename
-constexpr size_t size           = (1L * 1024 * 1024 * 1024);    // 1GB
+constexpr size_t size           = (64L * 1024 * 1024);         // 64MB (kept small so the test runs fast)
 constexpr int    nchunks        = 64;                           // tasks that reads the file
 
 static runtime_t runtime;

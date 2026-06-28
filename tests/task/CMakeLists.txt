@@ -21,8 +21,10 @@ xkrt_add_test(NAME task-moldable-split     SOURCE task-moldable-split.cc     LAB
 xkrt_add_test(NAME task-detachable SOURCE task-detachable.cc LABELS task detachable)
 
 # --- recursive tasking (fibonacci) ---
-xkrt_add_test(NAME fib-task-capture SOURCE fib-task-capture.cc LABELS task)
-xkrt_add_test(NAME fib-task-format  SOURCE fib-task-format.cc  LABELS task)
+# these are tasking stress benchmarks; run a small input so they stay well
+# within the default timeout (correctness is checked for any N).
+xkrt_add_test(NAME fib-task-capture SOURCE fib-task-capture.cc LABELS task ARGS 20)
+xkrt_add_test(NAME fib-task-format  SOURCE fib-task-format.cc  LABELS task ARGS 20)
 
 # --- task dependency graph -> command graph record/replay ---
 xkrt_add_test(NAME task-dependency-graph-host SOURCE task-dependency-graph-host.cc LABELS task graph)
