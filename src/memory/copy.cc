@@ -214,7 +214,7 @@ memory_copy_async_register_format(runtime_t * runtime)
 {
     {
         task_format_t format;
-        memset(format.f, 0, sizeof(format.f));
+        memset(&format, 0, sizeof(format));
         format.suggest = NULL;
         format.f[XKRT_TASK_FORMAT_TARGET_HOST] = (task_format_func_t) body_memory_copy_async;
         snprintf(format.label, sizeof(format.label), "memory_copy_async");

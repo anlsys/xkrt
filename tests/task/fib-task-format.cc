@@ -168,7 +168,7 @@ main(int argc, char ** argv)
 
     // register task format
     task_format_t format;
-    memset(format.f, 0, sizeof(format.f));
+    memset(&format, 0, sizeof(format));
     format.f[XKRT_TASK_FORMAT_TARGET_HOST] = (task_format_func_t) body_host;
     snprintf(format.label, sizeof(format.label), "fib");
     fmtid = runtime.task_format_create(&format);

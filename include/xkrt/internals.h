@@ -47,6 +47,13 @@ XKRT_NAMESPACE_BEGIN
 ///////////////
 
 /**
+ * @brief Map a device driver type to its corresponding task-format target.
+ * @param driver_type The driver type of the device.
+ * @return The matching ::task_format_target_t.
+ */
+task_format_target_t driver_type_to_task_format_target(driver_type_t driver_type);
+
+/**
  * @brief Register the host capture task format with the runtime
  * @param runtime Pointer to the runtime system
  */

@@ -1269,6 +1269,21 @@ struct  runtime_t
     int task_format_set(task_format_id_t fmtid, task_format_target_t target, task_format_func_t func);
 
     /**
+     * @brief Attaches a program source (e.g. LLVM-IR) to a specific target's
+     * function on the passed task format.
+     *
+     * The source follows CGIR's `command_prog_t.source` representation and is
+     * forwarded to the generated `COMMAND_TYPE_PROG` commands when the task
+     * dependency graph is lowered to a CGIR command graph.
+     *
+     * @param fmtid   The ::task_format_id_t of the format to update.
+     * @param target  The ::task_format_target_t to set the source for.
+     * @param source  The source descriptor to attach.
+     * @return 0 on success, or an error code if failed.
+     */
+    int task_format_set_source(task_format_id_t fmtid, task_format_target_t target, cgir_command_prog_source_t source);
+
+    /**
      * @brief Retrieves a task format by its ID.
      *
      * @param formats Pointer to the ::task_formats_t repository.

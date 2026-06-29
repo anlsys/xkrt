@@ -52,7 +52,7 @@ runtime_t::task_formats_init(void)
     memset(&this->formats, 0, sizeof(task_formats_t));
 
     task_format_t format;
-    memset(&format.f, 0, sizeof(format.f));
+    memset(&format, 0, sizeof(format));
     snprintf(format.label, sizeof(format.label), "(null)");
 
     task_format_id_t id = this->task_format_create(&format);
@@ -97,5 +97,16 @@ runtime_t::task_format_set(
 ) {
     task_format_t * format = this->task_format_get(fmtid);
     format->f[target] = func;
+    return 0;
+}
+
+int
+runtime_t::task_format_set_source(
+    task_format_id_t fmtid,
+    task_format_target_t target,
+    cgir_command_prog_source_t source
+) {
+    task_format_t * format = this->task_format_get(fmtid);
+    format->source[target] = source;
     return 0;
 }
