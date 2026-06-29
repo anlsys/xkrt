@@ -118,11 +118,20 @@ parse_cmake_opts() {
       || true
 }
 
-# ask_cmake_opts LIBNAME CMAKE_FILE
+# ask_cmake_opts LIBNAME CMAKE_FILE [CACHED_OPTS]
 # Asks whether to use cmake defaults or customise, then prompts accordingly.
+# If CACHED_OPTS is non-empty, first offers to reuse it verbatim.
 # Prints the accumulated "-DVAR=VAL ..." flag string on stdout.
 ask_cmake_opts() {
-    local lib="$1" f="$2" flags=""
+    local lib="$1" f="$2" cached="${3:-}" flags=""
+
+    # Fast path: reuse the cmake options recorded in a previous run.
+    if [[ -n "$cached" ]]; then
+        _tty "\n  ${BOLD}Cached cmake options for %s${NC}:\n    ${DIM}%s${NC}\n" "$lib" "$cached"
+        if prompt_yn "  Reuse these cached cmake options for $lib?" "yes"; then
+            printf '%s' "$cached"; return
+        fi
+    fi
 
     if [[ ! -f "$f" ]]; then
         _tty "  ${YELLOW}!${NC} CMakeLists.txt not found at %s – skipping option prompts.\n" "$f"
@@ -421,10 +430,54 @@ trap 'fatal "error on line $LINENO – aborting."' ERR
 # PHASE 1 – GATHER CONFIGURATION
 # ─────────────────────────────────────────────────────────────────────────────
 
+# _dflt_yn CACHED_BOOL FALLBACK
+# Maps a cached "true"/"false" to a "yes"/"no" prompt default; uses FALLBACK when
+# there is no cached value.
+_dflt_yn() {
+    case "${1:-}" in
+        true)  printf 'yes' ;;
+        false) printf 'no'  ;;
+        *)     printf '%s' "$2" ;;
+    esac
+}
+
+# _dflt_member HAVE_CACHE LIST TOKEN FALLBACK
+# "yes"/"no" prompt default for an option encoded as TOKEN's presence in a cached
+# ';'-separated LIST; uses FALLBACK when there is no cache.
+_dflt_member() {
+    [[ "$1" == "true" ]] || { printf '%s' "$4"; return; }
+    if _list_contains "$2" "$3"; then printf 'yes'; else printf 'no'; fi
+}
+
 CACHE_FILE="$(pwd)/.xkrt_install.cache"
 REUSE_CACHE=false
+HAVE_CACHE=false
 
 if [[ -f "$CACHE_FILE" ]]; then
+    # Load the cache up front so its values can seed the default answer of every
+    # question below, whether or not the user skips straight to the build.
+    # shellcheck disable=SC1090
+    source "$CACHE_FILE"
+    HAVE_CACHE=true
+
+    # Snapshot the cached values: each component block below resets its working
+    # variables before prompting, so keep a copy to use as the prompt defaults.
+    _C_BASE_DIR="${BASE_DIR:-}"
+    _C_CC="${CC:-}"; _C_CXX="${CXX:-}"
+    _C_INSTALL_LLVM="${INSTALL_LLVM:-}"
+    _C_LLVM_BRANCH="${LLVM_BRANCH:-}"; _C_LLVM_BUILD_TYPE="${LLVM_BUILD_TYPE:-}"
+    _C_LLVM_PROJECTS="${LLVM_PROJECTS:-}"; _C_LLVM_RUNTIMES="${LLVM_RUNTIMES:-}"
+    _C_LLVM_CMAKE_TARGETS="${LLVM_CMAKE_TARGETS:-}"
+    _C_LLVM_EXTRA_CMAKE_OPTS="${LLVM_EXTRA_CMAKE_OPTS:-}"
+    _C_USE_LLVM_FOR_BUILD="${USE_LLVM_FOR_BUILD:-}"
+    _C_LLVM_BOOTSTRAP_CC="${LLVM_BOOTSTRAP_CC:-}"; _C_LLVM_BOOTSTRAP_CXX="${LLVM_BOOTSTRAP_CXX:-}"
+    _C_INSTALL_HWLOC="${INSTALL_HWLOC:-}"; _C_HWLOC_BRANCH="${HWLOC_BRANCH:-}"
+    _C_HWLOC_CONFIGURE_OPTS="${HWLOC_CONFIGURE_OPTS:-}"
+    _C_INSTALL_CGIR="${INSTALL_CGIR:-}"; _C_CGIR_BRANCH="${CGIR_BRANCH:-}"; _C_CGIR_BUILD_TYPE="${CGIR_BUILD_TYPE:-}"; _C_CGIR_CMAKE_OPTS="${CGIR_CMAKE_OPTS:-}"
+    _C_INSTALL_XKRT="${INSTALL_XKRT:-}"; _C_XKRT_BRANCH="${XKRT_BRANCH:-}"; _C_XKRT_BUILD_TYPE="${XKRT_BUILD_TYPE:-}"; _C_XKRT_CMAKE_OPTS="${XKRT_CMAKE_OPTS:-}"
+    _C_INSTALL_XKBLAS="${INSTALL_XKBLAS:-}"; _C_XKBLAS_BRANCH="${XKBLAS_BRANCH:-}"; _C_XKBLAS_BUILD_TYPE="${XKBLAS_BUILD_TYPE:-}"; _C_XKBLAS_CMAKE_OPTS="${XKBLAS_CMAKE_OPTS:-}"
+    _C_INSTALL_XKOMP="${INSTALL_XKOMP:-}"; _C_XKOMP_BRANCH="${XKOMP_BRANCH:-}"; _C_XKOMP_BUILD_TYPE="${XKOMP_BUILD_TYPE:-}"; _C_XKOMP_CMAKE_OPTS="${XKOMP_CMAKE_OPTS:-}"
+
     _tty "\n"
     hr
     _tty "  ${BOLD}${YELLOW}Cached configuration found${NC}\n"
@@ -433,13 +486,13 @@ if [[ -f "$CACHE_FILE" ]]; then
                                || stat -c '%y' "$CACHE_FILE" 2>/dev/null | cut -d. -f1)"
     hr
     _tty "\n"
-    if prompt_yn "Reuse this configuration and skip to the build?" "yes"; then
-        # shellcheck disable=SC1090
-        source "$CACHE_FILE"
+    _tty "  ${DIM}Tip: even if you answer 'no' below, these cached values are used as the\n"
+    _tty "  default answer to every question — just press Enter to accept each one.${NC}\n\n"
+    if prompt_yn "Reuse this configuration and skip straight to the build?" "yes"; then
         REUSE_CACHE=true
         success "Configuration loaded — jumping to build phase."
     else
-        info "Starting fresh configuration."
+        info "Re-running configuration (cached values pre-filled as the defaults)."
     fi
 fi
 
@@ -454,7 +507,7 @@ _tty "\n"
 
 # ── Installation base ─────────────────────────────────────────────────────────
 step "Installation directory"
-BASE_DIR=$(prompt_value "Base directory (repos, installs and modules go here)" "$(pwd)")
+BASE_DIR=$(prompt_value "Base directory (repos, installs and modules go here)" "${_C_BASE_DIR:-$(pwd)}")
 BASE_DIR="$(realpath -m "$BASE_DIR")"
 REPO_DIR="$BASE_DIR/repo"
 INSTALL_DIR="$BASE_DIR/install"
@@ -568,10 +621,10 @@ LLVM_GPU_SUMMARY=""   # human-readable, for summary display
 USE_LLVM_FOR_BUILD=false                      # use custom LLVM to build the libs?
 LLVM_BOOTSTRAP_CC="" LLVM_BOOTSTRAP_CXX=""    # compiler used to build LLVM itself
 
-if prompt_yn "Install custom patched LLVM?" "no"; then
+if prompt_yn "Install custom patched LLVM?" "$(_dflt_yn "${_C_INSTALL_LLVM:-}" "no")"; then
     INSTALL_LLVM=true
-    LLVM_BRANCH=$(prompt_value "Branch" "main")
-    LLVM_BUILD_TYPE=$(prompt_value "Build type (Release/Debug/RelWithDebInfo)" "Release")
+    LLVM_BRANCH=$(prompt_value "Branch" "${_C_LLVM_BRANCH:-main}")
+    LLVM_BUILD_TYPE=$(prompt_value "Build type (Release/Debug/RelWithDebInfo)" "${_C_LLVM_BUILD_TYPE:-Release}")
 
     # ── Host LLVM backend (auto-detected from uname -m) ──────────────────────
     _host_tgt=$(_llvm_host_target)
@@ -589,8 +642,13 @@ if prompt_yn "Install custom patched LLVM?" "no"; then
     _tty "       LLVM backend : AMDGPU\n"
     _tty "       Runtime target: amdgcn-amd-amdhsa\n"
     _tty "\n"
-    _tty "  Enter numbers separated by spaces (e.g. \"1 2\"), or Enter for host-only: "
+    # Reconstruct the previously-selected GPU numbers from the cached backends.
+    _gpu_default=""
+    _list_contains "${_C_LLVM_CMAKE_TARGETS:-}" NVPTX  && _gpu_default="${_gpu_default}${_gpu_default:+ }1"
+    _list_contains "${_C_LLVM_CMAKE_TARGETS:-}" AMDGPU && _gpu_default="${_gpu_default}${_gpu_default:+ }2"
+    _tty "  Enter numbers separated by spaces (e.g. \"1 2\"), or Enter for [%s]: " "${_gpu_default:-host-only}"
     read -r _gpu_sel </dev/tty
+    _gpu_sel="${_gpu_sel:-$_gpu_default}"
 
     _backends="$_host_tgt"
     _runtime_tgts="default"
@@ -629,13 +687,13 @@ if prompt_yn "Install custom patched LLVM?" "no"; then
     # ── Projects ─────────────────────────────────────────────────────────────
     _tty "\n  ${BOLD}LLVM projects${NC} (clang is always included):\n"
     _projects="clang"
-    if prompt_yn "  Include MLIR  (recommended for CGIR)?" "yes"; then
+    if prompt_yn "  Include MLIR  (recommended for CGIR)?" "$(_dflt_member "$HAVE_CACHE" "${_C_LLVM_PROJECTS:-}" mlir "yes")"; then
         _projects="${_projects};mlir"
     fi
-    if prompt_yn "  Include lld  (LLVM linker — recommended for GPU offload)?" "yes"; then
+    if prompt_yn "  Include lld  (LLVM linker — recommended for GPU offload)?" "$(_dflt_member "$HAVE_CACHE" "${_C_LLVM_PROJECTS:-}" lld "yes")"; then
         _projects="${_projects};lld"
     fi
-    if prompt_yn "  Include bolt (binary optimizer)?" "no"; then
+    if prompt_yn "  Include bolt (binary optimizer)?" "$(_dflt_member "$HAVE_CACHE" "${_C_LLVM_PROJECTS:-}" bolt "no")"; then
         _projects="${_projects};bolt"
     fi
     LLVM_PROJECTS="$_projects"
@@ -643,30 +701,28 @@ if prompt_yn "Install custom patched LLVM?" "no"; then
     # ── Runtimes ─────────────────────────────────────────────────────────────
     _tty "\n  ${BOLD}LLVM runtimes${NC}:\n"
     _runtimes=""
-    if prompt_yn "  Build openmp  (OpenMP host runtime)?" "yes"; then
+    if prompt_yn "  Build openmp  (OpenMP host runtime)?" "$(_dflt_member "$HAVE_CACHE" "${_C_LLVM_RUNTIMES:-}" openmp "yes")"; then
         _runtimes="${_runtimes}${_runtimes:+;}openmp"
     fi
     _tty "  ${DIM}Note: the custom libomptarget depends on XKRT and XKOMP,\n"
     _tty "  so when enabled it is built last — after XKRT and XKOMP.${NC}\n"
-    if prompt_yn "  Build offload (OpenMP GPU offload runtime / libomptarget)?" "yes"; then
+    if prompt_yn "  Build offload (OpenMP GPU offload runtime / libomptarget)?" "$(_dflt_member "$HAVE_CACHE" "${_C_LLVM_RUNTIMES:-}" offload "yes")"; then
         _runtimes="${_runtimes}${_runtimes:+;}offload"
     fi
     LLVM_RUNTIMES="$_runtimes"
 
     # ── Extra flags ───────────────────────────────────────────────────────────
-    _tty "\n  ${BOLD}${BLUE}?${NC} Extra cmake flags for LLVM (or Enter to skip): "
-    read -r _llvm_extra </dev/tty
-    LLVM_EXTRA_CMAKE_OPTS="${_llvm_extra:-}"
+    LLVM_EXTRA_CMAKE_OPTS=$(prompt_value "Extra cmake flags for LLVM (or Enter to keep/skip)" "${_C_LLVM_EXTRA_CMAKE_OPTS:-}")
 
     # ── Bootstrap compiler (any compiler may build LLVM) ──────────────────────
     _tty "\n  ${BOLD}Bootstrap compiler${NC} — used only to compile LLVM itself.\n"
     _tty "  ${DIM}Any C/C++ compiler works here; no minimum version.${NC}\n"
-    LLVM_BOOTSTRAP_CC=$(prompt_value  "Bootstrap C compiler"   "$_boot_cc_default")
-    LLVM_BOOTSTRAP_CXX=$(prompt_value "Bootstrap C++ compiler" "$_boot_cxx_default")
+    LLVM_BOOTSTRAP_CC=$(prompt_value  "Bootstrap C compiler"   "${_C_LLVM_BOOTSTRAP_CC:-$_boot_cc_default}")
+    LLVM_BOOTSTRAP_CXX=$(prompt_value "Bootstrap C++ compiler" "${_C_LLVM_BOOTSTRAP_CXX:-$_boot_cxx_default}")
 
     # ── Use the custom LLVM to build the libraries? ───────────────────────────
     _tty "\n"
-    if prompt_yn "Use this custom LLVM to build cgir/xkrt/xkblas/xkomp?" "yes"; then
+    if prompt_yn "Use this custom LLVM to build cgir/xkrt/xkblas/xkomp?" "$(_dflt_yn "${_C_USE_LLVM_FOR_BUILD:-}" "yes")"; then
         USE_LLVM_FOR_BUILD=true
     else
         USE_LLVM_FOR_BUILD=false
@@ -698,8 +754,8 @@ else
         exit 1
     fi
     _tty "\n"
-    CC=$(prompt_value  "C compiler (LLVM >= ${MIN_CLANG_VER})"   "$_def_cc")
-    CXX=$(prompt_value "C++ compiler (LLVM >= ${MIN_CLANG_VER})" "$_def_cxx")
+    CC=$(prompt_value  "C compiler (LLVM >= ${MIN_CLANG_VER})"   "${_C_CC:-$_def_cc}")
+    CXX=$(prompt_value "C++ compiler (LLVM >= ${MIN_CLANG_VER})" "${_C_CXX:-$_def_cxx}")
 fi
 export CC CXX
 
@@ -715,38 +771,36 @@ _tty "  path, which breaks downstream links.  They are disabled by default; pass
 _tty "  e.g. '--enable-rsmi --with-rocm=/opt/rocm' below to re-enable any you need.\n\n"
 
 INSTALL_HWLOC=false; HWLOC_BRANCH=""; HWLOC_CONFIGURE_OPTS=""
-if prompt_yn "Install hwloc?" "yes"; then
+if prompt_yn "Install hwloc?" "$(_dflt_yn "${_C_INSTALL_HWLOC:-}" "yes")"; then
     INSTALL_HWLOC=true
-    HWLOC_BRANCH=$(prompt_value "Branch / tag" "v2.14")
-    _tty "  ${BOLD}${BLUE}?${NC} Extra hwloc configure flags (or Enter to skip): "
-    read -r HWLOC_CONFIGURE_OPTS </dev/tty
-    HWLOC_CONFIGURE_OPTS="${HWLOC_CONFIGURE_OPTS:-}"
+    HWLOC_BRANCH=$(prompt_value "Branch / tag" "${_C_HWLOC_BRANCH:-v2.14}")
+    HWLOC_CONFIGURE_OPTS=$(prompt_value "Extra hwloc configure flags (or Enter to keep/skip)" "${_C_HWLOC_CONFIGURE_OPTS:-}")
 fi
 
 # ── cgir ────────────────────────────────────────────────────────────────────
 step "cgir  [cmake; no runtime dependencies; parallel to hwloc]"
 INSTALL_CGIR=false
 CGIR_BRANCH=""; CGIR_BUILD_TYPE=""; CGIR_CMAKE_OPTS=""
-if prompt_yn "Install cgir?" "yes"; then
+if prompt_yn "Install cgir?" "$(_dflt_yn "${_C_INSTALL_CGIR:-}" "yes")"; then
     INSTALL_CGIR=true
-    CGIR_BRANCH=$(prompt_value "Branch" "release/latest")
-    CGIR_BUILD_TYPE=$(prompt_value "Build type (Release/Debug)" "Release")
+    CGIR_BRANCH=$(prompt_value "Branch" "${_C_CGIR_BRANCH:-release/latest}")
+    CGIR_BUILD_TYPE=$(prompt_value "Build type (Release/Debug)" "${_C_CGIR_BUILD_TYPE:-Release}")
     clone_or_update "https://github.com/JLESC-Tasking-Group/opencg" \
         "$REPO_DIR/cgir" "$CGIR_BRANCH"
-    CGIR_CMAKE_OPTS=$(ask_cmake_opts "cgir" "$REPO_DIR/cgir/CMakeLists.txt")
+    CGIR_CMAKE_OPTS=$(ask_cmake_opts "cgir" "$REPO_DIR/cgir/CMakeLists.txt" "${_C_CGIR_CMAKE_OPTS:-}")
 fi
 
 # ── xkrt ──────────────────────────────────────────────────────────────────────
 step "xkrt  [cmake; depends on hwloc + cgir]"
 INSTALL_XKRT=false
 XKRT_BRANCH=""; XKRT_BUILD_TYPE=""; XKRT_CMAKE_OPTS=""
-if prompt_yn "Install xkrt?" "yes"; then
+if prompt_yn "Install xkrt?" "$(_dflt_yn "${_C_INSTALL_XKRT:-}" "yes")"; then
     INSTALL_XKRT=true
-    XKRT_BRANCH=$(prompt_value "Branch" "release/latest")
-    XKRT_BUILD_TYPE=$(prompt_value "Build type (Release/Debug)" "Release")
+    XKRT_BRANCH=$(prompt_value "Branch" "${_C_XKRT_BRANCH:-release/latest}")
+    XKRT_BUILD_TYPE=$(prompt_value "Build type (Release/Debug)" "${_C_XKRT_BUILD_TYPE:-Release}")
     clone_or_update "https://gitlab.inria.fr/xkaapi/dev-v2" \
         "$REPO_DIR/xkrt" "$XKRT_BRANCH"
-    XKRT_CMAKE_OPTS=$(ask_cmake_opts "xkrt" "$REPO_DIR/xkrt/CMakeLists.txt")
+    XKRT_CMAKE_OPTS=$(ask_cmake_opts "xkrt" "$REPO_DIR/xkrt/CMakeLists.txt" "${_C_XKRT_CMAKE_OPTS:-}")
 fi
 
 # ── xkblas ────────────────────────────────────────────────────────────────────
@@ -756,26 +810,26 @@ _tty "  Tip: if you enable USE_CBLAS, also set USE_OPENBLAS, USE_MKL, or\n"
 _tty "  USE_CRAYBLAS via the 'extra cmake flags' prompt below.\n\n"
 INSTALL_XKBLAS=false
 XKBLAS_BRANCH=""; XKBLAS_BUILD_TYPE=""; XKBLAS_CMAKE_OPTS=""
-if prompt_yn "Install xkblas?" "yes"; then
+if prompt_yn "Install xkblas?" "$(_dflt_yn "${_C_INSTALL_XKBLAS:-}" "yes")"; then
     INSTALL_XKBLAS=true
-    XKBLAS_BRANCH=$(prompt_value "Branch" "release/v2.0-latest")
-    XKBLAS_BUILD_TYPE=$(prompt_value "Build type (Release/Debug)" "Release")
+    XKBLAS_BRANCH=$(prompt_value "Branch" "${_C_XKBLAS_BRANCH:-release/v2.0-latest}")
+    XKBLAS_BUILD_TYPE=$(prompt_value "Build type (Release/Debug)" "${_C_XKBLAS_BUILD_TYPE:-Release}")
     clone_or_update "https://gitlab.inria.fr/xkblas/dev" \
         "$REPO_DIR/xkblas" "$XKBLAS_BRANCH"
-    XKBLAS_CMAKE_OPTS=$(ask_cmake_opts "xkblas" "$REPO_DIR/xkblas/CMakeLists.txt")
+    XKBLAS_CMAKE_OPTS=$(ask_cmake_opts "xkblas" "$REPO_DIR/xkblas/CMakeLists.txt" "${_C_XKBLAS_CMAKE_OPTS:-}")
 fi
 
 # ── xkomp ─────────────────────────────────────────────────────────────────────
 step "xkomp  [cmake; depends on xkrt; parallel to xkblas]"
 INSTALL_XKOMP=false
 XKOMP_BRANCH=""; XKOMP_BUILD_TYPE=""; XKOMP_CMAKE_OPTS=""
-if prompt_yn "Install xkomp?" "yes"; then
+if prompt_yn "Install xkomp?" "$(_dflt_yn "${_C_INSTALL_XKOMP:-}" "yes")"; then
     INSTALL_XKOMP=true
-    XKOMP_BRANCH=$(prompt_value "Branch" "release/latest")
-    XKOMP_BUILD_TYPE=$(prompt_value "Build type (Release/Debug)" "Release")
+    XKOMP_BRANCH=$(prompt_value "Branch" "${_C_XKOMP_BRANCH:-release/latest}")
+    XKOMP_BUILD_TYPE=$(prompt_value "Build type (Release/Debug)" "${_C_XKOMP_BUILD_TYPE:-Release}")
     clone_or_update "https://github.com/anlsys/xkomp" \
         "$REPO_DIR/xkomp" "$XKOMP_BRANCH"
-    XKOMP_CMAKE_OPTS=$(ask_cmake_opts "xkomp" "$REPO_DIR/xkomp/CMakeLists.txt")
+    XKOMP_CMAKE_OPTS=$(ask_cmake_opts "xkomp" "$REPO_DIR/xkomp/CMakeLists.txt" "${_C_XKOMP_CMAKE_OPTS:-}")
 fi
 
 # ── Summary & confirmation ────────────────────────────────────────────────────
