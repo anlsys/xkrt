@@ -2,14 +2,19 @@
 # ============================================================================
 # update.sh — in-place updater for the xkrt ecosystem (companion to install.sh)
 #
-# Reuses the configuration cached by install.sh (.xkrt_install.cache) and, for
-# every component already checked out under $REPO_DIR:
-#   1. git pull the latest changes (on the cached branch)
+# Reuses the configuration cached by install.sh (.xkrt_install.cache) and the
+# environment file it generates (env.sh).  For every component already checked
+# out under $REPO_DIR it:
+#   1. git pulls the latest changes (on the cached branch)
 #   2. incrementally `make` + `make install` in its EXISTING build directory
 #
-# It refreshes the SAME install/module locations, so already-loaded modules and
-# the generated env.sh keep working unchanged.  It does NOT re-run cmake from
-# scratch nor create new (hash-based) install dirs — for that, re-run install.sh.
+# env.sh is sourced first, so all components' modules are loaded and the
+# (incremental) builds find each other's headers/libraries/cmake config
+# (e.g. rebuilding xkrt resolves <cgir/cgir.hpp>).
+#
+# It refreshes the SAME install/module locations, so loaded modules and env.sh
+# keep working unchanged.  It does NOT re-run cmake from scratch nor create new
+# (hash-based) install dirs — for that, re-run install.sh.
 #
 # Components are processed in dependency order (llvm, hwloc, cgir, xkrt, xkblas,
 # xkomp).  A component is rebuilt when its own HEAD moved OR an upstream
@@ -29,9 +34,6 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # ─── Colours / UI (same conventions as install.sh) ────────────────────────────
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'
 BLUE='\033[0;34m'; CYAN='\033[0;36m'; BOLD='\033[1m'; DIM='\033[2m'; NC='\033[0m'
-
-# UI goes to /dev/tty when available so command substitutions stay clean; falls
-# back to stdout in non-interactive contexts.
 _tty() { printf "$@" >/dev/tty 2>/dev/null || printf "$@"; }
 hr()      { _tty '%s\n' "────────────────────────────────────────────────────────────────────────"; }
 step()    { _tty "\n${BOLD}${CYAN}▶${NC} ${BOLD}%s${NC}\n" "$*"; }
@@ -73,7 +75,6 @@ source "$CACHE_FILE"
 
 : "${BASE_DIR:?cache is missing BASE_DIR — is this a valid install cache?}"
 : "${REPO_DIR:?cache is missing REPO_DIR — is this a valid install cache?}"
-export CC="${CC:-}" CXX="${CXX:-}"
 
 hr
 _tty "  ${BOLD}xkrt ecosystem — in-place update${NC}\n"
@@ -81,6 +82,25 @@ _tty "  cache : %s\n" "$CACHE_FILE"
 _tty "  repos : %s\n" "$REPO_DIR"
 [[ "$FORCE" == "true" ]] && _tty "  mode  : ${BOLD}--force${NC} (rebuild everything)\n"
 hr
+
+# ─── Load the generated environment ───────────────────────────────────────────
+# install.sh writes env.sh (module use + module load for every component).  Just
+# source it: that loads every component's module, so the incremental builds below
+# find each other's headers, libraries and cmake config (e.g. <cgir/cgir.hpp>).
+ENV_FILE="$BASE_DIR/env.sh"
+if [[ -f "$ENV_FILE" ]]; then
+    step "Loading modules (source $ENV_FILE)"
+    # Run env.sh tolerantly: 'module' (Lmod) is not always set -u clean, and the
+    # `|| fatal` keeps set -e from aborting mid-way while still catching a hard
+    # failure (e.g. no module system, which env.sh reports via a non-zero return).
+    set +u
+    # shellcheck disable=SC1090
+    source "$ENV_FILE" || fatal "failed to source $ENV_FILE (is a module system available?)"
+    set -u
+else
+    warn "no env.sh at $ENV_FILE — modules not loaded; builds may fail to find their"
+    warn "dependencies.  Re-run install.sh to (re)generate it."
+fi
 
 # ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -114,11 +134,6 @@ _newest_build_dir() {
     printf '%s' "$newest"
 }
 
-# _prefix_of BUILD_DIR — the CMAKE_INSTALL_PREFIX recorded in its cache.
-_prefix_of() {
-    grep -m1 '^CMAKE_INSTALL_PREFIX:' "$1/CMakeCache.txt" 2>/dev/null | cut -d= -f2- || true
-}
-
 DIRTY=false   # set true once any component is (re)built → forces downstream rebuilds
 
 # _changed BEFORE AFTER — true (0) if this component must be (re)built.
@@ -134,7 +149,6 @@ update_cmake() {
         info "not checked out ($repo) — skipping; install it with install.sh first"
         return 0
     fi
-
     local before after
     before="$(git -C "$repo" rev-parse HEAD 2>/dev/null || echo none)"
     _pull "$repo" "$branch"
@@ -144,15 +158,14 @@ update_cmake() {
         success "$name already up to date — skipped"
         return 0
     fi
+    DIRTY=true   # downstream components must now rebuild against this one
 
     local bdir; bdir="$(_newest_build_dir "$repo" "$btype")"
     if [[ -z "$bdir" ]]; then
         warn "no configured build dir under $repo/build — run install.sh for $name first; skipping"
         return 0
     fi
-    info "build dir  : $bdir"
-    info "install to : $(_prefix_of "$bdir")"
-    DIRTY=true   # downstream components must now rebuild against this one
+    info "build dir : $bdir"
     make -C "$bdir" -j "$(nproc)"
     make -C "$bdir" install
     success "$name rebuilt & reinstalled"
@@ -166,7 +179,6 @@ update_autotools() {
         info "not checked out ($repo) — skipping; install it with install.sh first"
         return 0
     fi
-
     local before after
     before="$(git -C "$repo" rev-parse HEAD 2>/dev/null || echo none)"
     _pull "$repo" "$branch"
@@ -176,13 +188,13 @@ update_autotools() {
         success "$name already up to date — skipped"
         return 0
     fi
+    DIRTY=true   # downstream components must now rebuild against this one
 
     if [[ ! -f "$repo/Makefile" ]]; then
         warn "hwloc is not configured ($repo/Makefile missing) — run install.sh first; skipping"
         return 0
     fi
-    info "build dir  : $repo (autotools, in-tree)"
-    DIRTY=true   # downstream components must now rebuild against this one
+    info "build dir : $repo (autotools, in-tree)"
     make -C "$repo" -j "$(nproc)"
     make -C "$repo" install
     success "$name rebuilt & reinstalled"
@@ -205,7 +217,7 @@ else
 fi
 hr
 _tty "\n  Install/module locations are unchanged, so your loaded modules and\n"
-_tty "  %s/env.sh keep working as-is.\n" "$BASE_DIR"
+_tty "  %s keep working as-is.\n" "$ENV_FILE"
 if [[ "${LLVM_RUNTIMES:-}" == *offload* ]]; then
     _tty "\n  ${DIM}Note: if you changed XKRT/XKOMP in a way that affects the custom\n"
     _tty "  libomptarget (offload runtime), re-run install.sh for a consistent\n"
