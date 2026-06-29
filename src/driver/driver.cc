@@ -612,6 +612,11 @@ driver_device_command_queue_launch_ready(
                     launch(runtime, device, task, queue, cmd, p);
                     break ;
                 }
+                /* otherwise the driver launches the program via its variadic
+                 * launcher, whose function must have been JIT-compiled: the
+                 * 'prog-fuse' pass leaves it NULL and requires the 'jit' pass. */
+                if (cmd->prog.launcher.variadic.fn == NULL)
+                    LOGGER_FATAL("PROG command has a NULL function pointer. Did you forget to JIT?");
                 /* else, fallthrough so the driver launch the program */
             }
 
