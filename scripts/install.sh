@@ -1020,7 +1020,7 @@ fi
 if [[ "$INSTALL_CGIR" == "true" ]]; then
     step "Building & installing cgir"
     clone_or_update \
-        "https://github.com/JLESC-Tasking-Group/cgir" \
+        "https://github.com/JLESC-Tasking-Group/opencg" \
         "$REPO_DIR/cgir" \
         "$CGIR_BRANCH"
 
