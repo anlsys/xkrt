@@ -140,6 +140,7 @@ runtime_t::command_submit(
             case (cgir::COMMAND_TYPE_COPY_H2D_2D):
             case (cgir::COMMAND_TYPE_COPY_D2H_2D):
             case (cgir::COMMAND_TYPE_COPY_D2D_2D):
+            case (cgir::COMMAND_TYPE_BATCH):
             {
                 driver_t * driver = this->driver_get(device->driver_type);
                 assert(driver);

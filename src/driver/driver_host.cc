@@ -36,12 +36,13 @@
 
 #define XKRT_DRIVER_ENTRYPOINT(N) XKRT_DRIVER_TYPE_HOST_##N
 
-#include <xkrt/runtime.h>
 #include <xkrt/conf/conf.h>
 #include <xkrt/driver/device.hpp>
-#include <xkrt/driver/driver.h>
 #include <xkrt/driver/driver-host.h>
+#include <xkrt/driver/driver.h>
 #include <xkrt/driver/queue.h>
+#include <xkrt/runtime.h>
+#include <xkrt/sync/atomic.h>
 #include <xkrt/sync/bits.h>
 #include <xkrt/sync/mutex.h>
 
@@ -280,6 +281,165 @@ io_uring_flush_submits(queue_host_t * queue)
     queue->io_uring.pending_submits = 0;
 }
 
+void XKRT_DRIVER_ENTRYPOINT(command_graph_replay_node_complete)(
+    runtime_t * runtime,
+    command_graph_t * cg,
+    command_graph_node_t * node
+);
+
+static void
+XKRT_DRIVER_ENTRYPOINT(command_graph_replay_node_completion_callback)(
+    void * args[XKRT_CALLBACK_ARGS_MAX]
+) {
+    runtime_t            * runtime = (runtime_t *)            args[0];
+    command_graph_t      * cg      = (command_graph_t *)      args[1];
+    command_graph_node_t * node    = (command_graph_node_t *) args[2];
+    return XKRT_DRIVER_ENTRYPOINT(command_graph_replay_node_complete)(runtime, cg, node);
+}
+
+template <command_graph_node_wc_type_t initial_dwc>
+static inline void
+XKRT_DRIVER_ENTRYPOINT(command_graph_replay_process_node)(
+    runtime_t * runtime,
+    command_graph_t * cg,
+    command_graph_node_t * node
+) {
+    // delta wait counter
+    command_graph_node_wc_type_t dwc = initial_dwc;
+
+    SPINLOCK_LOCK(node->spinlock);
+    {
+        // first time processing this node for that replay: reinitialize the node
+        if (xkrt_compare_and_swap(node->rc, cg->rc))
+        {
+            if (node->type == cgir::COMMAND_GRAPH_NODE_TYPE_COMMAND)
+            {
+                assert(node->command);
+
+                // clear all previous callbacks
+                ((command_t *) node->command)->completion_callback_clear();
+
+                // add a callback to notify successor commands of that predecessor completion
+                static_assert(XKRT_CALLBACK_ARGS_MAX >= 3);
+                callback_t callback;
+                callback.func = XKRT_DRIVER_ENTRYPOINT(command_graph_replay_node_completion_callback);
+                callback.args[0] = runtime;
+                callback.args[1] = cg;
+                callback.args[2] = node;
+                ((command_t *) node->command)->completion_callback_push(callback);
+            }
+
+            // set node in INIT state
+            node->state = COMMAND_GRAPH_NODE_STATE_INIT;
+
+            // increment wc to avoid early release
+            static_assert(std::is_signed<command_graph_node_wc_type_t>::value,
+                    "command_graph_node_wc_t must be able to represent negative numbers");
+            dwc -= (command_graph_node_wc_type_t) node->predecessors.size();
+        }
+    }
+    SPINLOCK_UNLOCK(node->spinlock);
+
+    // if we reached 0, command is now ready
+    if (node->wc.fetch_sub(dwc, std::memory_order_relaxed) == dwc)
+    {
+        // if the node holds a command
+        switch (node->type)
+        {
+            case (cgir::COMMAND_GRAPH_NODE_TYPE_EMPTY):
+            {
+                // completes it without submitting any command
+                XKRT_DRIVER_ENTRYPOINT(command_graph_replay_node_complete)(runtime, cg, node);
+                break ;
+            }
+
+            case (cgir::COMMAND_GRAPH_NODE_TYPE_COMMAND):
+            {
+                // replay the command
+                assert(node->command);
+                assert(node->device_unique_id != XKRT_UNSPECIFIED_DEVICE_UNIQUE_ID);
+                assert(node->state == COMMAND_GRAPH_NODE_STATE_INIT);
+                runtime->command_submit(node->device_unique_id, (command_t *) node->command);
+                break ;
+            }
+
+            case (cgir::COMMAND_GRAPH_NODE_TYPE_COMMAND_GRAPH):
+            case (cgir::COMMAND_GRAPH_NODE_TYPE_CONDITION):
+            default:
+            {
+                LOGGER_FATAL("Not supported");
+                break ;
+            }
+        }
+    }
+}
+
+void
+XKRT_DRIVER_ENTRYPOINT(command_graph_replay_node_complete)(
+    runtime_t * runtime,
+    command_graph_t * cg,
+    command_graph_node_t * node
+) {
+    // submit successor nodes
+    node->foreach_successor([&] (cgir::command_graph_node_t * succ) {
+        XKRT_DRIVER_ENTRYPOINT(command_graph_replay_process_node)<1>(runtime, cg, (command_graph_node_t *) succ);
+    });
+
+    assert(node->state == COMMAND_GRAPH_NODE_STATE_INIT);
+
+    // we completed the last node, notify waiting threads
+    if (node == cg->node_get_exit())
+    {
+        LOGGER_FATAL("TODO: notify command completion");
+        pthread_mutex_lock(&cg->wait_mtx);
+        {
+            node->state = COMMAND_GRAPH_NODE_STATE_COMPLETE;
+            pthread_cond_signal(&cg->wait_cond);
+        }
+        pthread_mutex_unlock(&cg->wait_mtx);
+    }
+    else
+    {
+        // we don't care about that state change in such case
+        // node->state = COMMAND_GRAPH_NODE_STATE_COMPLETE;
+    }
+}
+
+static int
+XKRT_DRIVER_ENTRYPOINT(command_execute)(
+    device_driver_id_t device_driver_id,
+    command_t * cmd
+) {
+    assert(cmd->type == cgir::COMMAND_TYPE_BATCH);
+    assert(cmd->batch.cg);              // stores the cg to replay
+    assert(cmd->batch.driver_handle);   // stores the runtime_t
+
+    runtime_t * runtime = (runtime_t *) cmd->batch.driver_handle;
+    command_graph_t * cg = (command_graph_t *) cmd->batch.cg;
+
+     // increase replay counter
+    ++cg->rc;
+
+    // get entry/exit nodes to launch and wait completion
+    command_graph_node_t * entry = (command_graph_node_t *) cg->node_get_entry();
+    command_graph_node_t * exit  = (command_graph_node_t *) cg->node_get_exit();
+
+    // submit and reinitialized entry and exit nodes.
+    // Exit must be initialized first, to avoid early completion
+    XKRT_DRIVER_ENTRYPOINT(command_graph_replay_process_node)<0>(runtime, cg, exit);
+    XKRT_DRIVER_ENTRYPOINT(command_graph_replay_process_node)<0>(runtime, cg, entry);
+
+    // wait for exit completion
+    pthread_mutex_lock(&cg->wait_mtx);
+    {
+        while ((volatile command_graph_node_state_t) exit->state != COMMAND_GRAPH_NODE_STATE_COMPLETE)
+            pthread_cond_wait(&cg->wait_cond, &cg->wait_mtx);
+    }
+    pthread_mutex_unlock(&cg->wait_mtx);
+
+    return 0;
+}
+
 static int
 XKRT_DRIVER_ENTRYPOINT(command_queue_launch)(
     device_driver_id_t device_driver_id,
@@ -340,7 +500,7 @@ XKRT_DRIVER_ENTRYPOINT(command_queue_launch)(
     {
         assert(cmd->type == cgir::COMMAND_TYPE_BATCH);
         assert(cmd->batch.cg);
-        LOGGER_FATAL("TODO");
+        LOGGER_FATAL("TODO: enqueue command");
     }
 
     return 0;
@@ -553,6 +713,7 @@ XKRT_DRIVER_ENTRYPOINT(create_driver)(void)
     REGISTER(command_queue_suggest);
     REGISTER(command_queue_wait);
     REGISTER(command_queue_wait_all);
+    REGISTER(command_execute);
 
     REGISTER(device_commit);
     REGISTER(device_cpuset);

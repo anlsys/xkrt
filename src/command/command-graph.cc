@@ -346,151 +346,16 @@ runtime_t::command_graph_from_task_dependency_graph(
 // REPLAY //
 ////////////
 
-void command_graph_replay_node_complete(
-    runtime_t * runtime,
-    command_graph_t * cg,
-    command_graph_node_t * node
-);
-
-static void
-command_graph_replay_node_completion_callback(
-    void * args[XKRT_CALLBACK_ARGS_MAX]
-) {
-    runtime_t            * runtime = (runtime_t *)            args[0];
-    command_graph_t      * cg      = (command_graph_t *)      args[1];
-    command_graph_node_t * node    = (command_graph_node_t *) args[2];
-    return command_graph_replay_node_complete(runtime, cg, node);
-}
-
-template <command_graph_node_wc_type_t initial_dwc>
-static inline void
-command_graph_replay_process_node(
-    runtime_t * runtime,
-    command_graph_t * cg,
-    command_graph_node_t * node
-) {
-    // delta wait counter
-    command_graph_node_wc_type_t dwc = initial_dwc;
-
-    SPINLOCK_LOCK(node->spinlock);
-    {
-        // first time processing this node for that replay: reinitialize the node
-        if (xkrt_compare_and_swap(node->rc, cg->rc))
-        {
-            if (node->type == cgir::COMMAND_GRAPH_NODE_TYPE_COMMAND)
-            {
-                assert(node->command);
-
-                // clear all previous callbacks
-                ((command_t *) node->command)->completion_callback_clear();
-
-                // add a callback to notify successor commands of that predecessor completion
-                static_assert(XKRT_CALLBACK_ARGS_MAX >= 3);
-                callback_t callback;
-                callback.func = command_graph_replay_node_completion_callback;
-                callback.args[0] = runtime;
-                callback.args[1] = cg;
-                callback.args[2] = node;
-                ((command_t *) node->command)->completion_callback_push(callback);
-            }
-
-            // set node in INIT state
-            node->state = COMMAND_GRAPH_NODE_STATE_INIT;
-
-            // increment wc to avoid early release
-            static_assert(std::is_signed<command_graph_node_wc_type_t>::value,
-                    "command_graph_node_wc_t must be able to represent negative numbers");
-            dwc -= (command_graph_node_wc_type_t) node->predecessors.size();
-        }
-    }
-    SPINLOCK_UNLOCK(node->spinlock);
-
-    // if we reached 0, command is now ready
-    if (node->wc.fetch_sub(dwc, std::memory_order_relaxed) == dwc)
-    {
-        // if the node holds a command
-        switch (node->type)
-        {
-            case (cgir::COMMAND_GRAPH_NODE_TYPE_EMPTY):
-            {
-                // completes it without submitting any command
-                command_graph_replay_node_complete(runtime, cg, node);
-                break ;
-            }
-
-            case (cgir::COMMAND_GRAPH_NODE_TYPE_COMMAND):
-            {
-                // replay the command
-                assert(node->command);
-                assert(node->device_unique_id != XKRT_UNSPECIFIED_DEVICE_UNIQUE_ID);
-                assert(node->state == COMMAND_GRAPH_NODE_STATE_INIT);
-                runtime->command_submit(node->device_unique_id, (command_t *) node->command);
-                break ;
-            }
-
-            case (cgir::COMMAND_GRAPH_NODE_TYPE_COMMAND_GRAPH):
-            case (cgir::COMMAND_GRAPH_NODE_TYPE_CONDITION):
-            default:
-            {
-                LOGGER_FATAL("Not supported");
-                break ;
-            }
-        }
-    }
-}
-
-void
-command_graph_replay_node_complete(
-    runtime_t * runtime,
-    command_graph_t * cg,
-    command_graph_node_t * node
-) {
-    // submit successor nodes
-    node->foreach_successor([&] (cgir::command_graph_node_t * succ) {
-        command_graph_replay_process_node<1>(runtime, cg, (command_graph_node_t *) succ);
-    });
-
-    assert(node->state == COMMAND_GRAPH_NODE_STATE_INIT);
-
-    // we completed the last node, notify waiting threads
-    if (node == cg->node_get_exit())
-    {
-        pthread_mutex_lock(&cg->wait_mtx);
-        {
-            node->state = COMMAND_GRAPH_NODE_STATE_COMPLETE;
-            pthread_cond_signal(&cg->wait_cond);
-        }
-        pthread_mutex_unlock(&cg->wait_mtx);
-    }
-    else
-    {
-        // we don't care about that state change in such case
-        // node->state = COMMAND_GRAPH_NODE_STATE_COMPLETE;
-    }
-}
-
 void
 runtime_t::command_graph_replay(command_graph_t * cg)
 {
-    // increase replay counter
-    ++cg->rc;
-
-    // get entry/exit nodes to launch and wait completion
-    command_graph_node_t * entry = (command_graph_node_t *) cg->node_get_entry();
-    command_graph_node_t * exit  = (command_graph_node_t *) cg->node_get_exit();
-
-    // submit and reinitialized entry and exit nodes.
-    // Exit must be initialized first, to avoid early completion
-    command_graph_replay_process_node<0>(this, cg, exit);
-    command_graph_replay_process_node<0>(this, cg, entry);
-
-    // wait for exit completion
-    pthread_mutex_lock(&cg->wait_mtx);
-    {
-        while ((volatile command_graph_node_state_t) exit->state != COMMAND_GRAPH_NODE_STATE_COMPLETE)
-            pthread_cond_wait(&cg->wait_cond, &cg->wait_mtx);
-    }
-    pthread_mutex_unlock(&cg->wait_mtx);
+    constexpr device_unique_id_t device_unique_id = XKRT_HOST_DEVICE_UNIQUE_ID;
+    constexpr cgir::command_type_t ctype = cgir::COMMAND_TYPE_BATCH;
+    constexpr command_flag_t flags = COMMAND_FLAG_SYNCHRONOUS;
+    command_t command(ctype, flags);
+    command.batch.cg = cg;
+    command.batch.driver_handle = (void *) this;
+    this->command_submit(device_unique_id, &command);
 }
 
 /////////////
