@@ -49,7 +49,6 @@ typedef std::atomic<uint64_t> stats_int_t;
 /* per-format task counters, pool-allocated (one entry per registered format) */
 typedef struct  task_stats_t
 {
-    stats_int_t submitted;      ///< Number of tasks submitted
     stats_int_t commited;       ///< Number of tasks committed
     stats_int_t completed;      ///< Number of tasks completed
 }               task_stats_t;

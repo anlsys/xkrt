@@ -233,17 +233,16 @@ stats_tasks_report(runtime_t * runtime)
         task_stats_t * tstats = runtime->stats.tasks.get(i);
 
         uint64_t c1 = tstats->commited.load();
-        uint64_t c2 = tstats->submitted.load();
-        uint64_t c3 = tstats->completed.load();
+        uint64_t c2 = tstats->completed.load();
 
-        if (c1 || c2 || c3)
+        if (c1 || c2)
         {
             if (!dumped)
             {
                 dumped = true;
                 LOGGER_WARN("  Per format");
             }
-            LOGGER_WARN("  `%16s` - %6zu commited - %6zu submitted - %6zu completed", format->label, c1, c2, c3);
+            LOGGER_WARN("  `%16s` - %6zu commited - %6zu completed", format->label, c1, c2);
         }
 
         total_tasks += c1;
