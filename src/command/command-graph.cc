@@ -231,23 +231,17 @@ runtime_t::command_graph_from_task_dependency_graph(
                 all_cmd_are_on_same_device = false;
             }
 
-            // If this is a program command, forward the LLVM-IR (if any) of the
-            // task format's function to the command's source, so that CGIR's
-            // optimization passes (e.g. program/loop fusion) can operate on it.
+            // forward the task format's source (if any) to program commands
             if (rec.command.type == cgir::COMMAND_TYPE_PROG)
             {
                 task_format_t * format = this->task_format_get(task->fmtid);
                 if (format)
                 {
-                    // determine which target's function emitted this command
                     device_t * cmd_device = this->device_get(cmd_device_unique_id);
                     const task_format_target_t target = cmd_device
                         ? driver_type_to_task_format_target(cmd_device->driver_type)
                         : XKRT_TASK_FORMAT_TARGET_HOST;
 
-                    // forward the source if one is attached for that target.
-                    // `_owned` stays false: the source (e.g. a compile-time IR
-                    // global) is owned by the task format, not the command.
                     const cgir_command_prog_source_t & src = format->source[target];
                     if (src.content.llvmir.raw != NULL)
                         rec.command.prog.source = src;

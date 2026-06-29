@@ -59,6 +59,7 @@
 # include <xkrt/namespace.h>
 # include <xkrt/task/flag.h>
 # include <xkrt/task/format.h>
+# include <xkrt/task/formats.hpp>
 # include <xkrt/task/state.h>
 
 XKRT_NAMESPACE_BEGIN

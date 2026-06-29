@@ -124,15 +124,10 @@ typedef struct  xkrt_task_format_t
     xkrt_task_format_func_t f[XKRT_TASK_FORMAT_TARGET_MAX];
 
     /**
-     * @brief Optional source code attached to each target's function.
-     *
-     * `source[target]` may hold the program source (e.g. LLVM-IR) for the
-     * function `f[target]`. It follows the same representation as CGIR's
-     * `command_prog_t.source` so that, when a task dependency graph is lowered
-     * to a CGIR command graph, the source can be forwarded to the generated
-     * `COMMAND_TYPE_PROG` commands (enabling CGIR optimization passes such as
-     * program/loop fusion). A zero-initialized entry (`content.llvmir.raw ==
-     * NULL`) means "no source".
+     * @brief Optional source code (e.g. LLVM-IR) for each target's function,
+     * forwarded to the generated `COMMAND_TYPE_PROG` commands when a task
+     * dependency graph is lowered to a CGIR command graph. A zeroed entry
+     * (`content.llvmir.raw == NULL`) means "no source".
      */
     cgir_command_prog_source_t source[XKRT_TASK_FORMAT_TARGET_MAX];
 
@@ -156,30 +151,10 @@ typedef struct  xkrt_task_format_t
 
 /**
  * @typedef xkrt_task_format_id_t
- * @brief A unique identifier for a task format.
- *
- * This type is used as an index into the ::xkrt_task_formats_t list.
- *
- * It is 16-bit wide to allow runtimes (e.g. XKOMP) to register one task format
- * per source location without quickly exhausting the id space.
+ * @brief A unique identifier for a task format, used as an index into the
+ * task format repository (::xkrt_task_formats_t).
  */
 typedef uint16_t xkrt_task_format_id_t;
-
-/**
- * @def XKRT_TASK_FORMAT_MAX
- * @brief The maximum number of task formats that can be registered.
- *
- * This is decoupled from the (wider) ::xkrt_task_format_id_t range so that the
- * statically-sized ::xkrt_task_formats_t::list array stays reasonable in size.
- * It can be overridden at build time.
- */
-# ifndef XKRT_TASK_FORMAT_MAX
-#  define XKRT_TASK_FORMAT_MAX 4096
-# endif
-# ifdef __cplusplus
-static_assert(XKRT_TASK_FORMAT_MAX <= ((1 << (sizeof(xkrt_task_format_id_t) * 8)) - 1),
-        "XKRT_TASK_FORMAT_MAX must fit in xkrt_task_format_id_t");
-# endif
 
 /**
  * @def XKRT_TASK_FORMAT_NULL
@@ -187,26 +162,7 @@ static_assert(XKRT_TASK_FORMAT_MAX <= ((1 << (sizeof(xkrt_task_format_id_t) * 8)
  */
 # define XKRT_TASK_FORMAT_NULL 0
 
-/**
- * @struct xkrt_task_formats_t
- * @brief A repository for all registered task formats.
- *
- * This structure manages a list of all available task formats,
- * allowing them to be accessed by their ::xkrt_task_format_id_t.
- */
-typedef struct  xkrt_task_formats_t
-{
-    /**
-     * @brief Array holding all registered task formats.
-     */
-    xkrt_task_format_t list[XKRT_TASK_FORMAT_MAX];
-
-    /**
-     * @brief The ID to be assigned to the next registered task format.
-     *
-     * This is typically managed atomically.
-     */
-    xkrt_task_format_id_t next_fmtid;
-}               xkrt_task_formats_t;
+/* The task format repository (::xkrt_task_formats_t) is defined in the
+ * C++-only header <xkrt/task/formats.hpp> as it relies on the memory pool. */
 
 #endif /* __XKRT_TASK_FORMAT_H__ */

@@ -282,7 +282,6 @@ Key compile-time constants defined in `include/xkrt/consts.h`:
 | `XKRT_TASK_MAX_ACCESSES` | 1024 | Maximum data accesses per task. |
 | `XKRT_TEAM_MAX_THREADS` | 2048 | Maximum threads per team. |
 | `XKRT_HOST_DEVICE_UNIQUE_ID` | 0 | The host device is always device 0. |
-| `XKRT_TASK_FORMAT_MAX` | 255 | Maximum number of registered task formats. |
 
 ---
 
