@@ -2,7 +2,7 @@
 ** Copyright 2024,2025 INRIA
 **
 ** Contributors :
-** Romain PEREIRA, romain.pereira@inria.fr + rpereira@anl.gov
+** Romain PEREIRA, rpereira@anl.gov
 **
 ** This software is a computer program whose purpose is to execute
 ** blas subroutines on multi-GPUs system.
@@ -34,54 +34,16 @@
 ** knowledge of the CeCILL-C license and that you accept its terms.
 **/
 
-#ifndef __STATS_H__
-# define __STATS_H__
+#ifndef __XKRT_TASK_FORMATS_HPP__
+# define __XKRT_TASK_FORMATS_HPP__
 
-# include <xkrt/support.h>
+# include <xkrt/task/format.h>
+# include <xkrt/data-structures/memory-pool.h>
 
-# if XKRT_SUPPORT_STATS
-
-# include <atomic>
-# include <stddef.h>
-
-typedef std::atomic<uint64_t> stats_int_t;
-
-/* per-format task counters, pool-allocated (one entry per registered format) */
-typedef struct  task_stats_t
+/* Repository of registered task formats. The format id is the index in `list`. */
+typedef struct  xkrt_task_formats_t
 {
-    stats_int_t submitted;      ///< Number of tasks submitted
-    stats_int_t commited;       ///< Number of tasks committed
-    stats_int_t completed;      ///< Number of tasks completed
-}               task_stats_t;
+    memory_pool_t<xkrt_task_format_t, 2048> list;
+}               xkrt_task_formats_t;
 
-#  define XKRT_STATS_INCR(X, INCR)  \
-    do {                            \
-        X += INCR;                  \
-    } while (0)
-
-/* per-format counter increment (the slot is created alongside the format) */
-#  define XKRT_STATS_TASK_INCR(STATS, FMTID, FIELD, INCR)   \
-    do {                                                    \
-        (STATS).tasks.get(FMTID)->FIELD += (INCR);          \
-    } while (0)
-
-#  define XKRT_STATS_DECR(X, DECR)  \
-    do {                            \
-        X -= DECR;                  \
-    } while (0)
-
-#  define XKRT_STATS_SET(X, V)      \
-    do {                            \
-        X = V;                      \
-    } while (0)
-
-# else /* XKRT_SUPPORT_STATS */
-
-#  define XKRT_STATS_INCR(X, INCR)
-#  define XKRT_STATS_TASK_INCR(STATS, FMTID, FIELD, INCR)
-#  define XKRT_STATS_DECR(X, DECR)
-#  define XKRT_STATS_SET(X, V)
-
-# endif /* XKRT_SUPPORT_STATS */
-
-#endif /* __STATS_H__ */
+#endif /* __XKRT_TASK_FORMATS_HPP__ */

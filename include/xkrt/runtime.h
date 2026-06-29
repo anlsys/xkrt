@@ -84,7 +84,7 @@ struct  runtime_t
      * @brief Task format registry
      */
     struct {
-        task_formats_t list;                       ///< Complete list of task formats
+        task_formats_t all;                        ///< All registered task formats
         task_format_id_t host_capture;             ///< Host capture task format ID
         task_format_id_t memory_copy_async;        ///< Async memory copy task format ID
         task_format_id_t memory_touch_async;       ///< Async memory touch task format ID
@@ -742,7 +742,7 @@ struct  runtime_t
         assert(thread->current_task);
         ++thread->current_task->cc;
         __task_commit(task, F, args...);
-        XKRT_STATS_INCR(this->stats.tasks[task->fmtid].commited, 1);
+        XKRT_STATS_TASK_INCR(this->stats, task->fmtid, commited, 1);
     }
 
     /* Commit a task - so it may be schedule from now once its dependences
@@ -1222,13 +1222,8 @@ struct  runtime_t
     //////////////////
 
     /**
-     * @brief Initializes the task formats repository.
-     *
-     * Sets up the ::task_formats_t structure, likely by zeroing
-     * memory and setting `next_fmtid` to a starting value (e.g., 1,
-     * as ::XKRT_TASK_FORMAT_NULL is 0).
-     *
-     * @param formats Pointer to the ::task_formats_t instance to initialize.
+     * @brief Initializes the task formats repository and registers the
+     * reserved ::XKRT_TASK_FORMAT_NULL format (id 0).
      */
     void task_formats_init(void);
 
@@ -1245,13 +1240,9 @@ struct  runtime_t
     task_format_id_t task_format_create(const task_format_t * format);
 
     /**
-     * @brief Allocates a new task format ID without setting its data.
+     * @brief Allocates a new (empty) task format and returns its ID. The
+     * caller then fills it in, e.g. using ::task_format_set.
      *
-     * This function likely reserves a new ID by incrementing `next_fmtid`
-     * and returning its previous value. The caller is then responsible for
-     * setting the format's data, perhaps using ::task_format_set.
-     *
-     * @param formats Pointer to the ::task_formats_t repository.
      * @param label   The label of the task format
      * @return The allocated ::task_format_id_t.
      */
@@ -1365,11 +1356,7 @@ struct  runtime_t
      * @brief Runtime statistics collection
      */
     struct {
-        struct {
-            stats_int_t submitted;      ///< Number of tasks submitted
-            stats_int_t commited;       ///< Number of tasks committed
-            stats_int_t completed;      ///< Number of tasks completed
-        } tasks[XKRT_TASK_FORMAT_MAX];
+        memory_pool_t<task_stats_t> tasks;  ///< Per-format task counters (one entry per format)
 
         struct {
             stats_int_t skipped;        ///< Number of edges skipped

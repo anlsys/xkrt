@@ -69,7 +69,7 @@ struct memory_pool_t
             // non-copyable, movable
             chunk_t(const chunk_t &) = delete;
             chunk_t & operator=(const chunk_t &) = delete;
-            chunk_t(chunk_t && o) : data(o.data) { o.data = nullptr; }
+            chunk_t(chunk_t && o) : data(o.data), current(o.current) { o.data = nullptr; o.current = 0; }
         };
 
         std::vector<chunk_t> chunks;

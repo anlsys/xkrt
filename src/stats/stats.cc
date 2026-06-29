@@ -226,15 +226,15 @@ stats_tasks_report(runtime_t * runtime)
     uint64_t total_tasks         = 0;
 
     bool dumped = false;
-    for (size_t i = 0 ; i < XKRT_TASK_FORMAT_MAX ; ++i)
+    size_t nformats = runtime->stats.tasks.size();
+    for (size_t i = 0 ; i < nformats ; ++i)
     {
         task_format_t * format = runtime->task_format_get((task_format_id_t) i);
-        if (format == NULL)
-            break ;
+        task_stats_t * tstats = runtime->stats.tasks.get(i);
 
-        uint64_t c1 = runtime->stats.tasks[i].commited.load();
-        uint64_t c2 = runtime->stats.tasks[i].submitted.load();
-        uint64_t c3 = runtime->stats.tasks[i].completed.load();
+        uint64_t c1 = tstats->commited.load();
+        uint64_t c2 = tstats->submitted.load();
+        uint64_t c3 = tstats->completed.load();
 
         if (c1 || c2 || c3)
         {

@@ -77,6 +77,7 @@ runtime_t::init(void)
 
     # if XKRT_SUPPORT_STATS
     memset(&this->stats, 0, sizeof(this->stats));
+    new (&this->stats.tasks) memory_pool_t<task_stats_t>();
     # endif /* XKRT_SUPPORT_STATS */
 
     // set affinities to 0
@@ -125,6 +126,10 @@ runtime_t::deinit(void)
     this->state = runtime_t::state_t::DEINITIALIZED;
     drivers_deinit(this);
     hwloc_topology_destroy(this->topology);
+    this->formats.all.list.release();
+    # if XKRT_SUPPORT_STATS
+    this->stats.tasks.release();
+    # endif /* XKRT_SUPPORT_STATS */
 
     return 0;
 }

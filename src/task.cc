@@ -450,7 +450,7 @@ __task_complete(
 
     // TODO: instead, can we have a counter per thread, to reduce the number of
     // updates on the 'parent' counter ?
-    XKRT_STATS_INCR(runtime->stats.tasks[task->fmtid].completed, 1);
+    XKRT_STATS_TASK_INCR(runtime->stats, task->fmtid, completed, 1);
     task->parent->cc.fetch_sub(1, std::memory_order_relaxed);
 }
 

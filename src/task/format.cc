@@ -49,7 +49,7 @@ XKRT_NAMESPACE_USE;
 void
 runtime_t::task_formats_init(void)
 {
-    memset(&this->formats, 0, sizeof(task_formats_t));
+    new (&this->formats.all) task_formats_t();
 
     task_format_t format;
     memset(&format, 0, sizeof(format));
@@ -62,18 +62,24 @@ runtime_t::task_formats_init(void)
 task_format_t *
 runtime_t::task_format_get(task_format_id_t fmtid)
 {
-    return this->formats.list.list + fmtid;
+    return this->formats.all.list.get(fmtid);
 }
 
 task_format_id_t
 runtime_t::task_format_put(const char * label)
 {
-    const task_format_id_t fmtid = this->formats.list.next_fmtid++;
-    assert(fmtid < XKRT_TASK_FORMAT_MAX);
+    const size_t index = this->formats.all.list.size();
+    assert(index <= (size_t) (task_format_id_t) ~0);
+    const task_format_id_t fmtid = (task_format_id_t) index;
 
-    task_format_t * format = this->formats.list.list + fmtid;
+    task_format_t * format = this->formats.all.list.put();
     memset(format, 0, sizeof(task_format_t));
     snprintf(format->label, sizeof(format->label), "%s", label);
+
+    // grow the per-format stats pool in lockstep so stats[fmtid] exists
+    # if XKRT_SUPPORT_STATS
+    new (this->stats.tasks.put()) task_stats_t();
+    # endif /* XKRT_SUPPORT_STATS */
 
     LOGGER_DEBUG("Created new task format `%d` named `%s`", fmtid, label);
 
@@ -84,8 +90,7 @@ task_format_id_t
 runtime_t::task_format_create(const task_format_t * format)
 {
     const task_format_id_t fmtid = this->task_format_put(format->label);
-    assert(fmtid < XKRT_TASK_FORMAT_MAX);
-    memcpy(formats.list.list + fmtid, format, sizeof(task_format_t));
+    memcpy(this->formats.all.list.get(fmtid), format, sizeof(task_format_t));
     return fmtid;
 }
 
