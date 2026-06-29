@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/usr/bin/env zsh
 # ============================================================================
 # update.sh — in-place updater for the xkrt ecosystem (companion to install.sh)
 #
@@ -90,12 +90,27 @@ hr
 ENV_FILE="$BASE_DIR/env.sh"
 if [[ -f "$ENV_FILE" ]]; then
     step "Loading modules (source $ENV_FILE)"
-    # Run env.sh tolerantly: 'module' (Lmod) is not always set -u clean, and the
-    # `|| fatal` keeps set -e from aborting mid-way while still catching a hard
-    # failure (e.g. no module system, which env.sh reports via a non-zero return).
-    set +u
+    set +u   # 'module' (Lmod) and its init scripts are not always set -u clean
+
+    # Make the 'module' command available first.  This script runs in bash, but it
+    # may have been launched from a shell that does not export shell functions to
+    # child processes (zsh, notably) — so the 'module' function is NOT inherited,
+    # and env.sh would bail.  The Lmod/Modules *environment* (e.g. $LMOD_PKG) IS
+    # inherited, so re-source the module-system init to define 'module' here.
+    if ! command -v module >/dev/null 2>&1; then
+        for _f in "${LMOD_PKG:-/nonexistent}/init/bash" \
+                  /usr/share/lmod/lmod/init/bash /usr/local/lmod/lmod/init/bash \
+                  /opt/apps/lmod/lmod/init/bash /usr/share/modules/init/bash \
+                  /etc/profile.d/modules.sh; do
+            [ -r "$_f" ] || continue
+            # shellcheck disable=SC1090
+            . "$_f" || true
+            command -v module >/dev/null 2>&1 && break
+        done
+    fi
+
     # shellcheck disable=SC1090
-    source "$ENV_FILE" || fatal "failed to source $ENV_FILE (is a module system available?)"
+    source "$ENV_FILE" || fatal "failed to source $ENV_FILE (no usable module system found?)"
     set -u
 else
     warn "no env.sh at $ENV_FILE — modules not loaded; builds may fail to find their"

@@ -1300,9 +1300,20 @@ cat <<EOF
 # Source this file to load the installed xkrt-ecosystem modules:
 #   source "$ENV_FILE"
 
+# Make 'module' available if the current shell did not export it.  (zsh, notably,
+# does not export shell functions to child processes, so 'bash env.sh' or a script
+# sourcing this file won't have inherited Lmod's 'module' function.)  The Lmod /
+# Modules environment (e.g. \$LMOD_PKG) IS inherited, so re-source its init.
 if ! command -v module >/dev/null 2>&1; then
-    echo "env.sh: the 'module' command is not available — initialise your module" >&2
-    echo "        system (Lmod / Environment Modules) first, then re-source this file." >&2
+    for _f in "\${LMOD_PKG:-/nonexistent}/init/bash" /usr/share/lmod/lmod/init/bash /usr/local/lmod/lmod/init/bash /opt/apps/lmod/lmod/init/bash /usr/share/modules/init/bash /etc/profile.d/modules.sh; do
+        [ -r "\$_f" ] || continue
+        . "\$_f" || true
+        command -v module >/dev/null 2>&1 && break
+    done
+fi
+if ! command -v module >/dev/null 2>&1; then
+    echo "env.sh: no 'module' command and no module-system init script was found;" >&2
+    echo "        load Lmod / Environment Modules, then re-source this file." >&2
     return 1 2>/dev/null || exit 1
 fi
 
