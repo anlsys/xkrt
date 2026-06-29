@@ -35,43 +35,66 @@
 ** knowledge of the CeCILL-C license and that you accept its terms.
 **/
 
+/**
+ *  Host-only coverage of the task-dependency-graph recording API.
+ *
+ *  The existing `task-dependency-graph.cc` requires GPUs (it schedules tasks
+ *  on non-host devices and builds a device command-graph). This test records
+ *  a chain of *host* tasks instead, verifying that:
+ *      - recording captures every spawned task,
+ *      - tasks still execute (execute_commands = true) in dependency order.
+ */
+
 # include <xkrt/runtime.h>
+# include <xkrt/task/task.hpp>
 # include <xkrt/logger/logger.h>
-# include <xkrt/logger/metric.h>
+
+# include <assert.h>
 
 XKRT_NAMESPACE_USE;
+
+static int value = 0;
 
 int
 main(void)
 {
     runtime_t runtime;
-
     assert(runtime.init() == 0);
 
-    const size_t size = 10000;
-    void * ptr = calloc(1, size);
-    assert(ptr);
+    constexpr int N = 8;
+    value = 0;
 
-    uintptr_t p = (uintptr_t) ptr;
+    // record a chain of host tasks (RAW/WAW on a single point)
+    task_dependency_graph_t tdg;
+    constexpr bool execute_commands = true;
+    runtime.task_dependency_graph_record_start(&tdg, execute_commands);
 
-    // r[xxxxxxxxxxxxxxxxxx....................]
-    runtime.memory_register((void *)p, size / 2);
+    for (int i = 0 ; i < N ; ++i)
+    {
+        runtime.task_spawn<1>(
+            [] (task_t * task, access_t * accesses) {
+                new (accesses + 0) access_t(task, (const void *) &value, ACCESS_MODE_RW);
+            },
+            [i] (runtime_t *, device_t *, task_t *) {
+                // strict serialization: each task observes the previous value
+                assert(value == i);
+                value = i + 1;
+            }
+        );
+    }
 
-    // +
-    // r[.........xxxxxxxxxxxxxxxxxxx..........]
-    // =
-    // r[xxxxxxxxxxxxxxxxxxxxxxxxxxxx..........]
-    runtime.memory_register((void *) (p + size/4), size / 2);
+    // implicit task_wait: the recorded host tasks execute here
+    runtime.task_dependency_graph_record_stop();
 
-    // +
-    // r[..................xxxxxxxxxxxxxxxxxxxx]
-    // =
-    // r[xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx]
-    runtime.memory_register((void *) (p + size/2), size / 2);
+    // tasks executed in dependency order
+    assert(value == N);
 
-    // distribute the segment to all gpus
-    runtime.distribute_async(XKRT_DISTRIBUTION_TYPE_CYCLIC1D, ptr, size, size/64, 0);
-    runtime.task_wait();
+    // the graph captured every spawned task
+    assert(tdg.get_ntasks() == (size_t) N);
+
+    // replay/destroy are no-ops for a host graph but must be callable
+    runtime.task_dependency_graph_replay(&tdg);
+    runtime.task_dependency_graph_destroy(&tdg);
 
     assert(runtime.deinit() == 0);
 

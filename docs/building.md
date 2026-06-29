@@ -160,19 +160,53 @@ target_link_libraries(my_app PRIVATE xkrt::xkrt)
 
 ## Running Tests
 
+Tests rely on `assert()`, so build in **Debug** (assertions are additionally
+force-enabled on the test targets, but Debug is recommended):
+
 ```bash
 cd build
+cmake -DCMAKE_BUILD_TYPE=Debug ..
+make -j$(nproc)
 ctest --output-on-failure
 ```
 
+Tests that require a GPU are skipped gracefully (reported as *Skipped*, with a
+warning) when no GPU device is available, so the suite stays green on host-only
+machines.
+
+### Test layout & labels
+
+Tests live in `tests/<area>/` and are registered with CTest **labels** for
+selective runs:
+
+| Label | Meaning |
+|-------|---------|
+| `lifecycle`, `task`, `memory`, `team`, `file`, `capi`, `data-structure` | feature area |
+| `format`, `dependency`, `moldable`, `detachable`, `graph`, `allocator`, `register`, `copy` | sub-feature |
+| `host` | runs anywhere |
+| `gpu`  | requires a GPU (skipped otherwise) |
+
+```bash
+ctest --output-on-failure          # everything (GPU tests auto-skip if no GPU)
+ctest -L host --output-on-failure  # only host-runnable tests
+ctest -LE gpu                      # everything except GPU tests
+ctest -L team                      # only the team tests
+ctest -L gpu                       # only the GPU tests (on a GPU machine)
+```
+
 The test suite covers:
-- Runtime init/deinit
-- Task synchronization and dependencies (handle, interval, matrix, graph)
-- Task formats
-- Memory registration (sync, async, parallel, touch)
-- Thread teams (barrier, parallel for, device teams)
-- Moldable tasks
-- File I/O
+- Runtime init/deinit/synchronization
+- Task formats (one-shot `create` and incremental `put`/`set`/`get`)
+- Task dependencies: low-level (handle, interval, matrix) and high-level
+  capture API (RAW/WAR/WAW, fan-in/out), access concurrency
+  (commutative/concurrent)
+- Moldable tasks (including real recursive splitting) and detachable tasks
+- Task dependency graph recording/replay (host and GPU)
+- Memory: device/host/unified allocators, registration (sync/async/parallel),
+  touch, and host<->device async copies
+- Thread teams (barrier, parallel-for + bounds, critical sections, device teams)
+- File I/O (parallel async read and write)
+- The `lp-tree` data structure
 - C API
 
 ---

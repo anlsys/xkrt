@@ -55,7 +55,7 @@
 
 XKRT_NAMESPACE_BEGIN
 
-static inline task_format_target_t
+task_format_target_t
 driver_type_to_task_format_target(driver_type_t driver_type)
 {
     switch (driver_type)

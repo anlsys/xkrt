@@ -3,7 +3,6 @@
 **
 ** Contributors :
 ** Thierry Gautier, thierry.gautier@inrialpes.fr
-** Joao Lima joao.lima@inf.ufsm.br
 ** Romain PEREIRA, romain.pereira@inria.fr + rpereira@anl.gov
 **
 ** This software is a computer program whose purpose is to execute
@@ -36,77 +35,53 @@
 ** knowledge of the CeCILL-C license and that you accept its terms.
 **/
 
-# include <atomic>
-# include <cassert>
-# include <cstring>
-
-# include <xkrt/logger/logger.h>
-# include <xkrt/namespace.h>
 # include <xkrt/runtime.h>
+# include <xkrt/logger/logger.h>
+# include <xkrt/logger/metric.h>
+
+# include <common/skip.h>
 
 XKRT_NAMESPACE_USE;
 
-void
-runtime_t::task_formats_init(void)
-{
-    memset(&this->formats, 0, sizeof(task_formats_t));
-
-    task_format_t format;
-    memset(&format, 0, sizeof(format));
-    snprintf(format.label, sizeof(format.label), "(null)");
-
-    task_format_id_t id = this->task_format_create(&format);
-    assert(id == XKRT_TASK_FORMAT_NULL);
-}
-
-task_format_t *
-runtime_t::task_format_get(task_format_id_t fmtid)
-{
-    return this->formats.list.list + fmtid;
-}
-
-task_format_id_t
-runtime_t::task_format_put(const char * label)
-{
-    const task_format_id_t fmtid = this->formats.list.next_fmtid++;
-    assert(fmtid < XKRT_TASK_FORMAT_MAX);
-
-    task_format_t * format = this->formats.list.list + fmtid;
-    memset(format, 0, sizeof(task_format_t));
-    snprintf(format->label, sizeof(format->label), "%s", label);
-
-    LOGGER_DEBUG("Created new task format `%d` named `%s`", fmtid, label);
-
-    return fmtid;
-}
-
-task_format_id_t
-runtime_t::task_format_create(const task_format_t * format)
-{
-    const task_format_id_t fmtid = this->task_format_put(format->label);
-    assert(fmtid < XKRT_TASK_FORMAT_MAX);
-    memcpy(formats.list.list + fmtid, format, sizeof(task_format_t));
-    return fmtid;
-}
-
 int
-runtime_t::task_format_set(
-    task_format_id_t fmtid,
-    task_format_target_t target,
-    task_format_func_t func
-) {
-    task_format_t * format = this->task_format_get(fmtid);
-    format->f[target] = func;
-    return 0;
-}
+main(void)
+{
+    runtime_t runtime;
 
-int
-runtime_t::task_format_set_source(
-    task_format_id_t fmtid,
-    task_format_target_t target,
-    cgir_command_prog_source_t source
-) {
-    task_format_t * format = this->task_format_get(fmtid);
-    format->source[target] = source;
+    assert(runtime.init() == 0);
+
+    // requires GPUs: distribute_async() targets the (non-host) devices
+    XKRT_TEST_SKIP_IF_NO_GPU(runtime);
+
+    team_t * team = runtime.team_get(XKRT_DRIVER_TYPE_HOST);
+    assert(team);
+
+    const size_t size = 10000;
+    void * ptr = calloc(1, size);
+    assert(ptr);
+
+    uintptr_t p = (uintptr_t) ptr;
+    int nchunks = 4;
+
+    // r[xxxxxxxxxxxxxxxxxx....................]
+    runtime.memory_register_async(team, (void *)p, size / 2, nchunks);
+
+    // +
+    // r[.........xxxxxxxxxxxxxxxxxxx..........]
+    // =
+    // r[xxxxxxxxxxxxxxxxxxxxxxxxxxxx..........]
+    runtime.memory_register_async(team, (void *) (p + size/4), size / 2, nchunks);
+
+    // +
+    // r[..................xxxxxxxxxxxxxxxxxxxx]
+    // =
+    // r[xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx]
+    runtime.memory_register_async(team, (void *) (p + size/2), size / 2, nchunks);
+
+    // distribute the segment to all gpus
+    runtime.distribute_async(XKRT_DISTRIBUTION_TYPE_CYCLIC1D, ptr, size, size/64, 0);
+
+    assert(runtime.deinit() == 0);
+
     return 0;
 }

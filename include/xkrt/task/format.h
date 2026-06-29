@@ -49,6 +49,10 @@
 
 # include <stdint.h>
 
+/* Shared (C-compatible) source-code descriptor, also used by CGIR's
+ * `command_prog_t`. See `cgir/prog-source.h`. */
+# include <cgir/prog-source.h>
+
 /**
  * @enum xkrt_task_format_target_t
  * @brief Enumerates the possible execution targets for a task.
@@ -120,6 +124,19 @@ typedef struct  xkrt_task_format_t
     xkrt_task_format_func_t f[XKRT_TASK_FORMAT_TARGET_MAX];
 
     /**
+     * @brief Optional source code attached to each target's function.
+     *
+     * `source[target]` may hold the program source (e.g. LLVM-IR) for the
+     * function `f[target]`. It follows the same representation as CGIR's
+     * `command_prog_t.source` so that, when a task dependency graph is lowered
+     * to a CGIR command graph, the source can be forwarded to the generated
+     * `COMMAND_TYPE_PROG` commands (enabling CGIR optimization passes such as
+     * program/loop fusion). A zero-initialized entry (`content.llvmir.raw ==
+     * NULL`) means "no source".
+     */
+    cgir_command_prog_source_t source[XKRT_TASK_FORMAT_TARGET_MAX];
+
+    /**
      * @brief A human-readable label for the task format.
      */
     char label[32];
@@ -142,16 +159,27 @@ typedef struct  xkrt_task_format_t
  * @brief A unique identifier for a task format.
  *
  * This type is used as an index into the ::xkrt_task_formats_t list.
+ *
+ * It is 16-bit wide to allow runtimes (e.g. XKOMP) to register one task format
+ * per source location without quickly exhausting the id space.
  */
-typedef uint8_t xkrt_task_format_id_t;
+typedef uint16_t xkrt_task_format_id_t;
 
 /**
  * @def XKRT_TASK_FORMAT_MAX
  * @brief The maximum number of task formats that can be registered.
  *
- * This is derived from the size of ::xkrt_task_format_id_t.
+ * This is decoupled from the (wider) ::xkrt_task_format_id_t range so that the
+ * statically-sized ::xkrt_task_formats_t::list array stays reasonable in size.
+ * It can be overridden at build time.
  */
-# define XKRT_TASK_FORMAT_MAX ((1 << (sizeof(xkrt_task_format_id_t) * 8)) - 1)
+# ifndef XKRT_TASK_FORMAT_MAX
+#  define XKRT_TASK_FORMAT_MAX 4096
+# endif
+# ifdef __cplusplus
+static_assert(XKRT_TASK_FORMAT_MAX <= ((1 << (sizeof(xkrt_task_format_id_t) * 8)) - 1),
+        "XKRT_TASK_FORMAT_MAX must fit in xkrt_task_format_id_t");
+# endif
 
 /**
  * @def XKRT_TASK_FORMAT_NULL

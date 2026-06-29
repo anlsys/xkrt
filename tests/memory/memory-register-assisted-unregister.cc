@@ -39,6 +39,8 @@
 # include <xkrt/logger/logger.h>
 # include <xkrt/logger/metric.h>
 
+# include <common/skip.h>
+
 XKRT_NAMESPACE_USE;
 
 int
@@ -47,6 +49,9 @@ main(void)
     runtime_t runtime;
 
     assert(runtime.init() == 0);
+
+    // requires GPUs: distribute_async() targets the (non-host) devices
+    XKRT_TEST_SKIP_IF_NO_GPU(runtime);
 
     const size_t size = 10000;
     void * ptr = calloc(1, size);

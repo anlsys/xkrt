@@ -474,7 +474,7 @@ memory_register_async_register_format(runtime_t * runtime)
 {
     {
         task_format_t format;
-        memset(format.f, 0, sizeof(format.f));
+        memset(&format, 0, sizeof(format));
         format.f[XKRT_TASK_FORMAT_TARGET_HOST] = (task_format_func_t) body_memory_async<REGISTER>;
         snprintf(format.label, sizeof(format.label), "memory_register_async");
         runtime->formats.memory_register_async = runtime->task_format_create(&format);
@@ -482,7 +482,7 @@ memory_register_async_register_format(runtime_t * runtime)
 
     {
         task_format_t format;
-        memset(format.f, 0, sizeof(format.f));
+        memset(&format, 0, sizeof(format));
         format.f[XKRT_TASK_FORMAT_TARGET_HOST] = (task_format_func_t) body_memory_async<UNREGISTER>;
         snprintf(format.label, sizeof(format.label), "memory_unregister_async");
         runtime->formats.memory_unregister_async = runtime->task_format_create(&format);
@@ -490,7 +490,7 @@ memory_register_async_register_format(runtime_t * runtime)
 
     {
         task_format_t format;
-        memset(format.f, 0, sizeof(format.f));
+        memset(&format, 0, sizeof(format));
         format.f[XKRT_TASK_FORMAT_TARGET_HOST] = (task_format_func_t) body_memory_async<TOUCH>;
         snprintf(format.label, sizeof(format.label), "memory_touch_async");
         runtime->formats.memory_touch_async = runtime->task_format_create(&format);

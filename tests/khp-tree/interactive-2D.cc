@@ -17,7 +17,8 @@ main(void)
             Interval(x0, x1),
             Interval(y0, y1)
         };
-        KHyperrect<K> rect(list);
+        KHyperrect<K> rect;
+        rect.set_list(list);
         unused_type_t t;
         tree.insert(t, rect);
         tree.export_pdf("interactive");

@@ -41,6 +41,8 @@
 # include <xkrt/logger/logger.h>
 # include <xkrt/logger/metric.h>
 
+# include <common/skip.h>
+
 # if NDEBUG
 #  define assert(X) X
 # endif
@@ -53,6 +55,9 @@ main(void)
     runtime_t runtime;
 
     assert(runtime.init() == 0);
+
+    // requires GPUs: tasks are scheduled on (non-host) devices
+    XKRT_TEST_SKIP_IF_NO_GPU(runtime);
 
     constexpr size_t size = 1024;
     uintptr_t X = (uintptr_t) malloc(size);
@@ -170,17 +175,12 @@ main(void)
 
     uint64_t t4 = get_nanotime();
 
-    /* remove useless nodes */
-    //  # pragma omp taskgraph optimize(reduce_nodes)
-    cg.optimize(cgir::COMMAND_GRAPH_PASS_REDUCE_NODE);
-
-    /* remove redundant edges */
-    //  # pragma omp taskgraph optimize(reduce_edges)
-    cg.optimize(cgir::COMMAND_GRAPH_PASS_REDUCE_EDGE);
-
-    /* contract the cg */
-    //  # pragma omp taskgraph optimize(batch)
-    cg.optimize(cgir::COMMAND_GRAPH_PASS_BATCH);
+    /* optimize: remove useless nodes, redundant edges, then contract */
+    //  # pragma omp taskgraph optimize(reduce-node, reduce-edge, batch)
+    cg.optimize(
+          cgir::COMMAND_GRAPH_PASS_REDUCE_NODE_BIT
+        | cgir::COMMAND_GRAPH_PASS_REDUCE_EDGE_BIT
+        | cgir::COMMAND_GRAPH_PASS_BATCH_BIT);
 
     uint64_t t5 = get_nanotime();
 
