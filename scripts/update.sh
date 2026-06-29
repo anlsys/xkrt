@@ -28,8 +28,14 @@
 # Usage: update.sh [--force] [path/to/.xkrt_install.cache]
 # ============================================================================
 
+# Make sure we are actually running under bash.  This script uses bash-only
+# features (BASH_SOURCE, arrays, and globbing of unquoted variable expansions),
+# and if it gets started by another shell (zsh in particular behaves very
+# differently), re-exec it with bash.
+if [ -z "${BASH_VERSION:-}" ]; then exec bash "$0" "$@"; fi
+
 set -euo pipefail
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd)"
 
 # ─── Colours / UI (same conventions as install.sh) ────────────────────────────
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'

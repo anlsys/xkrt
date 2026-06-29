@@ -22,9 +22,15 @@
 # Requires: cmake >= 3.17, a C/C++ compiler, git, autoconf/automake (for hwloc)
 # ============================================================================
 
+# Make sure we are actually running under bash.  This script uses bash-only
+# features (BASH_SOURCE, arrays, and globbing of unquoted variable expansions);
+# if it gets started by another shell (zsh in particular behaves differently),
+# re-exec it with bash.
+if [ -z "${BASH_VERSION:-}" ]; then exec bash "$0" "$@"; fi
+
 set -euo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd)"
 
 # ─── Colours ─────────────────────────────────────────────────────────────────
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'
