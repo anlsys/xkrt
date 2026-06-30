@@ -351,7 +351,7 @@ runtime_t::command_graph_replay(command_graph_t * cg)
 {
     constexpr device_unique_id_t device_unique_id = XKRT_HOST_DEVICE_UNIQUE_ID;
     constexpr cgir::command_type_t ctype = cgir::COMMAND_TYPE_BATCH;
-    constexpr command_flag_t flags = COMMAND_FLAG_SYNCHRONOUS;
+    constexpr command_flag_t flags = COMMAND_FLAG_SERIALIZED | COMMAND_FLAG_SYNCHRONOUS;
     command_t command(ctype, flags);
     command.batch.cg = cg;
     command.batch.driver_handle = (void *) this;

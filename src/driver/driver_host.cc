@@ -327,6 +327,10 @@ XKRT_DRIVER_ENTRYPOINT(command_graph_replay_process_node)(
                 callback.args[1] = cg;
                 callback.args[2] = node;
                 ((command_t *) node->command)->completion_callback_push(callback);
+
+                // if a host command graph, forward the runtime as a driver_handle
+                if (node->command->type == cgir::COMMAND_TYPE_BATCH)
+                    node->command->batch.driver_handle = runtime;
             }
 
             // set node in INIT state
@@ -441,6 +445,7 @@ XKRT_DRIVER_ENTRYPOINT(command_graph_launch)(
     // Exit must be initialized first, to avoid early completion
     XKRT_DRIVER_ENTRYPOINT(command_graph_replay_process_node)<0>(runtime, cg, exit);
     XKRT_DRIVER_ENTRYPOINT(command_graph_replay_process_node)<0>(runtime, cg, entry);
+
     return 0;
 }
 
