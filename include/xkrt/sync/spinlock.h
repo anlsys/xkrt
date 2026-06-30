@@ -34,12 +34,10 @@
 ** knowledge of the CeCILL-C license and that you accept its terms.
 **/
 
-#ifndef __SPINLOCK_H__
-# define __SPINLOCK_H__
+#ifndef __XKRT_SPINLOCK_H__
+# define __XKRT_SPINLOCK_H__
 
 # include <xkrt/sync/mem.h>
-
-#if 1
 
 typedef volatile char spinlock_t;
 
@@ -59,15 +57,5 @@ typedef volatile char spinlock_t;
     } while (0)
 
 # define SPINLOCK_INITIALIZER 0
-
-# else
-
-# include <pthread.h>
-typedef pthread_mutex_t spinlock_t;
-# define SPINLOCK_LOCK(L)       pthread_mutex_lock(&L)
-# define SPINLOCK_UNLOCK(L)     pthread_mutex_unlock(&L)
-# define SPINLOCK_INITIALIZER   PTHREAD_MUTEX_INITIALIZER
-
-# endif
 
 #endif /* __SPINLOCK_H__ */

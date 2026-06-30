@@ -45,6 +45,7 @@
 # include <xkrt/support.h>
 # include <xkrt/sync/lockable.hpp>
 # include <xkrt/thread/thread.h>
+# include <xkrt/thread/reentrant_spinlock.h>
 
 # include <atomic>
 
@@ -130,10 +131,13 @@ struct command_queue_t
     bool * completed;
 
     /* spinlock on the ready queue
-     *  - any threasd may push to it
+     *  - any thread may push to it
      *  - the owning thread may move from it to the pending queue
+     * TODO: a heavy reentrant spinlock is not satisfying here; but it is a
+     * simple working solution to avoid deadlock when progressing/completing
+     * commands triggers resubmitting to the same queue
      */
-    spinlock_t spinlock;
+    reentrant_spinlock_t reentrant_spinlock;
 
     # if XKRT_SUPPORT_STATS
     struct {

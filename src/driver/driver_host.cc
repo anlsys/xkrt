@@ -394,7 +394,6 @@ XKRT_DRIVER_ENTRYPOINT(command_graph_replay_node_complete)(
     // we completed the last node, notify waiting threads
     if (node == cg->node_get_exit())
     {
-        LOGGER_FATAL("TODO: notify command completion");
         pthread_mutex_lock(&cg->wait_mtx);
         {
             node->state = COMMAND_GRAPH_NODE_STATE_COMPLETE;
@@ -563,22 +562,44 @@ XKRT_DRIVER_ENTRYPOINT(command_queue_wait_all)(
     assert(iqueue);
     queue_host_t * queue = (queue_host_t *)iqueue;
 
-    assert(queue->super.type == XKRT_QUEUE_TYPE_FD_READ ||
-           queue->super.type == XKRT_QUEUE_TYPE_FD_WRITE);
 
-    /* Ensure everything has been submitted before waiting */
-    io_uring_flush_submits(queue);
-
-    int min_completion = queue->super.pending.size();
-    if (min_completion)
+    switch (queue->super.type)
     {
-        LOGGER_DEBUG("Waiting for %d i/o commands to complete", min_completion);
-        int r = (int)syscall(__NR_io_uring_enter,
-                             queue->io_uring.fd, 0, min_completion,
-                             IORING_ENTER_GETEVENTS, NULL, 0);
-        if (r < 0)
-            LOGGER_FATAL("io_uring_enter (wait) failed: %s", strerror(errno));
+        case (XKRT_QUEUE_TYPE_FD_READ):
+        case (XKRT_QUEUE_TYPE_FD_WRITE):
+        {
+            assert(queue->super.type == XKRT_QUEUE_TYPE_FD_READ ||
+                   queue->super.type == XKRT_QUEUE_TYPE_FD_WRITE);
+
+            /* Ensure everything has been submitted before waiting */
+            io_uring_flush_submits(queue);
+
+            int min_completion = queue->super.pending.size();
+            if (min_completion)
+            {
+                LOGGER_DEBUG("Waiting for %d i/o commands to complete", min_completion);
+                int r = (int)syscall(__NR_io_uring_enter,
+                                     queue->io_uring.fd, 0, min_completion,
+                                     IORING_ENTER_GETEVENTS, NULL, 0);
+                if (r < 0)
+                    LOGGER_FATAL("io_uring_enter (wait) failed: %s", strerror(errno));
+            }
+            break ;
+        }
+
+        case (XKRT_QUEUE_TYPE_KERN):
+        {
+            LOGGER_FATAL("Not supported");
+            break ;
+        }
+
+        default:
+        {
+            LOGGER_FATAL("Not supported");
+            break ;
+        }
     }
+
     return 0;
 }
 
@@ -611,6 +632,7 @@ XKRT_DRIVER_ENTRYPOINT(command_queue_wait)(
             command_graph_t * cg = (command_graph_t *) command->batch.cg;
 
             XKRT_DRIVER_ENTRYPOINT(command_graph_wait)(cg);
+
             return 0;
         }
 
@@ -630,6 +652,8 @@ XKRT_DRIVER_ENTRYPOINT(command_queue_progress)(
 ) {
     assert(iqueue);
     queue_host_t * queue = (queue_host_t *)iqueue;
+
+    int r = 0;
 
     switch (queue->super.type)
     {
@@ -677,6 +701,24 @@ XKRT_DRIVER_ENTRYPOINT(command_queue_progress)(
 
         case (XKRT_QUEUE_TYPE_KERN):
         {
+            iqueue->progress([&] (command_t * command, xkrt_command_queue_list_counter_t p) {
+
+                assert(command->type == cgir::COMMAND_TYPE_BATCH);
+                assert(command->batch.cg);
+
+                command_graph_node_t * exit  = (command_graph_node_t *) command->batch.cg->node_get_exit();
+                if ((volatile command_graph_node_state_t) exit->state == COMMAND_GRAPH_NODE_STATE_COMPLETE)
+                {
+                    iqueue->complete_command(p);
+                }
+                else
+                {
+                    r = EINPROGRESS;
+                }
+
+                return true;
+            });
+
             break ;
         }
 
@@ -687,7 +729,7 @@ XKRT_DRIVER_ENTRYPOINT(command_queue_progress)(
         }
     }
 
-   return 0;
+   return r;
 }
 
 static command_queue_t *

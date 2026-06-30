@@ -109,7 +109,7 @@ command_queue_init(
     // memset(queue->completed, 0, sizeof(bool) * capacity);
     assert(queue->completed);
 
-    queue->spinlock = SPINLOCK_INITIALIZER;
+    queue->reentrant_spinlock = REENTRANT_SPINLOCK_INITIALIZER;
 
     # if XKRT_SUPPORT_STATS
     memset(&(queue->stats), 0, sizeof(queue->stats));

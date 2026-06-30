@@ -1123,7 +1123,7 @@ struct  runtime_t
         const device_unique_id_t device_unique_id,
         const task_access_counter_t ac,
         const task_accesses_setter_t & set_accesses,
-        const std::function<bool(task_t *, access_t *)> & split_condition,
+        const task_split_condition_t & split_condition,
         const std::function<void(runtime_t *, device_t *, task_t *)> & f
     ) {
         assert(team);

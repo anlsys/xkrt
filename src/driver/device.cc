@@ -186,11 +186,11 @@ device_t::offloader_queue_command_new(
 
     /* allocate the command */
     do {
-        SPINLOCK_LOCK((*pqueue)->spinlock);
+        REENTRANT_SPINLOCK_LOCK((*pqueue)->reentrant_spinlock);
         (*pcommand) = (*pqueue)->command_new(ctype, flags);
         if (*pcommand)
             break ; /* will be unlock during 'commit' */
-        SPINLOCK_UNLOCK((*pqueue)->spinlock);
+        REENTRANT_SPINLOCK_UNLOCK((*pqueue)->reentrant_spinlock);
         LOGGER_FATAL("Stream is full, increase 'XKRT_OFFLOADER_CAPACITY' or implement support for full-queue management yourself :-) (sorry)");
     } while (1);
 }
@@ -230,7 +230,7 @@ device_t::offloader_queue_command_commit(
             {
                 // complete it now and return
                 command->completion_callback_raise();
-                SPINLOCK_UNLOCK(queue->spinlock);
+                REENTRANT_SPINLOCK_UNLOCK(queue->reentrant_spinlock);
                 return ;
             }
         }
@@ -238,7 +238,7 @@ device_t::offloader_queue_command_commit(
 
     /* commit command to the queue */
     queue->commit(command);
-    SPINLOCK_UNLOCK(queue->spinlock);
+    REENTRANT_SPINLOCK_UNLOCK(queue->reentrant_spinlock);
 
     /* wakeup device worker thread */
     thread->wakeup();

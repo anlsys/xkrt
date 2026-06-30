@@ -166,10 +166,12 @@ runtime_t::command_submit(
         assert(thread);
         assert(queue);
 
-        SPINLOCK_LOCK(queue->spinlock);
-        queue->emplace(command);
-        queue->commit(command);
-        SPINLOCK_UNLOCK(queue->spinlock);
+        REENTRANT_SPINLOCK_LOCK(queue->reentrant_spinlock);
+        {
+            queue->emplace(command);
+            queue->commit(command);
+        }
+        REENTRANT_SPINLOCK_UNLOCK(queue->reentrant_spinlock);
 
         thread->wakeup();
     }

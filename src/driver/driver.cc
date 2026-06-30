@@ -564,7 +564,7 @@ driver_device_command_queue_launch_ready(
     int r = 0;
 
     /* for each ready command */
-    SPINLOCK_LOCK(queue->spinlock);
+    REENTRANT_SPINLOCK_LOCK(queue->reentrant_spinlock);
     const xkrt_command_queue_list_counter_t p = queue->ready.iterate([&] (xkrt_command_queue_list_counter_t p) {
 
         /* if the pending queue is full, we cannot start more commands */
@@ -658,7 +658,6 @@ driver_device_command_queue_launch_ready(
         /* if the command is synchronous, it is completed now */
         if (cmd->flags & COMMAND_FLAG_SYNCHRONOUS)
         {
-            // TODO: may lead to deadlock if reentrant
             queue->complete_command(p);
         }
         /* else, save to pending list */
@@ -683,7 +682,7 @@ driver_device_command_queue_launch_ready(
         return true;
 
     }); /* RING_ITERATE */
-    SPINLOCK_UNLOCK(queue->spinlock);
+    REENTRANT_SPINLOCK_UNLOCK(queue->reentrant_spinlock);
 
     // this barrier ensures that the threads that owns the queue correctly
     // sees the 'ready' queue empty but not the 'pending' - else it would go
