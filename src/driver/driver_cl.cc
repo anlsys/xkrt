@@ -645,6 +645,9 @@ XKRT_DRIVER_ENTRYPOINT(command_queue_create)(
     command_queue_type_t type,
     xkrt_command_queue_list_counter_t capacity
 ) {
+    if (type == XKRT_QUEUE_TYPE_FD_READ || type == XKRT_QUEUE_TYPE_FD_WRITE)
+        return NULL;
+
     assert(idevice);
 
     uint8_t * mem = (uint8_t *) malloc(sizeof(queue_cl_t) + sizeof(cl_event) * capacity);
