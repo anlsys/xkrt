@@ -583,7 +583,7 @@ XKRT_DRIVER_ENTRYPOINT(command_queue_launch)(
             };
 
             // aurora dirty fix
-            if (RUNNING_ON_AURORA &&
+            if (0 && RUNNING_ON_AURORA &&
                    (src_region.width != src_pitch || dst_region.width != dst_pitch))
             {
                 LOGGER_ERROR("memcpy2D not working on intel max gpu series zzzzzzzzzz.... serializing synchronously line by line using calling host thread");
@@ -600,6 +600,12 @@ XKRT_DRIVER_ENTRYPOINT(command_queue_launch)(
             }
             else
             {
+                static bool warned = false;
+                if (!warned)
+                {
+                    LOGGER_WARN("Using 2D copies on Intel's GPUs");
+                    warned = true;
+                }
                 ZE_SAFE_CALL(
                     zeCommandListAppendMemoryCopyRegion(
                         queue->ze.command.list,
