@@ -406,28 +406,10 @@ XKRT_DRIVER_ENTRYPOINT(command_graph_replay_node_complete)(
 }
 
 static int
-XKRT_DRIVER_ENTRYPOINT(command_execute)(
-    device_driver_id_t device_driver_id,
-    command_t * cmd
+XKRT_DRIVER_ENTRYPOINT(command_graph_wait)(
+    command_graph_t * cg
 ) {
-    assert(cmd->type == cgir::COMMAND_TYPE_BATCH);
-    assert(cmd->batch.cg);              // stores the cg to replay
-    assert(cmd->batch.driver_handle);   // stores the runtime_t
-
-    runtime_t * runtime = (runtime_t *) cmd->batch.driver_handle;
-    command_graph_t * cg = (command_graph_t *) cmd->batch.cg;
-
-     // increase replay counter
-    ++cg->rc;
-
-    // get entry/exit nodes to launch and wait completion
-    command_graph_node_t * entry = (command_graph_node_t *) cg->node_get_entry();
     command_graph_node_t * exit  = (command_graph_node_t *) cg->node_get_exit();
-
-    // submit and reinitialized entry and exit nodes.
-    // Exit must be initialized first, to avoid early completion
-    XKRT_DRIVER_ENTRYPOINT(command_graph_replay_process_node)<0>(runtime, cg, exit);
-    XKRT_DRIVER_ENTRYPOINT(command_graph_replay_process_node)<0>(runtime, cg, entry);
 
     // wait for exit completion
     pthread_mutex_lock(&cg->wait_mtx);
@@ -441,24 +423,64 @@ XKRT_DRIVER_ENTRYPOINT(command_execute)(
 }
 
 static int
+XKRT_DRIVER_ENTRYPOINT(command_graph_launch)(
+    runtime_t * runtime,
+    command_graph_t * cg
+) {
+    assert(runtime);
+    assert(cg);
+
+     // increase replay counter
+    ++cg->rc;
+
+    // get entry/exit nodes to launch and wait completion
+    command_graph_node_t * entry = (command_graph_node_t *) cg->node_get_entry();
+    command_graph_node_t * exit  = (command_graph_node_t *) cg->node_get_exit();
+
+    // submit and reinitialized entry and exit nodes.
+    // Exit must be initialized first, to avoid early completion
+    XKRT_DRIVER_ENTRYPOINT(command_graph_replay_process_node)<0>(runtime, cg, exit);
+    XKRT_DRIVER_ENTRYPOINT(command_graph_replay_process_node)<0>(runtime, cg, entry);
+    return 0;
+}
+
+static int
+XKRT_DRIVER_ENTRYPOINT(command_execute)(
+    device_driver_id_t device_driver_id,
+    command_t * command
+) {
+    assert(command->type == cgir::COMMAND_TYPE_BATCH);
+    assert(command->batch.cg);              // stores the cg to replay
+    assert(command->batch.driver_handle);   // stores the runtime_t
+
+    runtime_t * runtime = (runtime_t *) command->batch.driver_handle;
+    command_graph_t * cg = (command_graph_t *) command->batch.cg;
+
+    XKRT_DRIVER_ENTRYPOINT(command_graph_launch)(runtime, cg);
+    XKRT_DRIVER_ENTRYPOINT(command_graph_wait)(cg);
+
+    return 0;
+}
+
+static int
 XKRT_DRIVER_ENTRYPOINT(command_queue_launch)(
     device_driver_id_t device_driver_id,
     command_queue_t * iqueue,
-    command_t * cmd,
+    command_t * command,
     xkrt_command_queue_list_counter_t idx
 ) {
     (void)device_driver_id;
 
     assert(
-        cmd->type == cgir::COMMAND_TYPE_FD_READ  ||
-        cmd->type == cgir::COMMAND_TYPE_FD_WRITE ||
-        cmd->type == cgir::COMMAND_TYPE_BATCH
+        command->type == cgir::COMMAND_TYPE_FD_READ  ||
+        command->type == cgir::COMMAND_TYPE_FD_WRITE ||
+        command->type == cgir::COMMAND_TYPE_BATCH
     );
 
     queue_host_t * queue = (queue_host_t *)iqueue;
 
     // enqueue iouring events
-    if (cmd->type == cgir::COMMAND_TYPE_FD_READ || cmd->type == cgir::COMMAND_TYPE_FD_WRITE)
+    if (command->type == cgir::COMMAND_TYPE_FD_READ || command->type == cgir::COMMAND_TYPE_FD_WRITE)
     {
         if (__builtin_expect(queue->io_uring.sq_ptr == NULL, 0))
             XKRT_DRIVER_ENTRYPOINT(io_uring_init)(queue);
@@ -470,13 +492,13 @@ XKRT_DRIVER_ENTRYPOINT(command_queue_launch)(
 
         /* Zero-fill and populate — clearing avoids stale flags from prior use */
         memset(sqe, 0, sizeof(*sqe));
-        sqe->opcode    = (cmd->type == cgir::COMMAND_TYPE_FD_READ)
+        sqe->opcode    = (command->type == cgir::COMMAND_TYPE_FD_READ)
                              ? IORING_OP_READ
                              : IORING_OP_WRITE;
-        sqe->fd        = cmd->file.fd;
-        sqe->addr      = (unsigned long)cmd->file.buffer;
-        sqe->len       = cmd->file.size;
-        sqe->off       = cmd->file.offset;
+        sqe->fd        = command->file.fd;
+        sqe->addr      = (unsigned long)command->file.buffer;
+        sqe->len       = command->file.size;
+        sqe->off       = command->file.offset;
         sqe->user_data = (__u64)idx;
 
         /* sq_array is pre-filled with identity mapping in init */
@@ -498,9 +520,11 @@ XKRT_DRIVER_ENTRYPOINT(command_queue_launch)(
     // batch commands = emit all sub-cg commands
     else
     {
-        assert(cmd->type == cgir::COMMAND_TYPE_BATCH);
-        assert(cmd->batch.cg);
-        LOGGER_FATAL("TODO: enqueue command");
+        assert(command->type == cgir::COMMAND_TYPE_BATCH);
+        assert(command->batch.cg);
+        runtime_t * runtime = (runtime_t *) command->batch.driver_handle;
+        command_graph_t * cg = (command_graph_t *) command->batch.cg;
+        XKRT_DRIVER_ENTRYPOINT(command_graph_launch)(runtime, cg);
     }
 
     return 0;
@@ -556,14 +580,43 @@ XKRT_DRIVER_ENTRYPOINT(command_queue_wait_all)(
 static inline int
 XKRT_DRIVER_ENTRYPOINT(command_queue_wait)(
     command_queue_t * iqueue,
-    command_t * cmd,
+    command_t * command,
     xkrt_command_queue_list_counter_t idx
 ) {
-    (void)cmd;
-    (void)idx;
-    assert(cmd);
-    // TODO: wait for specific CQE via user_data matching
-    return XKRT_DRIVER_ENTRYPOINT(command_queue_wait_all)(iqueue);
+    assert(command);
+    assert(iqueue);
+    queue_host_t * queue = (queue_host_t *)iqueue;
+
+    switch (queue->super.type)
+    {
+        case (XKRT_QUEUE_TYPE_FD_READ):
+        case (XKRT_QUEUE_TYPE_FD_WRITE):
+        {
+            // TODO: wait for specific CQE via user_data matching
+            return XKRT_DRIVER_ENTRYPOINT(command_queue_wait_all)(iqueue);
+        }
+
+        case (XKRT_QUEUE_TYPE_KERN):
+        {
+            assert(command->type == cgir::COMMAND_TYPE_BATCH);
+            assert(command->batch.cg);              // stores the cg to replay
+            assert(command->batch.driver_handle);   // stores the runtime_t
+
+            runtime_t * runtime = (runtime_t *) command->batch.driver_handle;
+            command_graph_t * cg = (command_graph_t *) command->batch.cg;
+
+            XKRT_DRIVER_ENTRYPOINT(command_graph_wait)(cg);
+            return 0;
+        }
+
+        default:
+        {
+            LOGGER_FATAL("Not supported");
+            return 0;
+        }
+    }
+
+    return 0;
 }
 
 static int
@@ -573,44 +626,63 @@ XKRT_DRIVER_ENTRYPOINT(command_queue_progress)(
     assert(iqueue);
     queue_host_t * queue = (queue_host_t *)iqueue;
 
-    /* Flush any pending submissions so completions can arrive */
-    io_uring_flush_submits(queue);
-
-    /*
-     * Drain the CQ ring.  Read tail once, then process all available
-     * entries — avoids re-reading the tail on every iteration.
-     */
-    unsigned head = io_uring_smp_load_acquire(queue->io_uring.cq_head);
-    unsigned tail = io_uring_smp_load_acquire(queue->io_uring.cq_tail);
-    const unsigned mask = * queue->io_uring.cq_mask;
-
-    if (head == tail)
-        return 0;
-
-    unsigned completed = 0;
-
-    while (head != tail)
+    switch (queue->super.type)
     {
-        struct io_uring_cqe * cqe = &queue->io_uring.cqes[head & mask];
+        case (XKRT_QUEUE_TYPE_FD_READ):
+        case (XKRT_QUEUE_TYPE_FD_WRITE):
+        {
+            /* Flush any pending submissions so completions can arrive */
+            io_uring_flush_submits(queue);
 
-        if (__builtin_expect(cqe->res < 0, 0))
-            LOGGER_FATAL("io_uring CQE error: %s", strerror(abs(cqe->res)));
+            /*
+             * Drain the CQ ring.  Read tail once, then process all available
+             * entries — avoids re-reading the tail on every iteration.
+             */
+            unsigned head = io_uring_smp_load_acquire(queue->io_uring.cq_head);
+            unsigned tail = io_uring_smp_load_acquire(queue->io_uring.cq_tail);
+            const unsigned mask = * queue->io_uring.cq_mask;
 
-        const xkrt_command_queue_list_counter_t p =
-            (const xkrt_command_queue_list_counter_t)cqe->user_data;
-        assert(cqe->res == (int)iqueue->pending.cmd[p].file.size);
+            if (head == tail)
+                return 0;
 
-        ++head;
-        ++completed;
+            unsigned completed = 0;
 
-        /* Complete the command (callback may enqueue more work) */
-        iqueue->complete_command(p);
+            while (head != tail)
+            {
+                struct io_uring_cqe * cqe = &queue->io_uring.cqes[head & mask];
+
+                if (__builtin_expect(cqe->res < 0, 0))
+                    LOGGER_FATAL("io_uring CQE error: %s", strerror(abs(cqe->res)));
+
+                const xkrt_command_queue_list_counter_t p =
+                    (const xkrt_command_queue_list_counter_t)cqe->user_data;
+                assert(cqe->res == (int)iqueue->pending.cmd[p].file.size);
+
+                ++head;
+                ++completed;
+
+                /* Complete the command (callback may enqueue more work) */
+                iqueue->complete_command(p);
+            }
+
+            /* Single store-release to advance head past all processed CQEs */
+            io_uring_smp_store_release(queue->io_uring.cq_head, head);
+            break ;
+        }
+
+        case (XKRT_QUEUE_TYPE_KERN):
+        {
+            break ;
+        }
+
+        default:
+        {
+            LOGGER_FATAL("Not supported");
+            break ;
+        }
     }
 
-    /* Single store-release to advance head past all processed CQEs */
-    io_uring_smp_store_release(queue->io_uring.cq_head, head);
-
-    return 0;
+   return 0;
 }
 
 static command_queue_t *
@@ -627,7 +699,18 @@ XKRT_DRIVER_ENTRYPOINT(command_queue_create)(
         type == XKRT_QUEUE_TYPE_KERN
     );
 
-    queue_host_t * queue = (queue_host_t *) calloc(1, sizeof(queue_host_t));
+    queue_host_t * queue;
+    if (type == XKRT_QUEUE_TYPE_FD_READ || type == XKRT_QUEUE_TYPE_FD_WRITE)
+        queue = (queue_host_t *) calloc(1, sizeof(queue_host_t));
+    else if (type == XKRT_QUEUE_TYPE_KERN)
+    {
+        queue = (queue_host_t *) malloc(sizeof(queue_host_t) + capacity * sizeof(queue_host_event_t));
+        queue->events.buffer = (queue_host_event_t *) (queue + 1);
+        queue->events.capacity = capacity;
+    }
+    else
+        return NULL;
+
     if (!queue)
         LOGGER_FATAL("Failed to allocate queue_host_t");
 

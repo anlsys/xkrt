@@ -48,7 +48,10 @@
 
 XKRT_NAMESPACE_BEGIN
 
-typedef std::atomic<uint8_t> queue_host_event_t;
+typedef struct  queue_host_event_t
+{
+    void * handle;
+}               queue_host_event_t;
 
 typedef struct  queue_host_t
 {
@@ -83,6 +86,12 @@ typedef struct  queue_host_t
         unsigned * sq_flags;
 
     } io_uring;
+
+    struct {
+        queue_host_event_t * buffer;
+        xkrt_command_queue_list_counter_t capacity;
+    } events;
+
 }               queue_host_t;
 
 typedef struct  driver_host_t
