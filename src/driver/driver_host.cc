@@ -390,21 +390,20 @@ XKRT_DRIVER_ENTRYPOINT(command_graph_replay_node_complete)(
     });
 
     assert(node->state == COMMAND_GRAPH_NODE_STATE_INIT);
+    node->state = COMMAND_GRAPH_NODE_STATE_COMPLETE;
 
     // we completed the last node, notify waiting threads
     if (node == cg->node_get_exit())
     {
         pthread_mutex_lock(&cg->wait_mtx);
         {
-            node->state = COMMAND_GRAPH_NODE_STATE_COMPLETE;
             pthread_cond_signal(&cg->wait_cond);
         }
         pthread_mutex_unlock(&cg->wait_mtx);
     }
     else
     {
-        // we don't care about that state change in such case
-        // node->state = COMMAND_GRAPH_NODE_STATE_COMPLETE;
+        // nothing to do
     }
 }
 

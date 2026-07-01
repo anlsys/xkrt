@@ -387,7 +387,25 @@ memory_op_async(
         // create a task that will register/pin/unpin the memory
         constexpr size_t args_size = sizeof(memory_op_async_args_t);
         constexpr task_flag_bitfield_t flags = TASK_FLAG_DEVICE | TASK_FLAG_ACCESSES;
-        task_t * task = runtime->task_new(fmtid, flags, NULL, args_size, AC);
+
+        // setup register args
+        memory_op_async_args_t args = {
+            .start = a + (i+0) * pagesize * pages_per_task,
+            .end   = a + (i+1) * pagesize * pages_per_task
+        };
+
+        // clamp upper
+        if (args.end > p + size)
+            args.end = p + size;
+
+        assert(a <= args.start);
+        assert(     args.start < b);
+        assert(a <= args.end);
+        assert(     args.end <= b);
+        assert(args.start < args.end);
+
+        // allocate the task
+        task_t * task = runtime->task_new(fmtid, flags, &args, args_size, AC);
 
         task_acs_info_t * acs = TASK_ACS_INFO(task);
         new (acs) task_acs_info_t(AC);
@@ -395,26 +413,9 @@ memory_op_async(
         task_dev_info_t * dev = TASK_DEV_INFO(task);
         new (dev) task_dev_info_t(XKRT_HOST_DEVICE_UNIQUE_ID, XKRT_UNSPECIFIED_TASK_ACCESS);
 
-        // setup register args
-        memory_op_async_args_t * args = (memory_op_async_args_t *) TASK_ARGS(task);
-
-        // ensure the same page is not registered twice by consecutive tasks
-        args->start = a + (i+0) * pagesize * pages_per_task;
-        args->end   = a + (i+1) * pagesize * pages_per_task;
-
-        // clamp upper
-        if (args->end > p + size)
-            args->end = p + size;
-
-        assert(a <= args->start);
-        assert(     args->start < b);
-        assert(a <= args->end);
-        assert(     args->end <= b);
-        assert(args->start < args->end);
-
         // virtual write onto the memory segment
         access_t * accesses = TASK_ACCESSES(task);
-        new (accesses + 0) access_t(task, args->start, args->end, ACCESS_MODE_VW);
+        new (accesses + 0) access_t(task, args.start, args.end, ACCESS_MODE_VW);
 
         // if register/unregister, create a virtual write on NULL, to
         // serialize, and avoid blocking thread in cuda driver

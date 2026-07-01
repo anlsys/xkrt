@@ -172,18 +172,17 @@ runtime_t::memory_copy_async(
         assert(src_device_addr <= a);
         assert(b <= src_device_addr + size);
 
-        task_t * task = this->task_new(fmtid, flags, NULL, args_size, AC);
-
         const size_t offset = a - src_device_addr;
         const size_t size   = b - a;
+        memory_copy_async_args_t args = {
+            .size                   = size,
+            .dst_device_unique_id   = dst_device_unique_id,
+            .dst_device_addr        = dst_device_addr + offset,
+            .src_device_unique_id   = src_device_unique_id,
+            .src_device_addr        = src_device_addr + offset
+        };
 
-        // copy arguments
-        memory_copy_async_args_t * args = (memory_copy_async_args_t *) TASK_ARGS(task);
-        args->size                  = size;
-        args->dst_device_unique_id  = dst_device_unique_id;
-        args->dst_device_addr       = dst_device_addr + offset;
-        args->src_device_unique_id  = src_device_unique_id;
-        args->src_device_addr       = src_device_addr + offset;
+        task_t * task = this->task_new(fmtid, flags, &args, args_size, AC);
 
         task_acs_info_t * acs = TASK_ACS_INFO(task);
         new (acs) task_acs_info_t(AC);
@@ -199,7 +198,7 @@ runtime_t::memory_copy_async(
         # endif
 
         // detached virtual write onto the memory segment
-        access_t * accesses = TASK_ACCESSES(task, flags);
+        access_t * accesses = TASK_ACCESSES(task);
         constexpr access_mode_t mode = (access_mode_t) (ACCESS_MODE_W | ACCESS_MODE_V);
         new (accesses + 0) access_t(task, a, b, mode);
         this->task_accesses_resolve(accesses, AC);
