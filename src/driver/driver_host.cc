@@ -778,7 +778,7 @@ XKRT_DRIVER_ENTRYPOINT(command_queue_delete)(
         {
             if (queue->io_uring.fd > 0)
                 close(queue->io_uring.fd);
-            return 1;
+            break ;
         }
 
         // KERN is used for batches
