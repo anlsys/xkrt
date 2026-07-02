@@ -771,8 +771,25 @@ XKRT_DRIVER_ENTRYPOINT(command_queue_delete)(
 ) {
     /* TODO: munmap the io_uring ring buffers and close the fd */
     queue_host_t * queue = (queue_host_t *)iqueue;
-    if (queue->io_uring.fd > 0)
-        close(queue->io_uring.fd);
+    switch (iqueue->type)
+    {
+        case (XKRT_QUEUE_TYPE_FD_READ):
+        case (XKRT_QUEUE_TYPE_FD_WRITE):
+        {
+            if (queue->io_uring.fd > 0)
+                close(queue->io_uring.fd);
+            return 1;
+        }
+
+        // KERN is used for batches
+        case (XKRT_QUEUE_TYPE_KERN):
+        {
+            break ;
+        }
+
+        default:
+            break ;
+    }
     free(iqueue);
 }
 
