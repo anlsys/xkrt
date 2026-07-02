@@ -190,15 +190,13 @@ struct command_graph_t : cgir::command_graph_t
     command_graph_rc_type_t rc;
 
     /* mutex/cond to notify threads waiting on the replay completion */
-    pthread_mutex_t wait_mtx;
-    pthread_cond_t wait_cond;
+    std::atomic<uint32_t> completed;
 
     command_graph_t(void) :
         commands(),
         nodes(),
         rc(0),
-        wait_mtx(),
-        wait_cond()
+        completed(0)
     {}
 
     /* return number of nodes */
@@ -207,7 +205,6 @@ struct command_graph_t : cgir::command_graph_t
     {
         return this->nodes.size();
     }
-
 };
 
 XKRT_NAMESPACE_END;

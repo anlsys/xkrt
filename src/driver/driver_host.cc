@@ -395,11 +395,7 @@ XKRT_DRIVER_ENTRYPOINT(command_graph_replay_node_complete)(
     // we completed the last node, notify waiting threads
     if (node == cg->node_get_exit())
     {
-        pthread_mutex_lock(&cg->wait_mtx);
-        {
-            pthread_cond_signal(&cg->wait_cond);
-        }
-        pthread_mutex_unlock(&cg->wait_mtx);
+        cg->completed.store(0, std::memory_order_seq_cst);
     }
     else
     {
@@ -409,18 +405,10 @@ XKRT_DRIVER_ENTRYPOINT(command_graph_replay_node_complete)(
 
 static int
 XKRT_DRIVER_ENTRYPOINT(command_graph_wait)(
+    runtime_t * runtime,
     command_graph_t * cg
 ) {
-    command_graph_node_t * exit  = (command_graph_node_t *) cg->node_get_exit();
-
-    // wait for exit completion
-    pthread_mutex_lock(&cg->wait_mtx);
-    {
-        while ((volatile command_graph_node_state_t) exit->state != COMMAND_GRAPH_NODE_STATE_COMPLETE)
-            pthread_cond_wait(&cg->wait_cond, &cg->wait_mtx);
-    }
-    pthread_mutex_unlock(&cg->wait_mtx);
-
+    runtime->task_wait(&cg->completed);
     return 0;
 }
 
@@ -434,6 +422,9 @@ XKRT_DRIVER_ENTRYPOINT(command_graph_launch)(
 
      // increase replay counter
     ++cg->rc;
+
+    // set completed flag
+    cg->completed.store(1, std::memory_order_seq_cst);
 
     // get entry/exit nodes to launch and wait completion
     command_graph_node_t * entry = (command_graph_node_t *) cg->node_get_entry();
@@ -460,7 +451,7 @@ XKRT_DRIVER_ENTRYPOINT(command_execute)(
     command_graph_t * cg = (command_graph_t *) command->batch.cg;
 
     XKRT_DRIVER_ENTRYPOINT(command_graph_launch)(runtime, cg);
-    XKRT_DRIVER_ENTRYPOINT(command_graph_wait)(cg);
+    XKRT_DRIVER_ENTRYPOINT(command_graph_wait)(runtime, cg);
 
     return 0;
 }
@@ -629,8 +620,7 @@ XKRT_DRIVER_ENTRYPOINT(command_queue_wait)(
 
             runtime_t * runtime = (runtime_t *) command->batch.driver_handle;
             command_graph_t * cg = (command_graph_t *) command->batch.cg;
-
-            XKRT_DRIVER_ENTRYPOINT(command_graph_wait)(cg);
+            XKRT_DRIVER_ENTRYPOINT(command_graph_wait)(runtime, cg);
 
             return 0;
         }

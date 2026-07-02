@@ -758,6 +758,12 @@ struct  runtime_t
     /* Complete a task */
     void task_complete(task_t * task);
 
+    /* if a task is ready, schedule one and return 1; else return 0 */
+    int task_schedule(void);
+
+    /* wait for ctr to be '0' and schedule tasks */
+    void task_wait(std::atomic<uint32_t> * ctr);
+
     /* wait for children tasks of the current task to complete */
     void task_wait(void);
 

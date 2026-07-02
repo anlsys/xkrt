@@ -591,28 +591,40 @@ thread_t::worksteal(void)
     return NULL;
 }
 
-void
-runtime_t::task_wait(void)
+int
+runtime_t::task_schedule(void)
 {
     thread_t * thread = thread_t::get_tls();
     assert(thread);
 
-    # define WAIT do { if (thread->current_task->cc.load(std::memory_order_relaxed) == 0) return ; } while (0)
+    task_t * task = thread->worksteal();
+    if (task)
+    {
+        task_fetch_execute(this, NULL, task);
+        return 1;
+    }
+    return 0;
+}
+
+void
+runtime_t::task_wait(std::atomic<uint32_t> * ctr)
+{
+    # define SPIN do { if (ctr->load(std::memory_order_relaxed) == 0) return ; } while (0)
 
     /* exponential backoff sleep */
-    # define WAIT2   do { WAIT   ; WAIT   ; } while (0)
-    # define WAIT4   do { WAIT2  ; WAIT2  ; } while (0)
-    # define WAIT8   do { WAIT4  ; WAIT4  ; } while (0)
-    # define WAIT16  do { WAIT8  ; WAIT8  ; } while (0)
-    # define WAIT32  do { WAIT16 ; WAIT16 ; } while (0)
-    # define WAIT64  do { WAIT32 ; WAIT32 ; } while (0)
+    # define SPIN2   do { SPIN   ; SPIN   ; } while (0)
+    # define SPIN4   do { SPIN2  ; SPIN2  ; } while (0)
+    # define SPIN8   do { SPIN4  ; SPIN4  ; } while (0)
+    # define SPIN16  do { SPIN8  ; SPIN8  ; } while (0)
+    # define SPIN32  do { SPIN16 ; SPIN16 ; } while (0)
+    # define SPIN64  do { SPIN32 ; SPIN32 ; } while (0)
 
     // Poll first for fast way out
     mem_barrier();
-    WAIT32 ;
+    SPIN32 ;
 
     // Else, work steal and sleep with backoff
-    constexpr int initial_backoff = 1024;;  // Initial backoff time in nanoseconds
+    constexpr int initial_backoff = 1024 ;  // Initial backoff time in nanoseconds
     constexpr int max_backoff = 64 * 1024;  // Maximum backoff time nanoseconds
     int backoff = initial_backoff;          // Initial backoff time in nanoseconds
     assert(max_backoff < 1000000);          // nanosleep condition
@@ -621,10 +633,8 @@ runtime_t::task_wait(void)
     while (1)
     {
         // work steal
-        task_t * task = thread->worksteal();
-        if (task)
+        if (this->task_schedule())
         {
-            task_fetch_execute(this, NULL, task);
             backoff = initial_backoff;
             continue ;
         }
@@ -634,12 +644,25 @@ runtime_t::task_wait(void)
         nanosleep(&ts, NULL);
         if (backoff < max_backoff)
             backoff = (backoff << 1);
-        WAIT64 ;
-
-        // TODO : block in a pthread_cond after some threshold
+        SPIN64 ;
     }
 
-    # undef WAIT
+    # undef SPIN
+    # undef SPIN2
+    # undef SPIN4
+    # undef SPIN8
+    # undef SPIN16
+    # undef SPIN32
+    # undef SPIN64
+}
+
+void
+runtime_t::task_wait(void)
+{
+    thread_t * thread = thread_t::get_tls();
+    assert(thread);
+    assert(thread->current_task);
+    this->task_wait(&thread->current_task->cc);
 }
 
 // TODO : reimplement this using team's topology
