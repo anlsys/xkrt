@@ -198,18 +198,8 @@ task_dependency_graph_t::walk(std::function<void(task_t *)> f)
 
         f(task);
 
-        if (task->flags & TASK_FLAG_ACCESSES)
-        {
-            task_acs_info_t * acs = TASK_ACS_INFO(task);
-            assert(acs);
-
-            access_t * accesses = TASK_ACCESSES(task);
-            assert(accesses);
-
-            for (task_access_counter_t ac = 0 ; ac < acs->ac ; ++ac)
-                for (access_t * succ : (accesses + ac)->successors)
-                    tasks.push(succ->task);
-        }
+        for (access_t * succ : rec->successors)
+            tasks.push(succ->task);
     }
 
     this->visited_flag_cmp = !this->visited_flag_cmp;
@@ -227,19 +217,11 @@ task_dependency_graph_t::compute_leaves(void)
 {
     this->foreach_task([&] (task_t * task)
     {
-        size_t n_successors = 0;
+        assert(task->flags & TASK_FLAG_RECORD);
+        task_rec_info_t * rec = TASK_REC_INFO(task);
+        assert(rec);
 
-        if (task->flags & TASK_FLAG_ACCESSES)
-        {
-            task_acs_info_t * acs = TASK_ACS_INFO(task);
-            assert(acs);
-
-            access_t * accesses = TASK_ACCESSES(task);
-            for (task_access_counter_t ac = 0 ; ac < acs->ac ; ++ac)
-                n_successors += (accesses + ac)->successors.size();
-        }
-
-        if (n_successors == 0)
+        if (rec->successors.size() == 0)
             this->leaves.push_back(task);
     });
 }
