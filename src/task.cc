@@ -227,17 +227,14 @@ runtime_task_enqueue(
     if (task->flags & TASK_FLAG_DEVICE)
         return runtime_task_enqueue_device(runtime, task);
 
-    /* If the task has accesses, maybe it became ready from the completion of one of its predecessor.
-     * Then, check if the task had a team assigned, and scheduled to it in such case */
+    /* If the task has accesses and a 'spawning_thread' set, enqueue it to that thread.
+     * This allows to enforce in which team the task should be scheduled, even if predecessors completed in a previous team */
     if (task->flags & TASK_FLAG_ACCESSES)
     {
         task_acs_info_t * acs = TASK_ACS_INFO(task);
         assert(acs);
         if (acs->spawning_thread)
-        {
-            team_t * team = ((thread_t *) acs->spawning_thread)->team;
-            return runtime->task_team_enqueue(team, task);
-        }
+            return runtime->task_thread_enqueue((thread_t *) acs->spawning_thread, task);
     }
 
     /* else, enqueue to the current thread */

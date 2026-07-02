@@ -271,6 +271,7 @@ runtime_t::task_team_enqueue(
 
     // assign it the task
     thread_t * thread = team->get_thread(start);
+    assert((volatile thread_state_t) team->priv.threads_state[thread->tid] == XKRT_THREAD_INITIALIZED);
     return this->task_thread_enqueue(thread, task);
 }
 

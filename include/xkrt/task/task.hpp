@@ -242,7 +242,7 @@ class task_dependency_graph_t
 
     public:
         /* constructor/destructor */
-        task_dependency_graph_t(void) : roots(), roots_lock(0), visited_flag_cmp(true) {}
+        task_dependency_graph_t(void) : roots(), leaves(), tasks(), roots_lock(0), visited_flag_cmp(true) {}
         ~task_dependency_graph_t(void) {}
 
         /* methods helper */
