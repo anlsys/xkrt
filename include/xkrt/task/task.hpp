@@ -1000,7 +1000,7 @@ __access_precedes(access_t * pred, access_t * succ)
     {
         task_rec_info_t * pred_rec = TASK_REC_INFO(pred->task);
         task_rec_info_t * succ_rec = TASK_REC_INFO(succ->task);
-        assert(pred_rec->successors.back() != succ);
+        assert(pred_rec->successors.size() == 0 || pred_rec->successors.back() != succ);
         pred_rec->successors.push_back(succ);
         succ_rec->predecessors.push_back(pred);
     }
