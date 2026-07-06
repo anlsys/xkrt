@@ -146,8 +146,8 @@ command_prog_launch_host(
             runtime->task_spawn<TASK_FLAG_ZERO>(
                 (const device_unique_id_t)    XKRT_UNSPECIFIED_DEVICE_UNIQUE_ID,
                 (const task_access_counter_t) 0,
-                (const task_accesses_setter_t) nullptr,
-                (const task_split_condition_t) nullptr,
+                (const xkrt::runtime_t::task_accesses_setter_t) nullptr,
+                (const xkrt::runtime_t::task_split_condition_t) nullptr,
                 [command] (runtime_t *, device_t *, task_t *) {
                     prog_fn_t fn   = (prog_fn_t) command->prog.launcher.variadic.fn;
                     void **   args = (void **)   command->prog.launcher.variadic.args;
