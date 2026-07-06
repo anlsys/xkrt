@@ -104,6 +104,63 @@ command_type_to_queue_type(
     }
 }
 
+/*
+ * Launch a host PROG command according to its launch mode. The launcher is the
+ * variadic `void(void**)` function; how it is invoked (and when the command
+ * completes) depends on `prog.launch_mode`:
+ *
+ *   - DIRECT     : the calling thread runs the launcher and the command
+ *                  completes as soon as it returns.
+ *   - TASK_SPAWN : the runtime spawns a task in the calling thread's team that
+ *                  runs the launcher; the command completes when that task
+ *                  completes. This is how OpenMP outlined task bodies are
+ *                  replayed (the task-spawn used to be baked into the launcher
+ *                  function itself, which prevented CGIR from fusing them).
+ *
+ * In both cases the command's completion callback is raised once the program
+ * has run, driving the command-graph replay forward.
+ */
+static inline void
+command_prog_launch_host(
+    runtime_t * runtime,
+    command_t * command
+) {
+    assert(command->type == cgir::COMMAND_TYPE_PROG);
+
+    typedef void (*prog_fn_t)(void **);
+    prog_fn_t fn   = (prog_fn_t) command->prog.launcher.variadic.fn;
+    void **   args = (void **)   command->prog.launcher.variadic.args;
+    assert(fn);
+
+    switch (command->prog.launch_mode)
+    {
+        case (cgir::CGIR_COMMAND_PROG_LAUNCH_MODE_DIRECT):
+        {
+            fn(args);
+            command->completion_callback_raise();
+            break ;
+        }
+
+        case (cgir::CGIR_COMMAND_PROG_LAUNCH_MODE_TASK_SPAWN):
+        {
+            runtime->task_spawn<TASK_FLAG_ZERO>(
+                (const device_unique_id_t)    XKRT_UNSPECIFIED_DEVICE_UNIQUE_ID,
+                (const task_access_counter_t) 0,
+                (const task_accesses_setter_t) nullptr,
+                (const task_accesses_setter_t) nullptr,
+                [fn, args, command] (runtime_t *, device_t *, task_t *) {
+                    fn(args);
+                    command->completion_callback_raise();   // complete command after the task ran
+                }
+            );
+            break ;
+        }
+
+        default:
+            LOGGER_FATAL("Unknown PROG launch mode %d", (int) command->prog.launch_mode);
+    }
+}
+
 int
 runtime_t::command_submit(
     const device_unique_id_t device_unique_id,
@@ -128,7 +185,7 @@ runtime_t::command_submit(
             {
                 if (device_unique_id == XKRT_HOST_DEVICE_UNIQUE_ID)
                 {
-                    command->prog.launcher.fixed.fn(command->prog.launcher.fixed.args);
+                    command_prog_launch_host(this, command);
                     break ;
                 }
                 // intentionally fallthrough
