@@ -679,7 +679,10 @@ xkrt_cuda_driver_command_batch_init(
                     {
                         CUDA_KERNEL_NODE_PARAMS params;
                         memset(&params, 0, sizeof(params));
-                        params.func             = (CUfunction) command->prog.launcher.variadic.fn;
+                        /* fn is CGIR's uniform void(void**) program pointer; for a
+                         * device kernel it actually holds the CUfunction handle
+                         * (function<->object pointer reinterpret is POSIX-safe). */
+                        params.func             = reinterpret_cast<CUfunction>(command->prog.launcher.variadic.fn);
                         params.gridDimX         = command->prog.grid.x;
                         params.gridDimY         = command->prog.grid.y;
                         params.gridDimZ         = command->prog.grid.z;
@@ -687,19 +690,10 @@ xkrt_cuda_driver_command_batch_init(
                         params.blockDimY        = command->prog.block.y;
                         params.blockDimZ        = command->prog.block.z;
                         params.sharedMemBytes   = 0;
-                        params.kernelParams     = NULL;
+                        /* args is the kernelParams array (one pointer per kernel
+                         * parameter); the count is inferred from the kernel. */
+                        params.kernelParams     = command->prog.launcher.variadic.args;
                         params.extra            = NULL;
-
-                        /* CUDA graph kernel nodes require kernel params passed via
-                         * the CUDA_KERNEL_NODE_PARAMS::extra field (same as cuLaunchKernel) */
-                        void * conf[] = {
-                            CU_LAUNCH_PARAM_BUFFER_POINTER,
-                            command->prog.launcher.variadic.args,
-                            CU_LAUNCH_PARAM_BUFFER_SIZE,
-                            (void *) &command->prog.launcher.variadic.args_size,
-                            CU_LAUNCH_PARAM_END
-                        };
-                        params.extra = conf;
 
                         CU_SAFE_CALL(cuGraphAddKernelNode(cu_node, handle->graph, deps, ndeps, &params));
                         break ;
@@ -922,17 +916,13 @@ XKRT_DRIVER_ENTRYPOINT(command_launch_with_stream)(
         case (cgir::COMMAND_TYPE_PROG):
         {
             constexpr size_t sharedmemory = 0;
-            void * conf[] = {
-                CU_LAUNCH_PARAM_BUFFER_POINTER,
-                command->prog.launcher.variadic.args,
-                CU_LAUNCH_PARAM_BUFFER_SIZE,
-                (void *) &command->prog.launcher.variadic.args_size,
-                CU_LAUNCH_PARAM_END
-            };
 
+            /* Launch via kernelParams: `args` is CGIR's uniform variadic form,
+             * an array of pointers (one per kernel parameter) == CUDA's
+             * kernelParams. `fn` holds the CUfunction handle. */
             CU_SAFE_CALL(
                 cuLaunchKernel(
-                    (CUfunction) command->prog.launcher.variadic.fn,
+                    reinterpret_cast<CUfunction>(command->prog.launcher.variadic.fn),
                     command->prog.grid.x,
                     command->prog.grid.y,
                     command->prog.grid.z,
@@ -941,8 +931,8 @@ XKRT_DRIVER_ENTRYPOINT(command_launch_with_stream)(
                     command->prog.block.z,
                     sharedmemory,
                     stream,
-                    nullptr,
-                    conf
+                    command->prog.launcher.variadic.args,   /* kernelParams */
+                    nullptr                                 /* extra */
                 )
             );
 

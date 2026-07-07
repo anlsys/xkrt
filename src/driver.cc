@@ -127,14 +127,17 @@ command_prog_launch_host(
 ) {
     assert(command->type == cgir::COMMAND_TYPE_PROG);
 
-    typedef void (*prog_fn_t)(void **);
-
+    /* The variadic launcher is the uniform program form: `fn(args)` where args
+     * is an array of n_args pointers. For TASK_SPAWN (OpenMP task bodies)
+     * args[0] is the task pointer (tt); reaching captured data through tt is
+     * what limits CGIR to program-level (not loop-level) fusion of task bodies
+     * -- see the recording site in XKOMP and the prog-fuse TASK_SPAWN branch. */
     switch (command->prog.launch_mode)
     {
         case (cgir::CGIR_COMMAND_PROG_LAUNCH_MODE_DIRECT):
         {
-            prog_fn_t fn   = (prog_fn_t) command->prog.launcher.variadic.fn;
-            void **   args = (void **)   command->prog.launcher.variadic.args;
+            void (*fn)(void **) = command->prog.launcher.variadic.fn;
+            void ** args        = command->prog.launcher.variadic.args;
             assert(fn);
             fn(args);
             command->completion_callback_raise();
@@ -149,8 +152,8 @@ command_prog_launch_host(
                 (const xkrt::runtime_t::task_accesses_setter_t) nullptr,
                 (const xkrt::runtime_t::task_split_condition_t) nullptr,
                 [command] (runtime_t *, device_t *, task_t *) {
-                    prog_fn_t fn   = (prog_fn_t) command->prog.launcher.variadic.fn;
-                    void **   args = (void **)   command->prog.launcher.variadic.args;
+                    void (*fn)(void **) = command->prog.launcher.variadic.fn;
+                    void ** args        = command->prog.launcher.variadic.args;
                     fn(args);
                     command->completion_callback_raise();   // complete command after the task ran
                 }
