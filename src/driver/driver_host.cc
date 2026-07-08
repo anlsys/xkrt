@@ -329,7 +329,7 @@ XKRT_DRIVER_ENTRYPOINT(command_graph_replay_process_node)(
                 ((command_t *) node->command)->completion_callback_push(callback);
 
                 // if a host command graph, forward the runtime as a driver_handle
-                if (node->command->type == cgir::COMMAND_TYPE_BATCH)
+                if (node->command->type == cgir::COMMAND_TYPE_BATCH && node->device_unique_id == XKRT_HOST_DEVICE_UNIQUE_ID)
                     node->command->batch.driver_handle = runtime;
             }
 
