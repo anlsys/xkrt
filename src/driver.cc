@@ -128,10 +128,11 @@ command_prog_launch_host(
     assert(command->type == cgir::COMMAND_TYPE_PROG);
 
     /* The variadic launcher is the uniform program form: `fn(args)` where args
-     * is an array of n_args pointers. For TASK_SPAWN (OpenMP task bodies)
-     * args[0] is the task pointer (tt); reaching captured data through tt is
-     * what limits CGIR to program-level (not loop-level) fusion of task bodies
-     * -- see the recording site in XKOMP and the prog-fuse TASK_SPAWN branch. */
+     * is an array of n_args pointers. This is launch-mode/shape agnostic: for a
+     * TASK_SPAWN OpenMP task body, args is either the leaf form's per-value
+     * &value slots (fn is the leaf trampoline / a JIT'd wrapper) or the classic
+     * single [tt] slot (fn is the args[0]==tt proxy) -- see the recording site in
+     * XKOMP and the prog-fuse TASK_SPAWN branch. Either way we just call fn(args). */
     switch (command->prog.launch_mode)
     {
         case (cgir::CGIR_COMMAND_PROG_LAUNCH_MODE_DIRECT):
