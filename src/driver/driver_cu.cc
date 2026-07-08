@@ -692,7 +692,7 @@ xkrt_cuda_driver_command_batch_init(
                         params.sharedMemBytes   = 0;
                         /* args is the kernelParams array (one pointer per kernel
                          * parameter); the count is inferred from the kernel. */
-                        params.kernelParams     = command->prog.launcher.variadic.args;
+                        params.kernelParams     = command->prog.args;
                         params.extra            = NULL;
 
                         CU_SAFE_CALL(cuGraphAddKernelNode(cu_node, handle->graph, deps, ndeps, &params));
@@ -931,7 +931,7 @@ XKRT_DRIVER_ENTRYPOINT(command_launch_with_stream)(
                     command->prog.block.z,
                     sharedmemory,
                     stream,
-                    command->prog.launcher.variadic.args,   /* kernelParams */
+                    command->prog.args,                     /* kernelParams */
                     nullptr                                 /* extra */
                 )
             );

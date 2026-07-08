@@ -1014,7 +1014,8 @@ xkrt_task_prog_launch(
         ctype,
         flags,
         [&] (xkrt::command_t * cmd) {
-            /* create a new kernel command */
+            /* create a new kernel command: a fixed-arity host callback launcher */
+            cmd->prog.prototype = cgir::CGIR_COMMAND_PROG_FUNCTION_PROTOTYPE_FIXED;
             cmd->prog.launcher.fixed.fn = (void (*)(void * [CGIR_CALLBACK_ARGS_MAX])) launcher;
             cmd->prog.launcher.fixed.args[0] = rt;
             cmd->prog.launcher.fixed.args[1] = task;

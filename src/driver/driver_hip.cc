@@ -604,7 +604,7 @@ XKRT_DRIVER_ENTRYPOINT(command_launch_with_stream)(
                     command->prog.block.z,
                     sharedmemory,
                     stream,
-                    command->prog.launcher.variadic.args,   /* kernelParams */
+                    command->prog.args,                     /* kernelParams */
                     nullptr                                 /* extra */
                 )
             );

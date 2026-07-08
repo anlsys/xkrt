@@ -120,6 +120,34 @@ command_type_to_queue_type(
  * In both cases the command's completion callback is raised once the program
  * has run, driving the command-graph replay forward.
  */
+/* Run a host PROG command's body once, dispatching on its function prototype
+ * (see command_prog_function_prototype_t):
+ *   - VARIADIC: a JIT'd/fused program on the uniform `void(void**)` shape,
+ *     invoked over prog.args (the deduplicated/compacted &value slots).
+ *   - KMP: a recorded OpenMP task body that was NOT JIT-compiled; run it directly
+ *     through its ahead-of-time libomp routine `fn(gtid, task)`. Recorded bodies
+ *     replay with gtid 0 (as the previous replay path did). */
+static inline void
+command_prog_run_host(command_t * command)
+{
+    auto & prog = command->prog;
+    switch (prog.prototype)
+    {
+        case cgir::CGIR_COMMAND_PROG_FUNCTION_PROTOTYPE_VARIADIC:
+            assert(prog.launcher.variadic.fn);
+            prog.launcher.variadic.fn(prog.args);
+            break ;
+
+        case cgir::CGIR_COMMAND_PROG_FUNCTION_PROTOTYPE_KMP:
+            assert(prog.launcher.kmp.fn);
+            prog.launcher.kmp.fn(/* gtid */ 0, prog.launcher.kmp.task);
+            break ;
+
+        default:
+            LOGGER_FATAL("Unsupported PROG function prototype %d on host", (int) prog.prototype);
+    }
+}
+
 static inline void
 command_prog_launch_host(
     runtime_t * runtime,
@@ -127,20 +155,17 @@ command_prog_launch_host(
 ) {
     assert(command->type == cgir::COMMAND_TYPE_PROG);
 
-    /* The variadic launcher is the uniform program form: `fn(args)` where args
-     * is an array of n_args pointers. This is launch-mode/shape agnostic: for a
-     * TASK_SPAWN OpenMP task body, args is either the leaf form's per-value
-     * &value slots (fn is the leaf trampoline / a JIT'd wrapper) or the classic
-     * single [tt] slot (fn is the args[0]==tt proxy) -- see the recording site in
-     * XKOMP and the prog-fuse TASK_SPAWN branch. Either way we just call fn(args). */
+    /* The body is run via command_prog_run_host, which picks the calling
+     * convention from the command's function prototype (a JIT'd/fused VARIADIC
+     * program, or a not-yet-JIT'd KMP OpenMP task routine). The launch MODE only
+     * decides WHERE it runs: DIRECT on the calling thread, TASK_SPAWN inside a
+     * freshly spawned task (so a recorded OpenMP task body re-spawns a task on
+     * replay). */
     switch (command->prog.launch_mode)
     {
         case (cgir::CGIR_COMMAND_PROG_LAUNCH_MODE_DIRECT):
         {
-            void (*fn)(void **) = command->prog.launcher.variadic.fn;
-            void ** args        = command->prog.launcher.variadic.args;
-            assert(fn);
-            fn(args);
+            command_prog_run_host(command);
             command->completion_callback_raise();
             break ;
         }
@@ -153,9 +178,7 @@ command_prog_launch_host(
                 (const xkrt::runtime_t::task_accesses_setter_t) nullptr,
                 (const xkrt::runtime_t::task_split_condition_t) nullptr,
                 [command] (runtime_t *, device_t *, task_t *) {
-                    void (*fn)(void **) = command->prog.launcher.variadic.fn;
-                    void ** args        = command->prog.launcher.variadic.args;
-                    fn(args);
+                    command_prog_run_host(command);
                     command->completion_callback_raise();   // complete command after the task ran
                 }
             );
