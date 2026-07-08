@@ -155,12 +155,16 @@ command_prog_launch_host(
 ) {
     assert(command->type == cgir::COMMAND_TYPE_PROG);
 
+    if (command->prog.launcher.variadic.fn == NULL)
+        LOGGER_FATAL("Tried to launch a host program with no compiled, executable functions.");
+
     /* The body is run via command_prog_run_host, which picks the calling
      * convention from the command's function prototype (a JIT'd/fused VARIADIC
      * program, or a not-yet-JIT'd KMP OpenMP task routine). The launch MODE only
      * decides WHERE it runs: DIRECT on the calling thread, TASK_SPAWN inside a
      * freshly spawned task (so a recorded OpenMP task body re-spawns a task on
      * replay). */
+
     switch (command->prog.launch_mode)
     {
         case (cgir::CGIR_COMMAND_PROG_LAUNCH_MODE_DIRECT):
