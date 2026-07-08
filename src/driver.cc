@@ -127,6 +127,9 @@ command_prog_launch_host(
 ) {
     assert(command->type == cgir::COMMAND_TYPE_PROG);
 
+    if (command->prog.launcher.variadic.fn == NULL)
+        LOGGER_FATAL("Tried to launch a host program with no compiled, executable functions.");
+
     /* The variadic launcher is the uniform program form: `fn(args)` where args
      * is an array of n_args pointers. This is launch-mode/shape agnostic: for a
      * TASK_SPAWN OpenMP task body, args is either the leaf form's per-value
