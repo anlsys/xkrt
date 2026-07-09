@@ -8,7 +8,7 @@ var searchData=
   ['matrix_5',['matrix',['../unionxkrt__access__t_1_1xkrt__region__t.html#aad0b02ac586be80481d9c23dc8880884',1,'xkrt_access_t::xkrt_region_t']]],
   ['matrix_5fstorage_5ft_6',['matrix_storage_t',['../namespacexkrt.html#a5337af7c9f7c8cdfcdf4dd0e56526bcb',1,'xkrt']]],
   ['mb_7',['mb',['../structxkrt_1_1distribution__t.html#a2eca01ed99d3ac51fe071015cd8fdd60',1,'xkrt::distribution_t']]],
-  ['memory_8',['memory',['../structxkrt_1_1runtime__t.html#ae7b6e5d7899cee6f83bdb99de9495436',1,'xkrt::runtime_t']]],
+  ['memory_8',['memory',['../structxkrt_1_1runtime__t.html#a0671684a5917344b705700944c241694',1,'xkrt::runtime_t']]],
   ['memory_20coherence_9',['Memory Coherence',['../architecture.html#autotoc_md47',1,'']]],
   ['memory_20layout_10',['Task Memory Layout',['../architecture.html#autotoc_md34',1,'']]],
   ['memory_20registration_20pinning_11',['Memory Registration (Pinning)',['../architecture.html#autotoc_md48',1,'']]],

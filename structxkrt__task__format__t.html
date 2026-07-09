@@ -108,6 +108,9 @@ Public Attributes</h2></td></tr>
 <tr class="memitem:a25d97c1789a88dc66a09b39bb30fb658" id="r_a25d97c1789a88dc66a09b39bb30fb658"><td class="memItemLeft" align="right" valign="top"><a class="el" href="format_8h.html#ab0c04e93a31e986cae97e65505ccf28d">xkrt_task_format_func_t</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structxkrt__task__format__t.html#a25d97c1789a88dc66a09b39bb30fb658">f</a> [<a class="el" href="format_8h.html#aa43a211f50b205f8445e18ec09f4266ea1d37fdb431cd423b684f2021ac327dd6">XKRT_TASK_FORMAT_TARGET_MAX</a>]</td></tr>
 <tr class="memdesc:a25d97c1789a88dc66a09b39bb30fb658"><td class="mdescLeft">&#160;</td><td class="mdescRight">Array of function pointers for each target.  <br /></td></tr>
 <tr class="separator:a25d97c1789a88dc66a09b39bb30fb658"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a65a3c159095dc02b23d993813ac9f708" id="r_a65a3c159095dc02b23d993813ac9f708"><td class="memItemLeft" align="right" valign="top">cgir_command_prog_source_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structxkrt__task__format__t.html#a65a3c159095dc02b23d993813ac9f708">source</a> [<a class="el" href="format_8h.html#aa43a211f50b205f8445e18ec09f4266ea1d37fdb431cd423b684f2021ac327dd6">XKRT_TASK_FORMAT_TARGET_MAX</a>]</td></tr>
+<tr class="memdesc:a65a3c159095dc02b23d993813ac9f708"><td class="mdescLeft">&#160;</td><td class="mdescRight">Optional source code (e.g. LLVM-IR) for each target's function, forwarded to the generated <code>COMMAND_TYPE_PROG</code> commands when a task dependency graph is lowered to a CGIR command graph. A zeroed entry (<code>content.llvmir.raw == NULL</code>) means "no source".  <br /></td></tr>
+<tr class="separator:a65a3c159095dc02b23d993813ac9f708"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:abf2a4fb2a7d73479fa994d3d94637581" id="r_abf2a4fb2a7d73479fa994d3d94637581"><td class="memItemLeft" align="right" valign="top">char&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structxkrt__task__format__t.html#abf2a4fb2a7d73479fa994d3d94637581">label</a> [32]</td></tr>
 <tr class="memdesc:abf2a4fb2a7d73479fa994d3d94637581"><td class="mdescLeft">&#160;</td><td class="mdescRight">A human-readable label for the task format.  <br /></td></tr>
 <tr class="separator:abf2a4fb2a7d73479fa994d3d94637581"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -119,7 +122,7 @@ Public Attributes</h2></td></tr>
 <div class="textblock"><p>Holds the implementations for a single task format across different targets. </p>
 <p>This structure aggregates the function pointers for a specific task's implementation on all available execution targets. It also includes a label for identification and an optional suggestion function. </p>
 
-<p class="definition">Definition at line <a class="el" href="format_8h_source.html#l00112">112</a> of file <a class="el" href="format_8h_source.html">format.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="format_8h_source.html#l00116">116</a> of file <a class="el" href="format_8h_source.html">format.h</a>.</p>
 </div><h2 class="groupheader">Member Data Documentation</h2>
 <a id="a25d97c1789a88dc66a09b39bb30fb658" name="a25d97c1789a88dc66a09b39bb30fb658"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a25d97c1789a88dc66a09b39bb30fb658">&#9670;&#160;</a></span>f</h2>
@@ -136,7 +139,7 @@ Public Attributes</h2></td></tr>
 <p>Array of function pointers for each target. </p>
 <p><code>f[target]</code> holds the function to execute for the corresponding <a class="el" href="format_8h.html#aa43a211f50b205f8445e18ec09f4266e" title="Enumerates the possible execution targets for a task.">xkrt_task_format_target_t</a>. </p>
 
-<p class="definition">Definition at line <a class="el" href="format_8h_source.html#l00120">120</a> of file <a class="el" href="format_8h_source.html">format.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="format_8h_source.html#l00124">124</a> of file <a class="el" href="format_8h_source.html">format.h</a>.</p>
 
 </div>
 </div>
@@ -154,7 +157,25 @@ Public Attributes</h2></td></tr>
 
 <p>A human-readable label for the task format. </p>
 
-<p class="definition">Definition at line <a class="el" href="format_8h_source.html#l00125">125</a> of file <a class="el" href="format_8h_source.html">format.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="format_8h_source.html#l00137">137</a> of file <a class="el" href="format_8h_source.html">format.h</a>.</p>
+
+</div>
+</div>
+<a id="a65a3c159095dc02b23d993813ac9f708" name="a65a3c159095dc02b23d993813ac9f708"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a65a3c159095dc02b23d993813ac9f708">&#9670;&#160;</a></span>source</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">cgir_command_prog_source_t xkrt_task_format_t::source[<a class="el" href="format_8h.html#aa43a211f50b205f8445e18ec09f4266ea1d37fdb431cd423b684f2021ac327dd6">XKRT_TASK_FORMAT_TARGET_MAX</a>]</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Optional source code (e.g. LLVM-IR) for each target's function, forwarded to the generated <code>COMMAND_TYPE_PROG</code> commands when a task dependency graph is lowered to a CGIR command graph. A zeroed entry (<code>content.llvmir.raw == NULL</code>) means "no source". </p>
+
+<p class="definition">Definition at line <a class="el" href="format_8h_source.html#l00132">132</a> of file <a class="el" href="format_8h_source.html">format.h</a>.</p>
 
 </div>
 </div>
@@ -179,7 +200,7 @@ Public Attributes</h2></td></tr>
 </dl>
 <dl class="section return"><dt>Returns</dt><dd>The suggested <a class="el" href="format_8h.html#aa43a211f50b205f8445e18ec09f4266e" title="Enumerates the possible execution targets for a task.">xkrt_task_format_target_t</a>, or <a class="el" href="format_8h.html#a0ec6c17568c7d5a853f8bdc064c150a8" title="Indicates that no specific target is suggested.">XKRT_TASK_FORMAT_TARGET_NO_SUGGEST</a> if no preference. </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="format_8h_source.html#l00136">136</a> of file <a class="el" href="format_8h_source.html">format.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="format_8h_source.html#l00148">148</a> of file <a class="el" href="format_8h_source.html">format.h</a>.</p>
 
 </div>
 </div>

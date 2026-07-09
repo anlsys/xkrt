@@ -5,7 +5,6 @@ var searchData=
   ['ndash_20moldable_20tasks_20with_20split_20conditions_2',['AXPBY &amp;ndash; Moldable Tasks with Split Conditions',['../examples.html#autotoc_md13',1,'']]],
   ['ndash_20recursive_20tasking_20with_20teams_3',['Fibonacci &amp;ndash; Recursive Tasking with Teams',['../examples.html#autotoc_md19',1,'']]],
   ['ndash_20vector_20addition_20with_20data_20accesses_4',['AXPY &amp;ndash; Vector Addition with Data Accesses',['../examples.html#autotoc_md10',1,'']]],
-  ['next_5ffmtid_5',['next_fmtid',['../structxkrt__task__formats__t.html#a08a525fe08c9cc0bba0119b8f72401ce',1,'xkrt_task_formats_t']]],
-  ['no_20gpu_6',['Host-Only (Development / No GPU)',['../building.html#autotoc_md67',1,'']]],
-  ['nt_7',['nt',['../structxkrt_1_1distribution__t.html#a945cc891b937318018c3745fd9a6b14e',1,'xkrt::distribution_t']]]
+  ['no_20gpu_5',['Host-Only (Development / No GPU)',['../building.html#autotoc_md67',1,'']]],
+  ['nt_6',['nt',['../structxkrt_1_1distribution__t.html#a945cc891b937318018c3745fd9a6b14e',1,'xkrt::distribution_t']]]
 ];

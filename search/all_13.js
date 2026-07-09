@@ -7,7 +7,7 @@ var searchData=
   ['power_5fstart_4',['power_start',['../structxkrt_1_1runtime__t.html#a7a41708d91d20b4a504d538ef75405da',1,'xkrt::runtime_t']]],
   ['power_5fstop_5',['power_stop',['../structxkrt_1_1runtime__t.html#ad88528e87aba6f2c6c7a57761d309845',1,'xkrt::runtime_t']]],
   ['power_5ft_6',['power_t',['../namespacexkrt.html#a6dc548faeb8394cceface3d2b79f3933',1,'xkrt']]],
-  ['prefetched_7',['prefetched',['../structxkrt_1_1runtime__t.html#a122fe2aca2e6d7bf16a7b050f9866def',1,'xkrt::runtime_t']]],
+  ['prefetched_7',['prefetched',['../structxkrt_1_1runtime__t.html#a6721160c2b76ce26313f8c3a5e9d1195',1,'xkrt::runtime_t']]],
   ['prog_5flauncher_5ft_8',['prog_launcher_t',['../namespacexkrt.html#aef58d2e4beaffbe3e81067927a4f7c1e',1,'xkrt']]],
   ['projects_9',['Related Projects',['../index.html#autotoc_md1',1,'']]]
 ];

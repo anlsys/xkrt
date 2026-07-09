@@ -1,8 +1,6 @@
 var format_8h =
 [
     [ "xkrt_task_format_t", "structxkrt__task__format__t.html", "structxkrt__task__format__t" ],
-    [ "xkrt_task_formats_t", "structxkrt__task__formats__t.html", "structxkrt__task__formats__t" ],
-    [ "XKRT_TASK_FORMAT_MAX", "format_8h.html#a320e2fc97d3ccd2438dd1f07660fbacc", null ],
     [ "XKRT_TASK_FORMAT_NULL", "format_8h.html#a6d33b3b1e6d474fdce883bc15e7aba5b", null ],
     [ "XKRT_TASK_FORMAT_TARGET_NO_SUGGEST", "format_8h.html#a0ec6c17568c7d5a853f8bdc064c150a8", null ],
     [ "xkrt_task_format_func_t", "format_8h.html#ab0c04e93a31e986cae97e65505ccf28d", null ],
@@ -10,7 +8,6 @@ var format_8h =
     [ "xkrt_task_format_suggest_t", "format_8h.html#a86e04b2ffa0a379286f3430d6a3d1e6e", null ],
     [ "xkrt_task_format_t", "format_8h.html#a6dac29148bb4892dbbe595b304bd2c37", null ],
     [ "xkrt_task_format_target_t", "format_8h.html#a3fe96404d161df03b28d008a5e624453", null ],
-    [ "xkrt_task_formats_t", "format_8h.html#a1853d14c548cd078d77c08228de1dd2b", null ],
     [ "xkrt_task_format_target_t", "format_8h.html#aa43a211f50b205f8445e18ec09f4266e", [
       [ "XKRT_TASK_FORMAT_TARGET_HOST", "format_8h.html#aa43a211f50b205f8445e18ec09f4266ea5497dca7e49a9516348d54d72306b40c", null ],
       [ "XKRT_TASK_FORMAT_TARGET_CUDA", "format_8h.html#aa43a211f50b205f8445e18ec09f4266eae665cc27248b6c2a4f6d2a3a4f244452", null ],

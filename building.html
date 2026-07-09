@@ -273,20 +273,46 @@ Using XKRT from CMake</h2>
 </div><!-- fragment --><hr  />
 <h1><a class="anchor" id="autotoc_md79"></a>
 Running Tests</h1>
+<p>Tests rely on <code>assert()</code>, so build in <b>Debug</b> (assertions are additionally force-enabled on the test targets, but Debug is recommended):</p>
 <div class="fragment"><div class="line">cd build</div>
+<div class="line">cmake -DCMAKE_BUILD_TYPE=Debug ..</div>
+<div class="line">make -j$(nproc)</div>
 <div class="line">ctest --output-on-failure</div>
+</div><!-- fragment --><p>Tests that require a GPU are skipped gracefully (reported as <em>Skipped</em>, with a warning) when no GPU device is available, so the suite stays green on host-only machines.</p>
+<h2><a class="anchor" id="autotoc_md80"></a>
+Test layout &amp; labels</h2>
+<p>Tests live in <code>tests/&lt;area&gt;/</code> and are registered with CTest <b>labels</b> for selective runs:</p>
+<table class="markdownTable">
+<tr class="markdownTableHead">
+<th class="markdownTableHeadNone">Label   </th><th class="markdownTableHeadNone">Meaning    </th></tr>
+<tr class="markdownTableRowOdd">
+<td class="markdownTableBodyNone"><code>lifecycle</code>, <code>task</code>, <code>memory</code>, <code>team</code>, <code>file</code>, <code>capi</code>, <code>data-structure</code>   </td><td class="markdownTableBodyNone">feature area    </td></tr>
+<tr class="markdownTableRowEven">
+<td class="markdownTableBodyNone"><code>format</code>, <code>dependency</code>, <code>moldable</code>, <code>detachable</code>, <code>graph</code>, <code>allocator</code>, <code>register</code>, <code>copy</code>   </td><td class="markdownTableBodyNone">sub-feature    </td></tr>
+<tr class="markdownTableRowOdd">
+<td class="markdownTableBodyNone"><code>host</code>   </td><td class="markdownTableBodyNone">runs anywhere    </td></tr>
+<tr class="markdownTableRowEven">
+<td class="markdownTableBodyNone"><code>gpu</code>   </td><td class="markdownTableBodyNone">requires a GPU (skipped otherwise)   </td></tr>
+</table>
+<div class="fragment"><div class="line">ctest --output-on-failure          # everything (GPU tests auto-skip if no GPU)</div>
+<div class="line">ctest -L host --output-on-failure  # only host-runnable tests</div>
+<div class="line">ctest -LE gpu                      # everything except GPU tests</div>
+<div class="line">ctest -L team                      # only the team tests</div>
+<div class="line">ctest -L gpu                       # only the GPU tests (on a GPU machine)</div>
 </div><!-- fragment --><p>The test suite covers:</p><ul>
-<li>Runtime init/deinit</li>
-<li>Task synchronization and dependencies (handle, interval, matrix, graph)</li>
-<li>Task formats</li>
-<li>Memory registration (sync, async, parallel, touch)</li>
-<li>Thread teams (barrier, parallel for, device teams)</li>
-<li>Moldable tasks</li>
-<li>File I/O</li>
+<li>Runtime init/deinit/synchronization</li>
+<li>Task formats (one-shot <code>create</code> and incremental <code>put</code>/<code>set</code>/<code>get</code>)</li>
+<li>Task dependencies: low-level (handle, interval, matrix) and high-level capture API (RAW/WAR/WAW, fan-in/out), access concurrency (commutative/concurrent)</li>
+<li>Moldable tasks (including real recursive splitting) and detachable tasks</li>
+<li>Task dependency graph recording/replay (host and GPU)</li>
+<li>Memory: device/host/unified allocators, registration (sync/async/parallel), touch, and host&lt;-&gt;device async copies</li>
+<li>Thread teams (barrier, parallel-for + bounds, critical sections, device teams)</li>
+<li>File I/O (parallel async read and write)</li>
+<li>The <code>lp-tree</code> data structure</li>
 <li>C API</li>
 </ul>
 <hr  />
-<h1><a class="anchor" id="autotoc_md81"></a>
+<h1><a class="anchor" id="autotoc_md82"></a>
 Environment Variables</h1>
 <p>Set <code>XKRT_HELP=1</code> when running any XKRT application to display all available environment variables and their current values:</p>
 <div class="fragment"><div class="line">XKRT_HELP=1 ./my_app</div>

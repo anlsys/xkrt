@@ -10,7 +10,7 @@ var searchData=
   ['xkrt_5fdevice_5fdriver_5fid_5ft_7',['xkrt_device_driver_id_t',['../consts_8h.html#a098121d4ee40a66dd8dd6549fae6b791',1,'consts.h']]],
   ['xkrt_5fdevice_5ft_8',['xkrt_device_t',['../xkrt_8h.html#a8524b441894128021bac334fc9976655',1,'xkrt.h']]],
   ['xkrt_5fdevice_5funique_5fid_5fbitfield_5ft_9',['xkrt_device_unique_id_bitfield_t',['../consts_8h.html#a5c42ea9c097e002433e9e5e0d38ed51a',1,'consts.h']]],
-  ['xkrt_5fdevice_5funique_5fid_5ft_10',['xkrt_device_unique_id_t',['../consts_8h.html#a97ec6ee320a7dbcdf3b10fc83c6389b5',1,'consts.h']]],
+  ['xkrt_5fdevice_5funique_5fid_5ft_10',['xkrt_device_unique_id_t',['../consts_8h.html#abd0e48fa5fb1c01d5fa446200b4b8b3f',1,'consts.h']]],
   ['xkrt_5fdriver_5ft_11',['xkrt_driver_t',['../xkrt_8h.html#a313d0acc81cceafafc88074411b5b23f',1,'xkrt.h']]],
   ['xkrt_5fdriver_5ftype_5fbitfield_5ft_12',['xkrt_driver_type_bitfield_t',['../driver-type_8h.html#a0f5a0ef45fe9f1d967d8ed593565c6c0',1,'driver-type.h']]],
   ['xkrt_5fdriver_5ftype_5ft_13',['xkrt_driver_type_t',['../driver-type_8h.html#af1f4c1280322dfeb8def2115a4807de2',1,'driver-type.h']]],
@@ -23,10 +23,9 @@ var searchData=
   ['xkrt_5ftask_5fformat_5fsuggest_5ft_20',['xkrt_task_format_suggest_t',['../format_8h.html#a86e04b2ffa0a379286f3430d6a3d1e6e',1,'format.h']]],
   ['xkrt_5ftask_5fformat_5ft_21',['xkrt_task_format_t',['../format_8h.html#a6dac29148bb4892dbbe595b304bd2c37',1,'format.h']]],
   ['xkrt_5ftask_5fformat_5ftarget_5ft_22',['xkrt_task_format_target_t',['../format_8h.html#a3fe96404d161df03b28d008a5e624453',1,'format.h']]],
-  ['xkrt_5ftask_5fformats_5ft_23',['xkrt_task_formats_t',['../format_8h.html#a1853d14c548cd078d77c08228de1dd2b',1,'format.h']]],
-  ['xkrt_5ftask_5ffunc_5ft_24',['xkrt_task_func_t',['../xkrt_8h.html#a139e43c34e82cf45568d5114e8fe60aa',1,'xkrt.h']]],
-  ['xkrt_5ftask_5fstate_5ft_25',['xkrt_task_state_t',['../state_8h.html#a70baab28e640e3f32bb317849ad8b45e',1,'state.h']]],
-  ['xkrt_5ftask_5ft_26',['xkrt_task_t',['../xkrt_8h.html#af905e0e98c7a255302f3027ad2d5142f',1,'xkrt.h']]],
-  ['xkrt_5ftask_5fwait_5fcounter_5ftype_5ft_27',['xkrt_task_wait_counter_type_t',['../consts_8h.html#a26bb2955f2b3f3faa251f32f4dedcb16',1,'consts.h']]],
-  ['xkrt_5fteam_5ft_28',['xkrt_team_t',['../xkrt_8h.html#a259d7de3f92118aaf7c68d547902b9f2',1,'xkrt.h']]]
+  ['xkrt_5ftask_5ffunc_5ft_23',['xkrt_task_func_t',['../xkrt_8h.html#a139e43c34e82cf45568d5114e8fe60aa',1,'xkrt.h']]],
+  ['xkrt_5ftask_5fstate_5ft_24',['xkrt_task_state_t',['../state_8h.html#a70baab28e640e3f32bb317849ad8b45e',1,'state.h']]],
+  ['xkrt_5ftask_5ft_25',['xkrt_task_t',['../xkrt_8h.html#af905e0e98c7a255302f3027ad2d5142f',1,'xkrt.h']]],
+  ['xkrt_5ftask_5fwait_5fcounter_5ftype_5ft_26',['xkrt_task_wait_counter_type_t',['../consts_8h.html#a26bb2955f2b3f3faa251f32f4dedcb16',1,'consts.h']]],
+  ['xkrt_5fteam_5ft_27',['xkrt_team_t',['../xkrt_8h.html#a259d7de3f92118aaf7c68d547902b9f2',1,'xkrt.h']]]
 ];

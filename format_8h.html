@@ -100,6 +100,7 @@ $(document).ready(function(){initNavTree('format_8h.html',''); initResizable(); 
 </div><!--header-->
 <div class="contents">
 <div class="textblock"><code>#include &lt;stdint.h&gt;</code><br />
+<code>#include &lt;cgir/prog-source.h&gt;</code><br />
 </div>
 <p><a href="format_8h_source.html">Go to the source code of this file.</a></p>
 <table class="memberdecls">
@@ -108,18 +109,12 @@ Classes</h2></td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structxkrt__task__format__t.html">xkrt_task_format_t</a></td></tr>
 <tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">Holds the implementations for a single task format across different targets.  <a href="structxkrt__task__format__t.html#details">More...</a><br /></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structxkrt__task__formats__t.html">xkrt_task_formats_t</a></td></tr>
-<tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">A repository for all registered task formats.  <a href="structxkrt__task__formats__t.html#details">More...</a><br /></td></tr>
-<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="define-members" name="define-members"></a>
 Macros</h2></td></tr>
 <tr class="memitem:a0ec6c17568c7d5a853f8bdc064c150a8" id="r_a0ec6c17568c7d5a853f8bdc064c150a8"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="format_8h.html#a0ec6c17568c7d5a853f8bdc064c150a8">XKRT_TASK_FORMAT_TARGET_NO_SUGGEST</a>&#160;&#160;&#160;<a class="el" href="format_8h.html#aa43a211f50b205f8445e18ec09f4266ea1d37fdb431cd423b684f2021ac327dd6">XKRT_TASK_FORMAT_TARGET_MAX</a></td></tr>
 <tr class="memdesc:a0ec6c17568c7d5a853f8bdc064c150a8"><td class="mdescLeft">&#160;</td><td class="mdescRight">Indicates that no specific target is suggested.  <br /></td></tr>
 <tr class="separator:a0ec6c17568c7d5a853f8bdc064c150a8"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a320e2fc97d3ccd2438dd1f07660fbacc" id="r_a320e2fc97d3ccd2438dd1f07660fbacc"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="format_8h.html#a320e2fc97d3ccd2438dd1f07660fbacc">XKRT_TASK_FORMAT_MAX</a>&#160;&#160;&#160;((1 &lt;&lt; (sizeof(<a class="el" href="format_8h.html#acf8961ce143a024e0922be07cf1b935e">xkrt_task_format_id_t</a>) * 8)) - 1)</td></tr>
-<tr class="memdesc:a320e2fc97d3ccd2438dd1f07660fbacc"><td class="mdescLeft">&#160;</td><td class="mdescRight">The maximum number of task formats that can be registered.  <br /></td></tr>
-<tr class="separator:a320e2fc97d3ccd2438dd1f07660fbacc"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a6d33b3b1e6d474fdce883bc15e7aba5b" id="r_a6d33b3b1e6d474fdce883bc15e7aba5b"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="format_8h.html#a6d33b3b1e6d474fdce883bc15e7aba5b">XKRT_TASK_FORMAT_NULL</a>&#160;&#160;&#160;0</td></tr>
 <tr class="memdesc:a6d33b3b1e6d474fdce883bc15e7aba5b"><td class="mdescLeft">&#160;</td><td class="mdescRight">Represents a null or invalid task format ID.  <br /></td></tr>
 <tr class="separator:a6d33b3b1e6d474fdce883bc15e7aba5b"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -136,11 +131,9 @@ Typedefs</h2></td></tr>
 <tr class="separator:ab0c04e93a31e986cae97e65505ccf28d"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a6dac29148bb4892dbbe595b304bd2c37" id="r_a6dac29148bb4892dbbe595b304bd2c37"><td class="memItemLeft" align="right" valign="top">typedef struct <a class="el" href="structxkrt__task__format__t.html">xkrt_task_format_t</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="format_8h.html#a6dac29148bb4892dbbe595b304bd2c37">xkrt_task_format_t</a></td></tr>
 <tr class="separator:a6dac29148bb4892dbbe595b304bd2c37"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:acf8961ce143a024e0922be07cf1b935e" id="r_acf8961ce143a024e0922be07cf1b935e"><td class="memItemLeft" align="right" valign="top">typedef uint8_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="format_8h.html#acf8961ce143a024e0922be07cf1b935e">xkrt_task_format_id_t</a></td></tr>
-<tr class="memdesc:acf8961ce143a024e0922be07cf1b935e"><td class="mdescLeft">&#160;</td><td class="mdescRight">A unique identifier for a task format.  <br /></td></tr>
+<tr class="memitem:acf8961ce143a024e0922be07cf1b935e" id="r_acf8961ce143a024e0922be07cf1b935e"><td class="memItemLeft" align="right" valign="top">typedef uint16_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="format_8h.html#acf8961ce143a024e0922be07cf1b935e">xkrt_task_format_id_t</a></td></tr>
+<tr class="memdesc:acf8961ce143a024e0922be07cf1b935e"><td class="mdescLeft">&#160;</td><td class="mdescRight">A unique identifier for a task format, used as an index into the task format repository (::xkrt_task_formats_t).  <br /></td></tr>
 <tr class="separator:acf8961ce143a024e0922be07cf1b935e"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a1853d14c548cd078d77c08228de1dd2b" id="r_a1853d14c548cd078d77c08228de1dd2b"><td class="memItemLeft" align="right" valign="top">typedef struct <a class="el" href="structxkrt__task__formats__t.html">xkrt_task_formats_t</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="format_8h.html#a1853d14c548cd078d77c08228de1dd2b">xkrt_task_formats_t</a></td></tr>
-<tr class="separator:a1853d14c548cd078d77c08228de1dd2b"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="enum-members" name="enum-members"></a>
 Enumerations</h2></td></tr>
@@ -159,25 +152,6 @@ Enumerations</h2></td></tr>
 <tr class="separator:aa43a211f50b205f8445e18ec09f4266e"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <h2 class="groupheader">Macro Definition Documentation</h2>
-<a id="a320e2fc97d3ccd2438dd1f07660fbacc" name="a320e2fc97d3ccd2438dd1f07660fbacc"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a320e2fc97d3ccd2438dd1f07660fbacc">&#9670;&#160;</a></span>XKRT_TASK_FORMAT_MAX</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">#define XKRT_TASK_FORMAT_MAX&#160;&#160;&#160;((1 &lt;&lt; (sizeof(<a class="el" href="format_8h.html#acf8961ce143a024e0922be07cf1b935e">xkrt_task_format_id_t</a>) * 8)) - 1)</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-<p>The maximum number of task formats that can be registered. </p>
-<p>This is derived from the size of <a class="el" href="format_8h.html#acf8961ce143a024e0922be07cf1b935e" title="A unique identifier for a task format.">xkrt_task_format_id_t</a>. </p>
-
-<p class="definition">Definition at line <a class="el" href="format_8h_source.html#l00154">154</a> of file <a class="el" href="format_8h_source.html">format.h</a>.</p>
-
-</div>
-</div>
 <a id="a6d33b3b1e6d474fdce883bc15e7aba5b" name="a6d33b3b1e6d474fdce883bc15e7aba5b"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a6d33b3b1e6d474fdce883bc15e7aba5b">&#9670;&#160;</a></span>XKRT_TASK_FORMAT_NULL</h2>
 
@@ -192,7 +166,7 @@ Enumerations</h2></td></tr>
 
 <p>Represents a null or invalid task format ID. </p>
 
-<p class="definition">Definition at line <a class="el" href="format_8h_source.html#l00160">160</a> of file <a class="el" href="format_8h_source.html">format.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="format_8h_source.html#l00163">163</a> of file <a class="el" href="format_8h_source.html">format.h</a>.</p>
 
 </div>
 </div>
@@ -211,7 +185,7 @@ Enumerations</h2></td></tr>
 <p>Indicates that no specific target is suggested. </p>
 <p>This macro uses the <code>XKRT_TASK_FORMAT_TARGET_MAX</code> value as a sentinel to signify that the suggestion function does not have a preference for the execution target. </p>
 
-<p class="definition">Definition at line <a class="el" href="format_8h_source.html#l00079">79</a> of file <a class="el" href="format_8h_source.html">format.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="format_8h_source.html#l00083">83</a> of file <a class="el" href="format_8h_source.html">format.h</a>.</p>
 
 </div>
 </div>
@@ -231,7 +205,7 @@ Enumerations</h2></td></tr>
 <p>Function pointer type for a task's implementation. </p>
 <p>This defines the signature for the actual function that executes a task. It takes no arguments and returns void. Task-specific data is expected to be managed through other mechanisms (e.g., captured in a lambda, passed via a task structure). </p>
 
-<p class="definition">Definition at line <a class="el" href="format_8h_source.html#l00102">102</a> of file <a class="el" href="format_8h_source.html">format.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="format_8h_source.html#l00106">106</a> of file <a class="el" href="format_8h_source.html">format.h</a>.</p>
 
 </div>
 </div>
@@ -247,10 +221,9 @@ Enumerations</h2></td></tr>
       </table>
 </div><div class="memdoc">
 
-<p>A unique identifier for a task format. </p>
-<p>This type is used as an index into the <a class="el" href="structxkrt__task__formats__t.html" title="A repository for all registered task formats.">xkrt_task_formats_t</a> list. </p>
+<p>A unique identifier for a task format, used as an index into the task format repository (::xkrt_task_formats_t). </p>
 
-<p class="definition">Definition at line <a class="el" href="format_8h_source.html#l00146">146</a> of file <a class="el" href="format_8h_source.html">format.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="format_8h_source.html#l00157">157</a> of file <a class="el" href="format_8h_source.html">format.h</a>.</p>
 
 </div>
 </div>
@@ -276,7 +249,7 @@ Enumerations</h2></td></tr>
 </dl>
 <dl class="section return"><dt>Returns</dt><dd>The suggested <a class="el" href="format_8h.html#aa43a211f50b205f8445e18ec09f4266e" title="Enumerates the possible execution targets for a task.">xkrt_task_format_target_t</a>. </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="format_8h_source.html#l00091">91</a> of file <a class="el" href="format_8h_source.html">format.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="format_8h_source.html#l00095">95</a> of file <a class="el" href="format_8h_source.html">format.h</a>.</p>
 
 </div>
 </div>
@@ -302,20 +275,6 @@ Enumerations</h2></td></tr>
       <table class="memname">
         <tr>
           <td class="memname">typedef enum <a class="el" href="format_8h.html#aa43a211f50b205f8445e18ec09f4266e">xkrt_task_format_target_t</a> <a class="el" href="format_8h.html#aa43a211f50b205f8445e18ec09f4266e">xkrt_task_format_target_t</a></td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="a1853d14c548cd078d77c08228de1dd2b" name="a1853d14c548cd078d77c08228de1dd2b"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a1853d14c548cd078d77c08228de1dd2b">&#9670;&#160;</a></span>xkrt_task_formats_t</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">typedef struct <a class="el" href="structxkrt__task__formats__t.html">xkrt_task_formats_t</a> <a class="el" href="structxkrt__task__formats__t.html">xkrt_task_formats_t</a></td>
         </tr>
       </table>
 </div><div class="memdoc">
@@ -354,7 +313,7 @@ Enumerations</h2></td></tr>
 </td></tr>
 </table>
 
-<p class="definition">Definition at line <a class="el" href="format_8h_source.html#l00059">59</a> of file <a class="el" href="format_8h_source.html">format.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="format_8h_source.html#l00063">63</a> of file <a class="el" href="format_8h_source.html">format.h</a>.</p>
 
 </div>
 </div>

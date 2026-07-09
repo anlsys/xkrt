@@ -7,6 +7,5 @@ var annotated_dup =
       [ "runtime_t", "structxkrt_1_1runtime__t.html", "structxkrt_1_1runtime__t" ]
     ] ],
     [ "xkrt_access_t", "structxkrt__access__t.html", "structxkrt__access__t" ],
-    [ "xkrt_task_format_t", "structxkrt__task__format__t.html", "structxkrt__task__format__t" ],
-    [ "xkrt_task_formats_t", "structxkrt__task__formats__t.html", "structxkrt__task__formats__t" ]
+    [ "xkrt_task_format_t", "structxkrt__task__format__t.html", "structxkrt__task__format__t" ]
 ];

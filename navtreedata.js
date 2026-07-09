@@ -101,8 +101,10 @@ var NAVTREE =
       [ "Installation", "building.html#autotoc_md76", [
         [ "Using XKRT from CMake", "building.html#autotoc_md77", null ]
       ] ],
-      [ "Running Tests", "building.html#autotoc_md79", null ],
-      [ "Environment Variables", "building.html#autotoc_md81", null ]
+      [ "Running Tests", "building.html#autotoc_md79", [
+        [ "Test layout & labels", "building.html#autotoc_md80", null ]
+      ] ],
+      [ "Environment Variables", "building.html#autotoc_md82", null ]
     ] ],
     [ "Namespaces", "namespaces.html", [
       [ "Namespace List", "namespaces.html", "namespaces_dup" ],
@@ -129,7 +131,7 @@ var NAVTREE =
     [ "Files", "files.html", [
       [ "File List", "files.html", "files_dup" ],
       [ "File Members", "globals.html", [
-        [ "All", "globals.html", "globals_dup" ],
+        [ "All", "globals.html", null ],
         [ "Functions", "globals_func.html", null ],
         [ "Typedefs", "globals_type.html", null ],
         [ "Enumerations", "globals_enum.html", null ],
@@ -143,9 +145,9 @@ var NAVTREE =
 var NAVTREEINDEX =
 [
 "annotated.html",
-"namespacexkrt.html#a4a8ed409e54eccbc1f87bdc66432148e",
-"structxkrt_1_1runtime__t.html#a0f7e6b40f8deae220804ed4ff074bee9",
-"structxkrt_1_1runtime__t.html#ae7b6e5d7899cee6f83bdb99de9495436"
+"namespacexkrt.html#a5337af7c9f7c8cdfcdf4dd0e56526bcb",
+"structxkrt_1_1runtime__t.html#a0fca15f45ad097a3a2c5f99e38d937ca",
+"structxkrt_1_1runtime__t.html#aedaf8ce21fd9faa551e305e54980f22b"
 ];
 
 var SYNCONMSG = 'click to disable panel synchronisation';

@@ -20,7 +20,7 @@ var consts_8h =
     [ "xkrt_command_callback_index_t", "consts_8h.html#a2839f1fff922b754fc3cc3857aa828c2", null ],
     [ "xkrt_device_driver_id_t", "consts_8h.html#a098121d4ee40a66dd8dd6549fae6b791", null ],
     [ "xkrt_device_unique_id_bitfield_t", "consts_8h.html#a5c42ea9c097e002433e9e5e0d38ed51a", null ],
-    [ "xkrt_device_unique_id_t", "consts_8h.html#a97ec6ee320a7dbcdf3b10fc83c6389b5", null ],
+    [ "xkrt_device_unique_id_t", "consts_8h.html#abd0e48fa5fb1c01d5fa446200b4b8b3f", null ],
     [ "xkrt_task_access_counter_t", "consts_8h.html#aae5f5d4f5dc21c5d08fcc17bb89f428f", null ],
     [ "xkrt_task_wait_counter_type_t", "consts_8h.html#a26bb2955f2b3f3faa251f32f4dedcb16", null ]
 ];

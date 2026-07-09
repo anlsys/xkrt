@@ -10,7 +10,7 @@ var structxkrt_1_1driver__t =
     [ "get_name", "structxkrt_1_1driver__t.html#af2d4042f1cf1b447b2f4223e506a23be", null ],
     [ "barrier", "structxkrt_1_1driver__t.html#a219da3b02949369879d9f0db4bfb7ce0", null ],
     [ "bitfield", "structxkrt_1_1driver__t.html#ab6d4be38c5e07964157c0a98e4d39f83", null ],
-    [ "devices", "structxkrt_1_1driver__t.html#a71b77a8d59535a7506b6e36ab463183d", null ],
+    [ "devices", "structxkrt_1_1driver__t.html#a8d7e86be50c270fd5b157e8206dd6077", null ],
     [ "f_command_execute", "structxkrt_1_1driver__t.html#a0935a4cfb62bd7e3e256db7bd083dc81", null ],
     [ "f_command_queue_create", "structxkrt_1_1driver__t.html#a5d29dceb411a0a2bd8b287a779f3968f", null ],
     [ "f_command_queue_delete", "structxkrt_1_1driver__t.html#a67d7310a165db41ca0ed25ac8b2fb73c", null ],
