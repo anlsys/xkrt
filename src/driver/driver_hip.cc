@@ -589,10 +589,17 @@ XKRT_DRIVER_ENTRYPOINT(command_launch_with_stream)(
         {
             constexpr size_t sharedmemory = 0;
 
-            /* Launch via kernelParams: `args` is CGIR's uniform variadic form,
-             * an array of pointers (one per kernel parameter). `fn` holds the
-             * hipFunction_t handle (function<->object pointer reinterpret is
-             * POSIX-safe). */
+            /* VARIADIC: `args` is the kernelParams pointer array. PACKED: `args` is
+             * a byte buffer of `args_size` bytes passed via the HIP_LAUNCH_PARAM
+             * "extra" config (kernelParams must be NULL). `fn` holds the
+             * hipFunction_t handle either way. */
+            const bool packed =
+                command->prog.prototype == cgir::CGIR_COMMAND_PROG_FUNCTION_PROTOTYPE_PACKED;
+            void * hip_config[] = {
+                (void *) HIP_LAUNCH_PARAM_BUFFER_POINTER, (void *) command->prog.args,
+                (void *) HIP_LAUNCH_PARAM_BUFFER_SIZE,    (void *) &command->prog.args_size,
+                (void *) HIP_LAUNCH_PARAM_END
+            };
             HIP_SAFE_CALL(
                 hipModuleLaunchKernel(
                     reinterpret_cast<hipFunction_t>(command->prog.launcher.variadic.fn),
@@ -604,8 +611,8 @@ XKRT_DRIVER_ENTRYPOINT(command_launch_with_stream)(
                     command->prog.block.z,
                     sharedmemory,
                     stream,
-                    command->prog.args,                     /* kernelParams */
-                    nullptr                                 /* extra */
+                    packed ? nullptr : command->prog.args,   /* kernelParams */
+                    packed ? hip_config : nullptr            /* extra */
                 )
             );
 

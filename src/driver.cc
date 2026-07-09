@@ -138,6 +138,11 @@ command_prog_run_host(command_t * command)
             prog.launcher.variadic.fn(prog.args);
             break ;
 
+        case cgir::CGIR_COMMAND_PROG_FUNCTION_PROTOTYPE_PACKED:
+            assert(prog.launcher.packed.fn);
+            prog.launcher.packed.fn((void *) prog.args, prog.args_size);
+            break ;
+
         case cgir::CGIR_COMMAND_PROG_FUNCTION_PROTOTYPE_KMP:
             assert(prog.launcher.kmp.fn);
             prog.launcher.kmp.fn(/* gtid */ 0, prog.launcher.kmp.task);

@@ -690,10 +690,24 @@ xkrt_cuda_driver_command_batch_init(
                         params.blockDimY        = command->prog.block.y;
                         params.blockDimZ        = command->prog.block.z;
                         params.sharedMemBytes   = 0;
-                        /* args is the kernelParams array (one pointer per kernel
-                         * parameter); the count is inferred from the kernel. */
-                        params.kernelParams     = command->prog.args;
-                        params.extra            = NULL;
+                        /* VARIADIC: args is the kernelParams pointer array. PACKED:
+                         * args is a byte buffer passed via the CU_LAUNCH_PARAM_BUFFER
+                         * "extra" config (kernelParams must be NULL). */
+                        void * cu_config[] = {
+                            (void *) CU_LAUNCH_PARAM_BUFFER_POINTER, (void *) command->prog.args,
+                            (void *) CU_LAUNCH_PARAM_BUFFER_SIZE,    (void *) &command->prog.args_size,
+                            (void *) CU_LAUNCH_PARAM_END
+                        };
+                        if (command->prog.prototype == cgir::CGIR_COMMAND_PROG_FUNCTION_PROTOTYPE_PACKED)
+                        {
+                            params.kernelParams = NULL;
+                            params.extra        = cu_config;
+                        }
+                        else
+                        {
+                            params.kernelParams = command->prog.args;
+                            params.extra        = NULL;
+                        }
 
                         CU_SAFE_CALL(cuGraphAddKernelNode(cu_node, handle->graph, deps, ndeps, &params));
                         break ;
@@ -917,9 +931,18 @@ XKRT_DRIVER_ENTRYPOINT(command_launch_with_stream)(
         {
             constexpr size_t sharedmemory = 0;
 
-            /* Launch via kernelParams: `args` is CGIR's uniform variadic form,
-             * an array of pointers (one per kernel parameter) == CUDA's
-             * kernelParams. `fn` holds the CUfunction handle. */
+            /* Two arg forms (see command_prog_function_prototype_t):
+             *  - VARIADIC: `args` is the kernelParams pointer array.
+             *  - PACKED:   `args` is a single byte buffer of `args_size` bytes,
+             *    passed via the CU_LAUNCH_PARAM_BUFFER "extra" config (kernelParams
+             *    must then be NULL). `fn` holds the CUfunction handle either way. */
+            const bool packed =
+                command->prog.prototype == cgir::CGIR_COMMAND_PROG_FUNCTION_PROTOTYPE_PACKED;
+            void * cu_config[] = {
+                (void *) CU_LAUNCH_PARAM_BUFFER_POINTER, (void *) command->prog.args,
+                (void *) CU_LAUNCH_PARAM_BUFFER_SIZE,    (void *) &command->prog.args_size,
+                (void *) CU_LAUNCH_PARAM_END
+            };
             CU_SAFE_CALL(
                 cuLaunchKernel(
                     reinterpret_cast<CUfunction>(command->prog.launcher.variadic.fn),
@@ -931,8 +954,8 @@ XKRT_DRIVER_ENTRYPOINT(command_launch_with_stream)(
                     command->prog.block.z,
                     sharedmemory,
                     stream,
-                    command->prog.args,                     /* kernelParams */
-                    nullptr                                 /* extra */
+                    packed ? nullptr : command->prog.args,   /* kernelParams */
+                    packed ? cu_config : nullptr             /* extra */
                 )
             );
 
