@@ -132,6 +132,13 @@ typedef struct  driver_t
     /* get device infos */
     void (*f_device_info)(device_driver_id_t device_driver_id, char * buffer, size_t size);
 
+    /* Device code-generation target for JIT/fusion of device kernels: sets *triple
+     * to the LLVM target triple (e.g. "nvptx64-nvidia-cuda") and *arch to the
+     * device arch / target-cpu (e.g. "sm_80"), as stable strings owned by the
+     * driver. Optional: NULL (or a NULL/empty result) means the device is not a
+     * JIT/fusion codegen target. */
+    void (*f_device_get_target)(device_driver_id_t device_driver_id, const char ** triple, const char ** arch);
+
     ////////////////////////////////
     //  MEMORY MANAGEMENT         //
     ////////////////////////////////

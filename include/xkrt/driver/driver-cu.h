@@ -94,6 +94,9 @@ typedef struct  device_cu_t
             int pciDeviceID;
             size_t mem_total;
             char name[64];      /* GPU name */
+            int cc_major;       /* compute capability major */
+            int cc_minor;       /* compute capability minor */
+            char arch[16];      /* device arch / target-cpu, e.g. "sm_80" */
         } prop;
 
     } cu;

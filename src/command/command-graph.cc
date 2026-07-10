@@ -244,7 +244,26 @@ runtime_t::command_graph_from_task_dependency_graph(
 
                     const cgir_command_prog_source_t & src = format->source[target];
                     if (src.content.llvmir.raw != NULL)
+                    {
                         rec.command.prog.source = src;
+
+                        /* Device kernels: attach the executing device's codegen
+                         * target (triple/arch) so cgir's fuse/jit passes compile
+                         * the device IR for the GPU (and emit PTX) instead of the
+                         * host. Host progs leave triple/arch NULL (host codegen). */
+                        if (cmd_device && cmd_device->driver_type != XKRT_DRIVER_TYPE_HOST)
+                        {
+                            driver_t * driver = this->driver_get(cmd_device->driver_type);
+                            if (driver && driver->f_device_get_target)
+                            {
+                                driver->f_device_get_target(cmd_device->driver_id,
+                                    &rec.command.prog.source.content.llvmir.triple,
+                                    &rec.command.prog.source.content.llvmir.arch);
+                            }
+                            else
+                                LOGGER_FATAL("Driver `%s` does not support `f_device_get_target` to get target triple", driver->get_name());
+                        }
+                    }
                 }
             }
 

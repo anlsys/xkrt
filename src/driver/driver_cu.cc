@@ -351,6 +351,24 @@ XKRT_DRIVER_ENTRYPOINT(device_init)(device_driver_id_t device_driver_id)
     CU_SAFE_CALL(cuDeviceGetName(device->cu.prop.name, sizeof(device->cu.prop.name), device->cu.device));
 
     CU_SAFE_CALL(cuDeviceTotalMem(&device->cu.prop.mem_total, device->cu.device));
+
+    /* compute capability -> arch string ("sm_<major><minor>"), for device JIT/fusion */
+    CU_SAFE_CALL(cuDeviceGetAttribute(&device->cu.prop.cc_major, CU_DEVICE_ATTRIBUTE_COMPUTE_CAPABILITY_MAJOR, device->cu.device));
+    CU_SAFE_CALL(cuDeviceGetAttribute(&device->cu.prop.cc_minor, CU_DEVICE_ATTRIBUTE_COMPUTE_CAPABILITY_MINOR, device->cu.device));
+    snprintf(device->cu.prop.arch, sizeof(device->cu.prop.arch), "sm_%d%d",
+             device->cu.prop.cc_major, device->cu.prop.cc_minor);
+}
+
+/* Device LLVM code-generation target (see driver_t::f_device_get_target). The
+ * triple is fixed for CUDA; the arch is the device's compute capability, cached
+ * in device_init. Both strings are stable (constant / device-owned). */
+static void
+XKRT_DRIVER_ENTRYPOINT(device_get_target)(device_driver_id_t device_driver_id,
+                                          const char ** triple, const char ** arch)
+{
+    device_cu_t * device = device_cu_get(device_driver_id);
+    if (triple) *triple = "nvptx64-nvidia-cuda";
+    if (arch)   *arch   = device ? device->cu.prop.arch : NULL;
 }
 
 # define USE_MMAP_EXPLICITLY 0
@@ -1561,6 +1579,7 @@ XKRT_DRIVER_ENTRYPOINT(create_driver)(void)
     REGISTER(device_destroy);
 
     REGISTER(device_info);
+    REGISTER(device_get_target);
 
     REGISTER(transfer_h2d);
     REGISTER(transfer_d2h);
