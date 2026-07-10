@@ -767,6 +767,20 @@ struct  runtime_t
     /* wait for children tasks of the current task to complete */
     void task_wait(void);
 
+    /* block (work-stealing meanwhile) until a SPECIFIC task has completed. The
+     * task follows the normal scheduling path -- any thread may execute it -- so
+     * this is used e.g. for OpenMP undeferred tasks (`if(0)`): the encountering
+     * thread commits the task normally, then suspends here until it completed. */
+    void task_wait(task_t * task);
+
+    /* open a taskgroup region on the calling thread: subsequently created tasks
+     * (and their descendants) are bound to it */
+    void taskgroup_begin(void);
+
+    /* close the innermost taskgroup: block (work-stealing) until every task
+     * bound to it -- child tasks AND all descendants -- has completed */
+    void taskgroup_end(void);
+
     /* enqueue a task to :
      *  - the current thread if its within a team
      *  - or the host driver team if the current thread has no team
@@ -822,6 +836,10 @@ struct  runtime_t
         if (thread->current_task->flags & TASK_FLAG_GRAPH_RECORDING)
             flags |= TASK_FLAG_RECORD;
 
+        // if a taskgroup is active on this thread, bind the task to it (deep sync)
+        if (thread->current_taskgroup)
+            flags |= TASK_FLAG_TASKGROUP;
+
         const size_t task_size = task_compute_size(flags, n_accesses);
         const size_t size = task_size + args_size;
 
@@ -868,6 +886,17 @@ struct  runtime_t
         {
             task_rec_info_t * rec = TASK_REC_INFO(task);
             new (rec) xkrt::task_rec_info_t();
+        }
+
+        // bind to the active taskgroup and account for it (deep-sync counter).
+        // The counter is decremented at true completion (see __task_complete),
+        // so it is exact for host, device and detachable tasks alike.
+        if (flags & TASK_FLAG_TASKGROUP)
+        {
+            assert(thread->current_taskgroup);
+            task_grp_info_t * grp = TASK_GRP_INFO(task);
+            grp->taskgroup = thread->current_taskgroup;
+            grp->taskgroup->count.fetch_add(1, std::memory_order_relaxed);
         }
 
         if (args)

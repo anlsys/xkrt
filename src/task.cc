@@ -449,6 +449,13 @@ __task_complete(
     // updates on the 'parent' counter ?
     XKRT_STATS_TASK_INCR(runtime->stats, task->fmtid, completed, 1);
     task->parent->cc.fetch_sub(1, std::memory_order_relaxed);
+
+    // release the task from its taskgroup (deep-sync accounting). This is the
+    // true completion point -- reached after the body for host tasks, and only
+    // after asynchronous fulfilment for device/detachable tasks -- so a
+    // taskgroup correctly waits for every task type.
+    if (task->flags & TASK_FLAG_TASKGROUP)
+        TASK_GRP_INFO(task)->taskgroup->count.fetch_sub(1, std::memory_order_seq_cst);
 }
 
 /* decrease detachable ref counter by 1, and complete the task if it reached 0 */
@@ -627,7 +634,18 @@ task_execute(
                 task_t * current = thread->current_task;
                 thread->current_task = task;
                 if (task->flags & TASK_FLAG_RECORD) thread->current_task_record = task;
+
+                /* Install this task's taskgroup as the thread's active one while
+                 * its body runs, so any descendant it creates (on whatever
+                 * worker runs it) inherits the same group. A task without the
+                 * flag runs with no active group (its children join none). */
+                taskgroup_t * current_taskgroup = thread->current_taskgroup;
+                thread->current_taskgroup = (task->flags & TASK_FLAG_TASKGROUP)
+                                          ? TASK_GRP_INFO(task)->taskgroup : NULL;
+
                 ((void (*)(runtime_t *, device_t *, task_t *)) format->f[targetfmt])(runtime, device, task);
+
+                thread->current_taskgroup = current_taskgroup;
                 thread->current_task = current;
                 if (task->flags & TASK_FLAG_RECORD) thread->current_task_record = NULL;
 
@@ -771,6 +789,38 @@ void
 runtime_t::task_commit(task_t * task)
 {
     this->task_commit(task, runtime_task_enqueue, this);
+}
+
+void
+runtime_t::taskgroup_begin(void)
+{
+    thread_t * thread = thread_t::get_tls();
+    assert(thread);
+
+    // push a new group nested in the current one; tasks created from now on
+    // (and their descendants) bind to it until the matching taskgroup_end
+    thread->current_taskgroup = new taskgroup_t(thread->current_taskgroup);
+}
+
+void
+runtime_t::taskgroup_end(void)
+{
+    thread_t * thread = thread_t::get_tls();
+    assert(thread);
+
+    taskgroup_t * tg = thread->current_taskgroup;
+    assert(tg && "taskgroup_end without a matching taskgroup_begin");
+
+    // deep sync: block (work-stealing ready tasks) until every task bound to the
+    // group -- child tasks AND all their descendants -- has completed. `count`
+    // reaches 0 only when the whole subtree is done, since a descendant is
+    // created (incremented) during its parent's body, before the parent's own
+    // completion (decrement).
+    this->task_wait(&tg->count);
+
+    // pop back to the enclosing group and release this one
+    thread->current_taskgroup = tg->parent;
+    delete tg;
 }
 
 void

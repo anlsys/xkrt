@@ -1,6 +1,9 @@
 zero_flag = "TASK_FLAG_ZERO"
 max_flag  = "TASK_FLAG_MAX"
 
+# Layout-affecting flags, in memory-layout order (each contributes an info block
+# right after the task_t, in this order). Appending a new flag here is now O(1):
+# it adds one term to task_get_extra_size and one TASK_*_INFO accessor.
 flags = [
     ("TASK_FLAG_ACCESSES",      "acs"),
     ("TASK_FLAG_DETACHABLE",    "det"),
@@ -8,29 +11,27 @@ flags = [
     ("TASK_FLAG_DOMAIN",        "dom"),
     ("TASK_FLAG_MOLDABLE",      "mol"),
     ("TASK_FLAG_GRAPH",         "gph"),
-    ("TASK_FLAG_RECORD",        "rec")
+    ("TASK_FLAG_RECORD",        "rec"),
+    ("TASK_FLAG_TASKGROUP",     "grp"),
 ]
 
 n = len(flags)
-width = 26
 
-# Print switch case for task size
+# Print the task extra-size function.
+#
+# This used to be an exhaustive `switch` over all 2^n flag combinations, which
+# grew exponentially (and most combinations are impractical anyway). It is now a
+# linear sum over the present flags: O(n), and adding a flag costs a single line.
 print('static constexpr size_t')
 print('task_get_extra_size(const task_flag_bitfield_t flags)')
 print('{')
-print('    switch (flags)')
-print('    {')
-for combination in range(0,1<<n):
-    bit_string = '.'.join(f'{combination:0{n}b}')
-    combination_flags_str  = list(reversed([flags[bit][0]                          if combination & (1 << bit) else zero_flag for bit in range(0, n)]))
-    combination_flags_size = list(reversed([f'sizeof(task_{flags[bit][1]}_info_t)' if combination & (1 << bit) else "0"       for bit in range(0, n)]))
-    print('        case (      ' + ' | '.join(f'{item:>{width}}' for item in combination_flags_str) + '):')
-    print('            return (' + ' + '.join(f'{item:>{width}}' for item in combination_flags_size) + f'); // {bit_string}')
-    print('')
-
-print('        default:')
-print('            return task_get_base_size_fallback(flags);')
-print('    }')
+print('    // XKRT invariant: a task cannot be both a dependency domain and a device task')
+print('    assert(!((flags & TASK_FLAG_DOMAIN) && (flags & TASK_FLAG_DEVICE)));')
+print('')
+print('    size_t size = 0;')
+for (flag, short) in flags:
+    print(f'    if (flags & {flag}) size += sizeof(task_{short}_info_t);')
+print('    return size;')
 print('}')
 print('')
 

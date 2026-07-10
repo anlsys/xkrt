@@ -606,10 +606,17 @@ runtime_t::task_schedule(void)
     return 0;
 }
 
-void
-runtime_t::task_wait(std::atomic<uint32_t> * ctr)
+/*
+ * Shared work-stealing wait loop. Poll `done` with a short spin for a fast way
+ * out; otherwise work-steal and execute ready tasks, sleeping with exponential
+ * backoff, until `done()` holds. All task_wait flavours funnel through here,
+ * differing only in their completion predicate.
+ */
+template <typename Done>
+static inline void
+task_wait_until(runtime_t * runtime, Done && done)
 {
-    # define SPIN do { if (ctr->load(std::memory_order_relaxed) == 0) return ; } while (0)
+    # define SPIN do { if (done()) return ; } while (0)
 
     /* exponential backoff sleep */
     # define SPIN2   do { SPIN   ; SPIN   ; } while (0)
@@ -633,7 +640,7 @@ runtime_t::task_wait(std::atomic<uint32_t> * ctr)
     while (1)
     {
         // work steal
-        if (this->task_schedule())
+        if (runtime->task_schedule())
         {
             backoff = initial_backoff;
             continue ;
@@ -657,12 +664,34 @@ runtime_t::task_wait(std::atomic<uint32_t> * ctr)
 }
 
 void
+runtime_t::task_wait(std::atomic<uint32_t> * ctr)
+{
+    task_wait_until(this, [ctr] () {
+        return ctr->load(std::memory_order_relaxed) == 0;
+    });
+}
+
+void
 runtime_t::task_wait(void)
 {
     thread_t * thread = thread_t::get_tls();
     assert(thread);
     assert(thread->current_task);
     this->task_wait(&thread->current_task->cc);
+}
+
+void
+runtime_t::task_wait(task_t * task)
+{
+    assert(task);
+
+    // wait until `task` reached its terminal COMPLETED state. It follows the
+    // normal scheduling path (any worker may execute it concurrently); we
+    // work-steal ready tasks meanwhile so the calling thread makes progress
+    // (possibly running `task` itself or its predecessors).
+    task_wait_until(this, [task] () {
+        return (volatile task_state_t) task->state.value == TASK_STATE_COMPLETED;
+    });
 }
 
 // TODO : reimplement this using team's topology
