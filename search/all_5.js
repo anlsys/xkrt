@@ -2,10 +2,10 @@ var searchData=
 [
   ['a_0',['a',['../structxkrt__access__t_1_1xkrt__region__t_1_1xkrt__segment__t.html#a1ce4bfb15c26aa32f6c938fdcfbf1ce9',1,'xkrt_access_t::xkrt_region_t::xkrt_segment_t']]],
   ['a_20parallel_20runtime_20system_20for_20macro_20dataflow_20on_20multi_20devices_20architectures_1',['XKaapi Runtime (XKRT) - A parallel runtime system for macro-dataflow on multi-devices architectures.',['../index.html#autotoc_md0',1,'']]],
-  ['access_20concurrency_2',['Access Concurrency',['../architecture.html#autotoc_md42',1,'']]],
-  ['access_20modes_3',['Access Modes',['../architecture.html#autotoc_md40',1,'']]],
-  ['access_20scope_4',['Access Scope',['../architecture.html#autotoc_md43',1,'']]],
-  ['access_20types_5',['Access Types',['../architecture.html#autotoc_md44',1,'']]],
+  ['access_20concurrency_2',['Access Concurrency',['../architecture.html#autotoc_md43',1,'']]],
+  ['access_20modes_3',['Access Modes',['../architecture.html#autotoc_md41',1,'']]],
+  ['access_20scope_4',['Access Scope',['../architecture.html#autotoc_md44',1,'']]],
+  ['access_20types_5',['Access Types',['../architecture.html#autotoc_md45',1,'']]],
   ['access_5fconcurrency_5fcommutative_6',['ACCESS_CONCURRENCY_COMMUTATIVE',['../concurrency_8h.html#aa09eaabd1306e3da9c81913130fd5457a0870509d5f67fc8b1a122201b422eb7c',1,'concurrency.h']]],
   ['access_5fconcurrency_5fconcurrent_7',['ACCESS_CONCURRENCY_CONCURRENT',['../concurrency_8h.html#aa09eaabd1306e3da9c81913130fd5457a567af038c02c0415ee539a1607b7d2d1',1,'concurrency.h']]],
   ['access_5fconcurrency_5fsequential_8',['ACCESS_CONCURRENCY_SEQUENTIAL',['../concurrency_8h.html#aa09eaabd1306e3da9c81913130fd5457ab7c991a840607c75f307dc1aa43e2dbe',1,'concurrency.h']]],
@@ -27,8 +27,8 @@ var searchData=
   ['access_5ftype_5fnull_24',['ACCESS_TYPE_NULL',['../type_8h.html#a188ad52b5d565fe156136d2b4201df5ba88a802ff088afdaa3e63b7d56b647078',1,'type.h']]],
   ['access_5ftype_5fsegment_25',['ACCESS_TYPE_SEGMENT',['../type_8h.html#a188ad52b5d565fe156136d2b4201df5ba4370a55fc854feead3ed5eb5bfdb3d6f',1,'type.h']]],
   ['access_5ftype_5ft_26',['access_type_t',['../namespacexkrt.html#ac2aa61592b00640bd09f75355a679a2b',1,'xkrt']]],
-  ['accesses_27',['accesses',['../examples.html#autotoc_md10',1,'AXPY &amp;ndash; Vector Addition with Data Accesses'],['../architecture.html#autotoc_md39',1,'Data Accesses']]],
-  ['addition_20with_20data_20accesses_28',['AXPY &amp;ndash; Vector Addition with Data Accesses',['../examples.html#autotoc_md10',1,'']]],
+  ['accesses_27',['accesses',['../examples.html#autotoc_md11',1,'AXPY &amp;ndash; Vector Addition with Data Accesses'],['../architecture.html#autotoc_md40',1,'Data Accesses']]],
+  ['addition_20with_20data_20accesses_28',['AXPY &amp;ndash; Vector Addition with Data Accesses',['../examples.html#autotoc_md11',1,'']]],
   ['addr_29',['addr',['../structxkrt__access__t_1_1xkrt__region__t_1_1xkrt__handle__t.html#a10a0d52e8d45391a8f0f0880eda35184',1,'xkrt_access_t::xkrt_region_t::xkrt_handle_t::addr'],['../structxkrt__access__t_1_1xkrt__region__t_1_1xkrt__matrix__t.html#a8b0ab62a0d9c9d77f0c84f344f556750',1,'xkrt_access_t::xkrt_region_t::xkrt_matrix_t::addr']]],
   ['advised_30',['advised',['../structxkrt_1_1runtime__t.html#ae0b8df222ce5b865b6e99ad26b33577c',1,'xkrt::runtime_t']]],
   ['all_31',['all',['../structxkrt_1_1runtime__t.html#a6b6a9d7ab754b962d36e378b4f0c044a',1,'xkrt::runtime_t']]],
@@ -38,8 +38,8 @@ var searchData=
   ['area_5fchunk_5fstate_5ft_35',['area_chunk_state_t',['../namespacexkrt.html#ae06164c56c579a66c2d8df9c640c3621',1,'xkrt']]],
   ['area_5fchunk_5ft_36',['area_chunk_t',['../namespacexkrt.html#a888f2247a58d08b0e16d1352c37e0286',1,'xkrt']]],
   ['area_5ft_37',['area_t',['../namespacexkrt.html#a00f3dc37c1d0262d4f38c20c46eda65a',1,'xkrt']]],
-  ['assistant_38',['Build (One line assistant)',['../index.html#autotoc_md5',1,'']]],
-  ['available_20environment_20variable_39',['Available environment variable',['../index.html#autotoc_md7',1,'']]],
-  ['axpby_20ndash_20moldable_20tasks_20with_20split_20conditions_40',['AXPBY &amp;ndash; Moldable Tasks with Split Conditions',['../examples.html#autotoc_md13',1,'']]],
-  ['axpy_20ndash_20vector_20addition_20with_20data_20accesses_41',['AXPY &amp;ndash; Vector Addition with Data Accesses',['../examples.html#autotoc_md10',1,'']]]
+  ['assistant_38',['Build (One line assistant)',['../index.html#autotoc_md6',1,'']]],
+  ['available_20environment_20variable_39',['Available environment variable',['../index.html#autotoc_md8',1,'']]],
+  ['axpby_20ndash_20moldable_20tasks_20with_20split_20conditions_40',['AXPBY &amp;ndash; Moldable Tasks with Split Conditions',['../examples.html#autotoc_md14',1,'']]],
+  ['axpy_20ndash_20vector_20addition_20with_20data_20accesses_41',['AXPY &amp;ndash; Vector Addition with Data Accesses',['../examples.html#autotoc_md11',1,'']]]
 ];

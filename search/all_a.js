@@ -43,16 +43,16 @@ var searchData=
   ['f_5ftransfer_5fd2h_5fasync_40',['f_transfer_d2h_async',['../structxkrt_1_1driver__t.html#a31fbbf09439e3de066b745cbcab35f4c',1,'xkrt::driver_t']]],
   ['f_5ftransfer_5fh2d_41',['f_transfer_h2d',['../structxkrt_1_1driver__t.html#ab40eb556ef4f7e8d751f091470b9b5d4',1,'xkrt::driver_t']]],
   ['f_5ftransfer_5fh2d_5fasync_42',['f_transfer_h2d_async',['../structxkrt_1_1driver__t.html#a3ec7b2464f59d7fd5c8da576e7067f4b',1,'xkrt::driver_t']]],
-  ['fibonacci_20ndash_20recursive_20tasking_20with_20teams_43',['Fibonacci &amp;ndash; Recursive Tasking with Teams',['../examples.html#autotoc_md19',1,'']]],
-  ['file_20to_20gpu_20i_20o_20pipeline_44',['File-to-GPU I/O Pipeline',['../examples.html#autotoc_md22',1,'']]],
+  ['fibonacci_20ndash_20recursive_20tasking_20with_20teams_43',['Fibonacci &amp;ndash; Recursive Tasking with Teams',['../examples.html#autotoc_md20',1,'']]],
+  ['file_20to_20gpu_20i_20o_20pipeline_44',['File-to-GPU I/O Pipeline',['../examples.html#autotoc_md23',1,'']]],
   ['file_5fread_5fasync_45',['file_read_async',['../structxkrt_1_1runtime__t.html#a6e986a91d96be32ee793886852ce8fd3',1,'xkrt::runtime_t::file_read_async'],['../structxkrt_1_1runtime__t.html#ad7b3deb4c4cdf50d294e96cc25567ecf',1,'xkrt::runtime_t::file_read_async(int fd, void *buffer, const size_t size, int n)']]],
   ['file_5fwrite_5fasync_46',['file_write_async',['../structxkrt_1_1runtime__t.html#aad81310f31e38bb38a38f1c8014c5edc',1,'xkrt::runtime_t::file_write_async'],['../structxkrt_1_1runtime__t.html#a6c9acde261e22502ccad53edecf5542f',1,'xkrt::runtime_t::file_write_async(int fd, void *buffer, const size_t size, int n)']]],
   ['flag_2eh_47',['flag.h',['../flag_8h.html',1,'']]],
-  ['flags_48',['Task Flags',['../architecture.html#autotoc_md32',1,'']]],
-  ['for_20improvements_20known_20issues_49',['Directions for improvements / known issues',['../index.html#autotoc_md8',1,'']]],
+  ['flags_48',['Task Flags',['../architecture.html#autotoc_md33',1,'']]],
+  ['for_20improvements_20known_20issues_49',['Directions for improvements / known issues',['../index.html#autotoc_md9',1,'']]],
   ['for_20macro_20dataflow_20on_20multi_20devices_20architectures_50',['XKaapi Runtime (XKRT) - A parallel runtime system for macro-dataflow on multi-devices architectures.',['../index.html#autotoc_md0',1,'']]],
   ['foreach_51',['foreach',['../structxkrt_1_1runtime__t.html#a1603073e2bb982e648749624d0eb3514',1,'xkrt::runtime_t']]],
   ['format_2eh_52',['format.h',['../format_8h.html',1,'']]],
-  ['formats_53',['formats',['../structxkrt_1_1runtime__t.html#ad5c47efdde1db3ea6432e091758405a2',1,'xkrt::runtime_t::formats'],['../architecture.html#autotoc_md36',1,'Task Formats']]],
-  ['from_20cmake_54',['Using XKRT from CMake',['../building.html#autotoc_md77',1,'']]]
+  ['formats_53',['formats',['../structxkrt_1_1runtime__t.html#ad5c47efdde1db3ea6432e091758405a2',1,'xkrt::runtime_t::formats'],['../architecture.html#autotoc_md37',1,'Task Formats']]],
+  ['from_20cmake_54',['Using XKRT from CMake',['../building.html#autotoc_md78',1,'']]]
 ];

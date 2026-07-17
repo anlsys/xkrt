@@ -99,7 +99,7 @@ $(document).ready(function(){initNavTree('examples.html',''); initResizable(); }
 </blockquote>
 <p>This page walks through the example programs shipped in the <code>examples/</code> directory.</p>
 <hr  />
-<h1><a class="anchor" id="autotoc_md10"></a>
+<h1><a class="anchor" id="autotoc_md11"></a>
 AXPY – Vector Addition with Data Accesses</h1>
 <p><b>File</b>: <code>examples/axpy.cc</code></p>
 <p>This example computes <code>z[i] = x[i] + y[i]</code> for 32,768 elements, spawning one task per element. Each task declares three segment accesses (two reads and one write), and the runtime resolves dependencies automatically.</p>
@@ -152,7 +152,7 @@ AXPY – Vector Addition with Data Accesses</h1>
 <div class="ttc" id="amode_8h_html_a344a218495a58a510bcb186322e628a2a16256e29536a43d604b0938030e0229a"><div class="ttname"><a href="mode_8h.html#a344a218495a58a510bcb186322e628a2a16256e29536a43d604b0938030e0229a">ACCESS_MODE_W</a></div><div class="ttdeci">@ ACCESS_MODE_W</div><div class="ttdef"><b>Definition</b> <a href="mode_8h_source.html#l00057">mode.h:57</a></div></div>
 <div class="ttc" id="amode_8h_html_a344a218495a58a510bcb186322e628a2ae3e3f2b42ee562292673f4b3ffc9845d"><div class="ttname"><a href="mode_8h.html#a344a218495a58a510bcb186322e628a2ae3e3f2b42ee562292673f4b3ffc9845d">ACCESS_MODE_R</a></div><div class="ttdeci">@ ACCESS_MODE_R</div><div class="ttdef"><b>Definition</b> <a href="mode_8h_source.html#l00056">mode.h:56</a></div></div>
 <div class="ttc" id="aruntime_8h_html"><div class="ttname"><a href="runtime_8h.html">runtime.h</a></div></div>
-</div><!-- fragment --><h2><a class="anchor" id="autotoc_md11"></a>
+</div><!-- fragment --><h2><a class="anchor" id="autotoc_md12"></a>
 Key concepts demonstrated</h2>
 <ul>
 <li>**<code>task_spawn&lt;N&gt;</code>**: the template parameter <code>N</code> is the number of data accesses the task declares.</li>
@@ -161,7 +161,7 @@ Key concepts demonstrated</h2>
 <li>**<code>task_wait()</code>**: blocks until all child tasks of the current task complete.</li>
 </ul>
 <hr  />
-<h1><a class="anchor" id="autotoc_md13"></a>
+<h1><a class="anchor" id="autotoc_md14"></a>
 AXPBY – Moldable Tasks with Split Conditions</h1>
 <p><b>File</b>: <code>examples/task-axpby.cc</code></p>
 <p>Same computation as AXPY, but demonstrates <b>moldable tasks</b>. Instead of spawning one task per element, a single task covering the entire vector is spawned with a split condition. The runtime recursively splits it into sub-tasks until the condition is no longer met.</p>
@@ -183,7 +183,7 @@ AXPBY – Moldable Tasks with Split Conditions</h1>
 <div class="line">        func(task);</div>
 <div class="line">    }</div>
 <div class="line">);</div>
-</div><!-- fragment --><h2><a class="anchor" id="autotoc_md14"></a>
+</div><!-- fragment --><h2><a class="anchor" id="autotoc_md15"></a>
 Key concepts demonstrated</h2>
 <ul>
 <li><b>Moldable tasks</b>: the runtime automatically splits a task based on a user-defined predicate, creating a tree of sub-tasks.</li>
@@ -191,7 +191,7 @@ Key concepts demonstrated</h2>
 <li><b>Automatic access subdivision</b>: when a moldable task is split, the runtime bisects each access's memory region.</li>
 </ul>
 <hr  />
-<h1><a class="anchor" id="autotoc_md16"></a>
+<h1><a class="anchor" id="autotoc_md17"></a>
 GPU Kernel Launch</h1>
 <p><b>File</b>: <code>examples/task-device.cc</code></p>
 <p>This example shows how to target a GPU device and launch a kernel from within a task routine.</p>
@@ -242,7 +242,7 @@ GPU Kernel Launch</h1>
 <div class="line">    <span class="keywordflow">return</span> 0;</div>
 <div class="line">}</div>
 <div class="ttc" id="axkrt_8h_html_a4e7d8612246bf19e9536cab9df0b2de3"><div class="ttname"><a href="xkrt_8h.html#a4e7d8612246bf19e9536cab9df0b2de3">command_t</a></div><div class="ttdeci">void * command_t</div><div class="ttdef"><b>Definition</b> <a href="xkrt_8h_source.html#l00068">xkrt.h:68</a></div></div>
-</div><!-- fragment --><h2><a class="anchor" id="autotoc_md17"></a>
+</div><!-- fragment --><h2><a class="anchor" id="autotoc_md18"></a>
 Key concepts demonstrated</h2>
 <ul>
 <li><b>Device targeting</b>: passing a <code>device_global_id_t</code> as the first argument to <code>task_spawn</code> targets a specific device. Device <code>0</code> is always the host; device <code>1+</code> are GPUs.</li>
@@ -251,7 +251,7 @@ Key concepts demonstrated</h2>
 <li><b>Driver abstraction</b>: <code>driver-&gt;f_kernel_launch(...)</code> is the driver-agnostic kernel launch interface, supporting CUDA, HIP, Level Zero, SYCL, and OpenCL.</li>
 </ul>
 <hr  />
-<h1><a class="anchor" id="autotoc_md19"></a>
+<h1><a class="anchor" id="autotoc_md20"></a>
 Fibonacci – Recursive Tasking with Teams</h1>
 <p><b>File</b>: <code>examples/fib/main.cc</code></p>
 <p>Classic recursive Fibonacci using task parallelism. Demonstrates creating a thread team and spawning tasks without data accesses.</p>
@@ -308,7 +308,7 @@ Fibonacci – Recursive Tasking with Teams</h1>
 <div class="line">    runtime.deinit();</div>
 <div class="line">    <span class="keywordflow">return</span> 0;</div>
 <div class="line">}</div>
-</div><!-- fragment --><h2><a class="anchor" id="autotoc_md20"></a>
+</div><!-- fragment --><h2><a class="anchor" id="autotoc_md21"></a>
 Key concepts demonstrated</h2>
 <ul>
 <li>**<code>task_spawn(routine)</code>**: the simplest spawn overload &ndash; no accesses, no device targeting.</li>
@@ -318,7 +318,7 @@ Key concepts demonstrated</h2>
 <li><b>Cutoff depth</b>: standard optimization to avoid excessive task creation overhead for small subproblems.</li>
 </ul>
 <hr  />
-<h1><a class="anchor" id="autotoc_md22"></a>
+<h1><a class="anchor" id="autotoc_md23"></a>
 File-to-GPU I/O Pipeline</h1>
 <p><b>File</b>: <code>examples/io/xkrt.cc</code></p>
 <p>Benchmarks pipelined file I/O to GPU memory using XKRT's parallel async primitives.</p>
@@ -350,7 +350,7 @@ File-to-GPU I/O Pipeline</h1>
 <div class="line">    runtime.deinit();</div>
 <div class="line">    <span class="keywordflow">return</span> 0;</div>
 <div class="line">}</div>
-</div><!-- fragment --><h2><a class="anchor" id="autotoc_md23"></a>
+</div><!-- fragment --><h2><a class="anchor" id="autotoc_md24"></a>
 Key concepts demonstrated</h2>
 <ul>
 <li>**<code>memory_register_async(ptr, size, n)</code>**: pin host memory in parallel using <code>n</code> tasks. Pinning is required for DMA transfers to GPUs.</li>
@@ -359,7 +359,7 @@ Key concepts demonstrated</h2>
 <li><b>Pipelining</b>: because these operations declare data accesses on the same memory segments, the runtime overlaps pinning, reading, and transferring at the chunk granularity &ndash; a chunk can be transferred to the GPU as soon as it has been read, without waiting for the entire file.</li>
 </ul>
 <hr  />
-<h1><a class="anchor" id="autotoc_md25"></a>
+<h1><a class="anchor" id="autotoc_md26"></a>
 2D Heat Diffusion Stencil</h1>
 <p><b>Directory</b>: <code>examples/heat-diffusion-2d/</code></p>
 <p>A standalone CMake project that simulates 2D heat diffusion using a stencil pattern. It requires XKRT plus at least one GPU backend (CUDA, HIP, Level Zero, or SYCL).</p>

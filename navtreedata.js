@@ -27,84 +27,85 @@ var NAVTREE =
   [ "XKRT", "index.html", [
     [ "XKaapi Runtime (XKRT) - A parallel runtime system for macro-dataflow on multi-devices architectures.", "index.html#autotoc_md0", null ],
     [ "Related Projects", "index.html#autotoc_md1", null ],
-    [ "Installation", "index.html#autotoc_md2", [
-      [ "Requirements", "index.html#autotoc_md3", null ],
-      [ "Optional", "index.html#autotoc_md4", null ],
-      [ "Build (One line assistant)", "index.html#autotoc_md5", null ],
-      [ "Build example (Manual)", "index.html#autotoc_md6", null ]
+    [ "Software Versions compatibility", "index.html#autotoc_md2", null ],
+    [ "Installation", "index.html#autotoc_md3", [
+      [ "Requirements of XKRT", "index.html#autotoc_md4", null ],
+      [ "Optional", "index.html#autotoc_md5", null ],
+      [ "Build (One line assistant)", "index.html#autotoc_md6", null ],
+      [ "Build example (Manual)", "index.html#autotoc_md7", null ]
     ] ],
-    [ "Available environment variable", "index.html#autotoc_md7", null ],
-    [ "Directions for improvements / known issues", "index.html#autotoc_md8", null ],
+    [ "Available environment variable", "index.html#autotoc_md8", null ],
+    [ "Directions for improvements / known issues", "index.html#autotoc_md9", null ],
     [ "Examples", "examples.html", [
-      [ "AXPY – Vector Addition with Data Accesses", "examples.html#autotoc_md10", [
-        [ "Key concepts demonstrated", "examples.html#autotoc_md11", null ]
+      [ "AXPY – Vector Addition with Data Accesses", "examples.html#autotoc_md11", [
+        [ "Key concepts demonstrated", "examples.html#autotoc_md12", null ]
       ] ],
-      [ "AXPBY – Moldable Tasks with Split Conditions", "examples.html#autotoc_md13", [
-        [ "Key concepts demonstrated", "examples.html#autotoc_md14", null ]
+      [ "AXPBY – Moldable Tasks with Split Conditions", "examples.html#autotoc_md14", [
+        [ "Key concepts demonstrated", "examples.html#autotoc_md15", null ]
       ] ],
-      [ "GPU Kernel Launch", "examples.html#autotoc_md16", [
-        [ "Key concepts demonstrated", "examples.html#autotoc_md17", null ]
+      [ "GPU Kernel Launch", "examples.html#autotoc_md17", [
+        [ "Key concepts demonstrated", "examples.html#autotoc_md18", null ]
       ] ],
-      [ "Fibonacci – Recursive Tasking with Teams", "examples.html#autotoc_md19", [
-        [ "Key concepts demonstrated", "examples.html#autotoc_md20", null ]
+      [ "Fibonacci – Recursive Tasking with Teams", "examples.html#autotoc_md20", [
+        [ "Key concepts demonstrated", "examples.html#autotoc_md21", null ]
       ] ],
-      [ "File-to-GPU I/O Pipeline", "examples.html#autotoc_md22", [
-        [ "Key concepts demonstrated", "examples.html#autotoc_md23", null ]
+      [ "File-to-GPU I/O Pipeline", "examples.html#autotoc_md23", [
+        [ "Key concepts demonstrated", "examples.html#autotoc_md24", null ]
       ] ],
-      [ "2D Heat Diffusion Stencil", "examples.html#autotoc_md25", null ]
+      [ "2D Heat Diffusion Stencil", "examples.html#autotoc_md26", null ]
     ] ],
     [ "Architecture & Concepts", "architecture.html", [
-      [ "Overview", "architecture.html#autotoc_md27", null ],
-      [ "Software Stack", "architecture.html#autotoc_md29", null ],
-      [ "Tasks", "architecture.html#autotoc_md31", [
-        [ "Task Flags", "architecture.html#autotoc_md32", null ],
-        [ "Task States", "architecture.html#autotoc_md33", null ],
-        [ "Task Memory Layout", "architecture.html#autotoc_md34", null ],
-        [ "Moldable Tasks", "architecture.html#autotoc_md35", null ],
-        [ "Task Formats", "architecture.html#autotoc_md36", null ],
-        [ "Task Dependency Graphs (TDG)", "architecture.html#autotoc_md37", null ]
+      [ "Overview", "architecture.html#autotoc_md28", null ],
+      [ "Software Stack", "architecture.html#autotoc_md30", null ],
+      [ "Tasks", "architecture.html#autotoc_md32", [
+        [ "Task Flags", "architecture.html#autotoc_md33", null ],
+        [ "Task States", "architecture.html#autotoc_md34", null ],
+        [ "Task Memory Layout", "architecture.html#autotoc_md35", null ],
+        [ "Moldable Tasks", "architecture.html#autotoc_md36", null ],
+        [ "Task Formats", "architecture.html#autotoc_md37", null ],
+        [ "Task Dependency Graphs (TDG)", "architecture.html#autotoc_md38", null ]
       ] ],
-      [ "Data Accesses", "architecture.html#autotoc_md39", [
-        [ "Access Modes", "architecture.html#autotoc_md40", null ],
-        [ "Mapping to OpenMP 5.x/6.0 Dependency Types", "architecture.html#autotoc_md41", null ],
-        [ "Access Concurrency", "architecture.html#autotoc_md42", null ],
-        [ "Access Scope", "architecture.html#autotoc_md43", null ],
-        [ "Access Types", "architecture.html#autotoc_md44", null ],
-        [ "Dependency Resolution", "architecture.html#autotoc_md45", null ]
+      [ "Data Accesses", "architecture.html#autotoc_md40", [
+        [ "Access Modes", "architecture.html#autotoc_md41", null ],
+        [ "Mapping to OpenMP 5.x/6.0 Dependency Types", "architecture.html#autotoc_md42", null ],
+        [ "Access Concurrency", "architecture.html#autotoc_md43", null ],
+        [ "Access Scope", "architecture.html#autotoc_md44", null ],
+        [ "Access Types", "architecture.html#autotoc_md45", null ],
+        [ "Dependency Resolution", "architecture.html#autotoc_md46", null ]
       ] ],
-      [ "Memory Coherence", "architecture.html#autotoc_md47", [
-        [ "Memory Registration (Pinning)", "architecture.html#autotoc_md48", null ],
-        [ "Data Distribution", "architecture.html#autotoc_md49", null ]
+      [ "Memory Coherence", "architecture.html#autotoc_md48", [
+        [ "Memory Registration (Pinning)", "architecture.html#autotoc_md49", null ],
+        [ "Data Distribution", "architecture.html#autotoc_md50", null ]
       ] ],
-      [ "Drivers", "architecture.html#autotoc_md51", null ],
-      [ "Thread Teams", "architecture.html#autotoc_md53", null ],
-      [ "Constants", "architecture.html#autotoc_md55", null ],
-      [ "Configuration", "architecture.html#autotoc_md57", null ]
+      [ "Drivers", "architecture.html#autotoc_md52", null ],
+      [ "Thread Teams", "architecture.html#autotoc_md54", null ],
+      [ "Constants", "architecture.html#autotoc_md56", null ],
+      [ "Configuration", "architecture.html#autotoc_md58", null ]
     ] ],
     [ "Building & Configuration", "building.html", [
-      [ "</blockquote>", "building.html#autotoc_md58", null ],
-      [ "Requirements", "building.html#autotoc_md59", null ],
-      [ "Optional Dependencies", "building.html#autotoc_md60", [
-        [ "GPU Backends", "building.html#autotoc_md61", null ],
-        [ "BLAS Libraries", "building.html#autotoc_md62", null ],
-        [ "Management / Monitoring", "building.html#autotoc_md63", null ],
-        [ "Other", "building.html#autotoc_md64", null ]
+      [ "</blockquote>", "building.html#autotoc_md59", null ],
+      [ "Requirements", "building.html#autotoc_md60", null ],
+      [ "Optional Dependencies", "building.html#autotoc_md61", [
+        [ "GPU Backends", "building.html#autotoc_md62", null ],
+        [ "BLAS Libraries", "building.html#autotoc_md63", null ],
+        [ "Management / Monitoring", "building.html#autotoc_md64", null ],
+        [ "Other", "building.html#autotoc_md65", null ]
       ] ],
-      [ "Build Examples", "building.html#autotoc_md66", [
-        [ "Host-Only (Development / No GPU)", "building.html#autotoc_md67", null ],
-        [ "With CUDA Support", "building.html#autotoc_md68", null ],
-        [ "With CUDA (Optimized Release)", "building.html#autotoc_md69", null ],
-        [ "With Multiple Backends", "building.html#autotoc_md70", null ]
+      [ "Build Examples", "building.html#autotoc_md67", [
+        [ "Host-Only (Development / No GPU)", "building.html#autotoc_md68", null ],
+        [ "With CUDA Support", "building.html#autotoc_md69", null ],
+        [ "With CUDA (Optimized Release)", "building.html#autotoc_md70", null ],
+        [ "With Multiple Backends", "building.html#autotoc_md71", null ]
       ] ],
-      [ "CMake Options Reference", "building.html#autotoc_md72", null ],
-      [ "Build Outputs", "building.html#autotoc_md74", null ],
-      [ "Installation", "building.html#autotoc_md76", [
-        [ "Using XKRT from CMake", "building.html#autotoc_md77", null ]
+      [ "CMake Options Reference", "building.html#autotoc_md73", null ],
+      [ "Build Outputs", "building.html#autotoc_md75", null ],
+      [ "Installation", "building.html#autotoc_md77", [
+        [ "Using XKRT from CMake", "building.html#autotoc_md78", null ]
       ] ],
-      [ "Running Tests", "building.html#autotoc_md79", [
-        [ "Test layout & labels", "building.html#autotoc_md80", null ]
+      [ "Running Tests", "building.html#autotoc_md80", [
+        [ "Test layout & labels", "building.html#autotoc_md81", null ]
       ] ],
-      [ "Environment Variables", "building.html#autotoc_md82", null ]
+      [ "Environment Variables", "building.html#autotoc_md83", null ]
     ] ],
     [ "Namespaces", "namespaces.html", [
       [ "Namespace List", "namespaces.html", "namespaces_dup" ],
@@ -145,7 +146,7 @@ var NAVTREE =
 var NAVTREEINDEX =
 [
 "annotated.html",
-"namespacexkrt.html#a5337af7c9f7c8cdfcdf4dd0e56526bcb",
+"namespacexkrt.html#a52653e5541374fd09b7d4ce29434da38",
 "structxkrt_1_1runtime__t.html#a0fca15f45ad097a3a2c5f99e38d937ca",
 "structxkrt_1_1runtime__t.html#aedaf8ce21fd9faa551e305e54980f22b"
 ];

@@ -116,15 +116,26 @@ Related Projects</h1>
 XKRT software stack</div></div>
      </a></p>
 <h1><a class="anchor" id="autotoc_md2"></a>
+Software Versions compatibility</h1>
+<p>Compatible branches for each software</p>
+<table class="markdownTable">
+<tr class="markdownTableHead">
+<th class="markdownTableHeadLeft">LLVM(ANL)   </th><th class="markdownTableHeadLeft">CGIR   </th><th class="markdownTableHeadLeft">XKRT   </th><th class="markdownTableHeadLeft">XKBlas   </th><th class="markdownTableHeadLeft">XKOMP   </th><th class="markdownTableHeadLeft">Description    </th></tr>
+<tr class="markdownTableRowOdd">
+<td class="markdownTableBodyLeft">release/v1.1.0   </td><td class="markdownTableBodyLeft">release/v0.3   </td><td class="markdownTableBodyLeft">release/v1.1.0   </td><td class="markdownTableBodyLeft">N/A   </td><td class="markdownTableBodyLeft">release/v0.2   </td><td class="markdownTableBodyLeft">CGIR JIT    </td></tr>
+<tr class="markdownTableRowEven">
+<td class="markdownTableBodyLeft">release/v1.0.0   </td><td class="markdownTableBodyLeft">release/v0.2   </td><td class="markdownTableBodyLeft">release/v1.0.3   </td><td class="markdownTableBodyLeft">release/v2.0.3   </td><td class="markdownTableBodyLeft">release/v0.1   </td><td class="markdownTableBodyLeft">First stable   </td></tr>
+</table>
+<h1><a class="anchor" id="autotoc_md3"></a>
 Installation</h1>
-<h2><a class="anchor" id="autotoc_md3"></a>
-Requirements</h2>
+<h2><a class="anchor" id="autotoc_md4"></a>
+Requirements of XKRT</h2>
 <ul>
 <li>A C/C++ compiler with support for C++20 (the only compiler tested is LLVM &gt;=20.x)</li>
 <li>hwloc - <a href="https://github.com/open-mpi/hwloc">https://github.com/open-mpi/hwloc</a></li>
-<li>CGIR release/v0.1 - <a href="https://github.com/JLESC-Tasking-Group/cgir">https://github.com/JLESC-Tasking-Group/cgir</a></li>
+<li>CGIR - <a href="https://github.com/JLESC-Tasking-Group/cgir">https://github.com/JLESC-Tasking-Group/cgir</a></li>
 </ul>
-<h2><a class="anchor" id="autotoc_md4"></a>
+<h2><a class="anchor" id="autotoc_md5"></a>
 Optional</h2>
 <ul>
 <li>Cuda, HIP, Level Zero, SYCL, OpenCL</li>
@@ -134,14 +145,14 @@ Optional</h2>
 <li>Cairo - <a href="https://github.com/msteinert/cairo">https://github.com/msteinert/cairo</a> - for debugging purposes, to visualize memory trees</li>
 <li>Proteus - <a href="https://github.com/Olympus-HPC/proteus">https://github.com/Olympus-HPC/proteus</a> - for JIT compiling tasks</li>
 </ul>
-<h2><a class="anchor" id="autotoc_md5"></a>
+<h2><a class="anchor" id="autotoc_md6"></a>
 Build (One line assistant)</h2>
 <div class="fragment"><div class="line"># using wget</div>
 <div class="line">bash &lt;(wget -qO- https://gitlab.inria.fr/xkaapi/dev-v2/-/raw/release/latest/scripts/install.sh)</div>
 <div class="line"> </div>
 <div class="line"># using curl</div>
 <div class="line">bash &lt;(curl -fsSL https://gitlab.inria.fr/xkaapi/dev-v2/-/raw/release/latest/scripts/install.sh)</div>
-</div><!-- fragment --><h2><a class="anchor" id="autotoc_md6"></a>
+</div><!-- fragment --><h2><a class="anchor" id="autotoc_md7"></a>
 Build example (Manual)</h2>
 <p>See the <code>CMakeLists.txt</code> file for all available options.</p>
 <div class="fragment"><div class="line"># with support for only the host driver and debug modes, typically for developing on local machines with no GPUs</div>
@@ -152,12 +163,12 @@ Build example (Manual)</h2>
 <div class="line"> </div>
 <div class="line"># with support for Cuda and all optimization</div>
 <div class="line">CC=clang CXX=clang++ CMAKE_PREFIX_PATH=$CUDA_PATH:$CMAKE_PREFIX_PATH cmake -DUSE_CUDA=on -DUSE_SHUT_UP=on -DENABLE_HEAVY_DEBUG=off -DCMAKE_BUILD_TYPE=Release ..</div>
-</div><!-- fragment --><h1><a class="anchor" id="autotoc_md7"></a>
+</div><!-- fragment --><h1><a class="anchor" id="autotoc_md8"></a>
 Available environment variable</h1>
 <ul>
 <li><code>XKRT_HELP=1</code> - displays available environment variables.</li>
 </ul>
-<h1><a class="anchor" id="autotoc_md8"></a>
+<h1><a class="anchor" id="autotoc_md9"></a>
 Directions for improvements / known issues</h1>
 <ul>
 <li>There is currently 1x coherence controller per couple <code>(LD, sizeof(TYPE))</code> while there should be for <code>LD * sizeof(TYPE)</code> - which can be useful for in-place mixed-precision conversions</li>

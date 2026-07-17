@@ -99,7 +99,7 @@ $(document).ready(function(){initNavTree('architecture.html',''); initResizable(
 </blockquote>
 <p>This page describes the design principles and key abstractions of the XKRT runtime system.</p>
 <hr  />
-<h1><a class="anchor" id="autotoc_md27"></a>
+<h1><a class="anchor" id="autotoc_md28"></a>
 Overview</h1>
 <p>XKRT is a <b>macro-dataflow runtime</b> that automates memory management alongside parallel task execution on heterogeneous multi-device architectures (CPUs + GPUs). The programmer expresses work as <b>tasks</b> with <b>data accesses</b>, and the runtime:</p>
 <ol type="1">
@@ -113,7 +113,7 @@ Overview</h1>
 XKRT software stack</div></div>
      </a></p>
 <hr  />
-<h1><a class="anchor" id="autotoc_md29"></a>
+<h1><a class="anchor" id="autotoc_md30"></a>
 Software Stack</h1>
 <p>XKRT sits at the center of the software stack:</p>
 <ul>
@@ -121,7 +121,7 @@ Software Stack</h1>
 <li><b>Below XKRT</b>: device drivers for CUDA, HIP, Level Zero, SYCL, OpenCL, and the host CPU. XKRT also uses hwloc for hardware topology discovery and optionally NVML/RSMI/Level Zero Sysman for energy monitoring.</li>
 </ul>
 <hr  />
-<h1><a class="anchor" id="autotoc_md31"></a>
+<h1><a class="anchor" id="autotoc_md32"></a>
 Tasks</h1>
 <p>A <b>task</b> is a unit of work with:</p><ul>
 <li>A <b>routine</b> &ndash; the function to execute.</li>
@@ -129,7 +129,7 @@ Tasks</h1>
 <li>A set of <b>flags</b> controlling its behavior.</li>
 </ul>
 <p>Tasks are allocated on a per-thread stack for efficiency (no <code>malloc</code> per task). The variable-size layout is computed at compile time from the flag combination.</p>
-<h2><a class="anchor" id="autotoc_md32"></a>
+<h2><a class="anchor" id="autotoc_md33"></a>
 Task Flags</h2>
 <p>Flags are set at task creation time and control which optional info structs are embedded in the task's memory layout. They are combined as a bitfield of type <code>task_flag_bitfield_t</code>.</p>
 <p><b>Layout flags</b> (set once before instantiation, affect the <code>task_t</code> memory layout):</p>
@@ -164,7 +164,7 @@ Task Flags</h2>
 <tr class="markdownTableRowOdd">
 <td class="markdownTableBodyNone"><code>TASK_FLAG_REQUEUE</code>   </td><td class="markdownTableBodyNone"><code>1 &lt;&lt; 9</code>   </td><td class="markdownTableBodyNone">Task must be re-queued after returning from its routine.   </td></tr>
 </table>
-<h2><a class="anchor" id="autotoc_md33"></a>
+<h2><a class="anchor" id="autotoc_md34"></a>
 Task States</h2>
 <p>A task progresses through the following states during its lifetime:</p>
 <table class="markdownTable">
@@ -185,21 +185,21 @@ Task States</h2>
 <tr class="markdownTableRowOdd">
 <td class="markdownTableBodyNone"><code>TASK_STATE_DEALLOCATED</code>   </td><td class="markdownTableBodyNone">6   </td><td class="markdownTableBodyNone">Task memory is freed (virtual state, never actually set).   </td></tr>
 </table>
-<h2><a class="anchor" id="autotoc_md34"></a>
+<h2><a class="anchor" id="autotoc_md35"></a>
 Task Memory Layout</h2>
 <p>Tasks use a <b>variable-size memory layout</b> determined by their flags:</p>
 <div class="fragment"><div class="line">task_t | task_acs_info_t | task_det_info_t | task_dev_info_t |</div>
 <div class="line">       | task_dom_info_t | task_mol_info_t | task_gph_info_t |</div>
 <div class="line">       | task_rec_info_t | access_t[N]     | args</div>
 </div><!-- fragment --><p>Only the info structs corresponding to set flags are present. A compile-time constexpr switch handles all 128 possible flag combinations, ensuring zero overhead for unused features.</p>
-<h2><a class="anchor" id="autotoc_md35"></a>
+<h2><a class="anchor" id="autotoc_md36"></a>
 Moldable Tasks</h2>
 <p>A <b>moldable task</b> is a task that the runtime can recursively split. The programmer provides:</p><ul>
 <li>A <b>split condition</b>: <code>(task_t*, access_t*) -&gt; bool</code> returning <code>true</code> if the task should be subdivided.</li>
 <li>The runtime bisects the task's accesses and creates two child tasks, repeating until the condition is false.</li>
 </ul>
 <p>This enables coarse-grained task submission with fine-grained automatic decomposition.</p>
-<h2><a class="anchor" id="autotoc_md36"></a>
+<h2><a class="anchor" id="autotoc_md37"></a>
 Task Formats</h2>
 <p>A <b>task format</b> associates a label with per-architecture function pointers. This enables writing multi-target tasks:</p>
 <div class="fragment"><div class="line">task_format_id_t fmt = runtime.task_format_put(<span class="stringliteral">&quot;my_kernel&quot;</span>);</div>
@@ -227,7 +227,7 @@ Task Formats</h2>
 <tr class="markdownTableRowEven">
 <td class="markdownTableBodyNone"><code>XKRT_TASK_FORMAT_TARGET_SYCL</code>   </td><td class="markdownTableBodyNone">SYCL   </td></tr>
 </table>
-<h2><a class="anchor" id="autotoc_md37"></a>
+<h2><a class="anchor" id="autotoc_md38"></a>
 Task Dependency Graphs (TDG)</h2>
 <p>XKRT supports <b>recording</b> a sequence of task submissions into a graph, then <b>replaying</b> that graph multiple times. This is useful for iterative computations where the same task structure repeats:</p>
 <div class="fragment"><div class="line">task_dependency_graph_t tdg;</div>
@@ -245,10 +245,10 @@ Task Dependency Graphs (TDG)</h2>
 <div class="line">runtime.command_graph_replay(&amp;cg);</div>
 <div class="line">runtime.command_graph_destroy(&amp;cg);</div>
 </div><!-- fragment --><hr  />
-<h1><a class="anchor" id="autotoc_md39"></a>
+<h1><a class="anchor" id="autotoc_md40"></a>
 Data Accesses</h1>
 <p>An <b>access</b> declares that a task will touch a memory region with a given mode. Accesses are the foundation of XKRT's automatic dependency resolution and memory coherence.</p>
-<h2><a class="anchor" id="autotoc_md40"></a>
+<h2><a class="anchor" id="autotoc_md41"></a>
 Access Modes</h2>
 <table class="markdownTable">
 <tr class="markdownTableHead">
@@ -268,7 +268,7 @@ Access Modes</h2>
 <tr class="markdownTableRowOdd">
 <td class="markdownTableBodyNone"><code>ACCESS_MODE_D</code>   </td><td class="markdownTableBodyNone"><code>0b00001000</code>   </td><td class="markdownTableBodyNone">Detached. Dependencies are not fulfilled on task completion; the task itself is responsible for fulfilling them (used for async kernel completions).   </td></tr>
 </table>
-<h2><a class="anchor" id="autotoc_md41"></a>
+<h2><a class="anchor" id="autotoc_md42"></a>
 Mapping to OpenMP 5.x/6.0 Dependency Types</h2>
 <table class="markdownTable">
 <tr class="markdownTableHead">
@@ -282,7 +282,7 @@ Mapping to OpenMP 5.x/6.0 Dependency Types</h2>
 <tr class="markdownTableRowEven">
 <td class="markdownTableBodyNone"><code>inoutset</code>   </td><td class="markdownTableBodyNone"><code>ACCESS_MODE_W</code>   </td><td class="markdownTableBodyNone"><code>ACCESS_CONCURRENCY_CONCURRENT</code>   </td></tr>
 </table>
-<h2><a class="anchor" id="autotoc_md42"></a>
+<h2><a class="anchor" id="autotoc_md43"></a>
 Access Concurrency</h2>
 <table class="markdownTable">
 <tr class="markdownTableHead">
@@ -294,7 +294,7 @@ Access Concurrency</h2>
 <tr class="markdownTableRowOdd">
 <td class="markdownTableBodyNone"><code>ACCESS_CONCURRENCY_CONCURRENT</code>   </td><td class="markdownTableBodyNone">Multiple writers may execute concurrently (no mutual exclusion).   </td></tr>
 </table>
-<h2><a class="anchor" id="autotoc_md43"></a>
+<h2><a class="anchor" id="autotoc_md44"></a>
 Access Scope</h2>
 <table class="markdownTable">
 <tr class="markdownTableHead">
@@ -304,7 +304,7 @@ Access Scope</h2>
 <tr class="markdownTableRowEven">
 <td class="markdownTableBodyNone"><code>ACCESS_SCOPE_UNIFIED</code>   </td><td class="markdownTableBodyNone">Access is resolved in the unified (global) dependency domain.   </td></tr>
 </table>
-<h2><a class="anchor" id="autotoc_md44"></a>
+<h2><a class="anchor" id="autotoc_md45"></a>
 Access Types</h2>
 <table class="markdownTable">
 <tr class="markdownTableHead">
@@ -318,7 +318,7 @@ Access Types</h2>
 <tr class="markdownTableRowEven">
 <td class="markdownTableBodyNone"><code>ACCESS_TYPE_NULL</code>   </td><td class="markdownTableBodyNone">No memory region (used for pure synchronization dependencies).   </td></tr>
 </table>
-<h2><a class="anchor" id="autotoc_md45"></a>
+<h2><a class="anchor" id="autotoc_md46"></a>
 Dependency Resolution</h2>
 <p>Dependencies between tasks are computed by the runtime based on overlapping accesses:</p><ul>
 <li><b>Read-after-Write (RAW)</b>: a reader must wait for the previous writer.</li>
@@ -327,7 +327,7 @@ Dependency Resolution</h2>
 </ul>
 <p>The dependency domain uses interval trees (for segment accesses) or hash maps (for handle accesses) to efficiently find overlapping accesses.</p>
 <hr  />
-<h1><a class="anchor" id="autotoc_md47"></a>
+<h1><a class="anchor" id="autotoc_md48"></a>
 Memory Coherence</h1>
 <p>XKRT maintains a <b>coherence controller</b> for each tracked memory region. When a task requires data on a specific device:</p>
 <ol type="1">
@@ -336,10 +336,10 @@ Memory Coherence</h1>
 <li>The replica is marked as valid on the target device, and invalidated on other devices after writes.</li>
 </ol>
 <p>This is similar to a cache coherence protocol but operates at the software level across discrete memory spaces.</p>
-<h2><a class="anchor" id="autotoc_md48"></a>
+<h2><a class="anchor" id="autotoc_md49"></a>
 Memory Registration (Pinning)</h2>
 <p>Before DMA transfers can occur between host and device memory, host pages must be <b>registered</b> (pinned) with the device drivers. XKRT provides synchronous and asynchronous variants, including parallel registration using <code>n</code> tasks for large buffers.</p>
-<h2><a class="anchor" id="autotoc_md49"></a>
+<h2><a class="anchor" id="autotoc_md50"></a>
 Data Distribution</h2>
 <p>XKRT provides utilities to pre-distribute data across devices before computation:</p>
 <table class="markdownTable">
@@ -354,7 +354,7 @@ Data Distribution</h2>
 </table>
 <p>Distribution is implemented by spawning empty tasks with read accesses, which triggers the coherence protocol to create replicas on the target devices.</p>
 <hr  />
-<h1><a class="anchor" id="autotoc_md51"></a>
+<h1><a class="anchor" id="autotoc_md52"></a>
 Drivers</h1>
 <p>A <b>driver</b> (<code>driver_t</code>) abstracts a device backend. Each driver provides function pointers for:</p><ul>
 <li>Device lifecycle (init, finalize, create, destroy)</li>
@@ -384,7 +384,7 @@ Drivers</h1>
 </table>
 <p>Drivers are compiled as separate shared libraries (<code>libxkrt_driver_cu.so</code>, <code>libxkrt_driver_hip.so</code>, etc.) and loaded at runtime.</p>
 <hr  />
-<h1><a class="anchor" id="autotoc_md53"></a>
+<h1><a class="anchor" id="autotoc_md54"></a>
 Thread Teams</h1>
 <p>A <b>team</b> is a group of OS threads that cooperatively execute tasks. Each device has an associated team. Teams support:</p><ul>
 <li><b>Work stealing</b>: idle threads steal tasks from busy threads' deques.</li>
@@ -393,7 +393,7 @@ Thread Teams</h1>
 <li><b>Parallel for</b>: distribute loop iterations across team threads.</li>
 </ul>
 <hr  />
-<h1><a class="anchor" id="autotoc_md55"></a>
+<h1><a class="anchor" id="autotoc_md56"></a>
 Constants</h1>
 <p>Key compile-time constants defined in <code><a class="el" href="consts_8h.html">include/xkrt/consts.h</a></code>:</p>
 <table class="markdownTable">
@@ -413,7 +413,7 @@ Constants</h1>
 <td class="markdownTableBodyNone"><code>XKRT_HOST_DEVICE_UNIQUE_ID</code>   </td><td class="markdownTableBodyNone">0   </td><td class="markdownTableBodyNone">The host device is always device 0.   </td></tr>
 </table>
 <hr  />
-<h1><a class="anchor" id="autotoc_md57"></a>
+<h1><a class="anchor" id="autotoc_md58"></a>
 Configuration</h1>
 <p>XKRT reads configuration from environment variables at startup. Run with <code>XKRT_HELP=1</code> to list all available options and their current values. </p>
 </div></div><!-- contents -->

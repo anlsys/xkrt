@@ -5,9 +5,9 @@ var searchData=
   ['get_5fndevices_5fmax_2',['get_ndevices_max',['../structxkrt_1_1runtime__t.html#a88e70b8712fb2ffe7b72a5bb37d25198',1,'xkrt::runtime_t']]],
   ['gm_3',['gm',['../structxkrt_1_1distribution__t.html#a76f97913be95cdb3dfbc5bf92d5b7253',1,'xkrt::distribution_t']]],
   ['gn_4',['gn',['../structxkrt_1_1distribution__t.html#a0cb1bc1c9900d54ca0d97a179b93d840',1,'xkrt::distribution_t']]],
-  ['gpu_5',['Host-Only (Development / No GPU)',['../building.html#autotoc_md67',1,'']]],
-  ['gpu_20backends_6',['GPU Backends',['../building.html#autotoc_md61',1,'']]],
-  ['gpu_20i_20o_20pipeline_7',['File-to-GPU I/O Pipeline',['../examples.html#autotoc_md22',1,'']]],
-  ['gpu_20kernel_20launch_8',['GPU Kernel Launch',['../examples.html#autotoc_md16',1,'']]],
-  ['graphs_20tdg_9',['Task Dependency Graphs (TDG)',['../architecture.html#autotoc_md37',1,'']]]
+  ['gpu_5',['Host-Only (Development / No GPU)',['../building.html#autotoc_md68',1,'']]],
+  ['gpu_20backends_6',['GPU Backends',['../building.html#autotoc_md62',1,'']]],
+  ['gpu_20i_20o_20pipeline_7',['File-to-GPU I/O Pipeline',['../examples.html#autotoc_md23',1,'']]],
+  ['gpu_20kernel_20launch_8',['GPU Kernel Launch',['../examples.html#autotoc_md17',1,'']]],
+  ['graphs_20tdg_9',['Task Dependency Graphs (TDG)',['../architecture.html#autotoc_md38',1,'']]]
 ];
