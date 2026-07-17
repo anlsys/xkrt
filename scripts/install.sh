@@ -588,17 +588,16 @@ _detect_clang() {
 info "Scanning PATH for clang >= ${MIN_CLANG_VER} …"
 read -r _clang_status _def_cc _def_cxx _clang_ver <<< "$(_detect_clang)"
 
-# A system clang >= MIN_CLANG_VER is required to build the libraries *unless*
-# the user installs the custom LLVM and chooses to build with it.  We therefore
-# only record the result here and defer any hard error until the build compiler
-# is selected (see "Build compiler" below).
+# An LLVM/clang >= MIN_CLANG_VER is needed to build the libraries, but it does
+# not have to be on PATH: we only record the detection result here and let the
+# user pick/point at a compiler at the "Build compiler" step below.
 case "$_clang_status" in
     ok)   success "Found ${_def_cc} / ${_def_cxx}  (version ${_clang_ver})" ;;
     old)  warn "Found clang ${_clang_ver}, but >= ${MIN_CLANG_VER} is needed to build the libraries." ;;
     none) warn "No clang >= ${MIN_CLANG_VER} found in PATH." ;;
 esac
 [[ "$_clang_status" == "ok" ]] || \
-    info "You can still proceed by installing the custom LLVM and building with it."
+    info "You can still proceed: install the custom LLVM and build with it, or give the full path to a compiler below."
 
 # Pick a sensible default *bootstrap* compiler (any compiler is fine for that):
 # prefer a detected clang >= MIN_CLANG_VER, else any clang, else gcc, else cc/c++.
@@ -746,22 +745,29 @@ if [[ "$INSTALL_LLVM" == "true" && "$USE_LLVM_FOR_BUILD" == "true" ]]; then
     CC="" CXX=""
     success "Libraries will be built with the custom LLVM (clang/clang++)."
 else
-    # Not using the custom LLVM → a system clang >= MIN_CLANG_VER is required.
+    # Not using the custom LLVM → the libraries need an LLVM/clang >= MIN_CLANG_VER.
+    # If none was auto-detected we do NOT fail; instead we ask for the full paths
+    # (e.g. an LLVM installed in a non-standard location not on PATH).
+    _cc_default="${_C_CC:-$_def_cc}"
+    _cxx_default="${_C_CXX:-$_def_cxx}"
     if [[ "$_clang_status" != "ok" ]]; then
-        _tty "\n  ${RED}Error:${NC} building the libraries needs an LLVM >= ${MIN_CLANG_VER}.\n"
         if [[ "$_clang_status" == "old" ]]; then
-            _tty "  Found clang ${_clang_ver}, which is too old.\n"
+            warn "Found clang ${_clang_ver} in PATH, older than the expected >= ${MIN_CLANG_VER}."
         else
-            _tty "  No clang/clang++ was found in PATH.\n"
+            warn "No clang was found in PATH."
         fi
-        _tty "  Either install a newer clang, e.g.:\n"
-        _tty "    sudo apt install clang-${MIN_CLANG_VER} clang++-${MIN_CLANG_VER}\n"
-        _tty "  or re-run, install the custom LLVM and choose to build with it.\n\n"
-        exit 1
+        info "Enter the full path to the C/C++ compiler to build the libraries with"
+        info "(an LLVM/clang >= ${MIN_CLANG_VER} is expected; this is not verified)."
+        # The '-' detection placeholder is not a usable default; fall back to a
+        # cached compiler, else any compiler we could find.
+        _cc_default="${_C_CC:-$_boot_cc_default}"
+        _cxx_default="${_C_CXX:-$_boot_cxx_default}"
     fi
     _tty "\n"
-    CC=$(prompt_value  "C compiler (LLVM >= ${MIN_CLANG_VER})"   "${_C_CC:-$_def_cc}")
-    CXX=$(prompt_value "C++ compiler (LLVM >= ${MIN_CLANG_VER})" "${_C_CXX:-$_def_cxx}")
+    CC=$(prompt_value  "C compiler (full path; LLVM >= ${MIN_CLANG_VER})"   "$_cc_default")
+    CXX=$(prompt_value "C++ compiler (full path; LLVM >= ${MIN_CLANG_VER})" "$_cxx_default")
+    command -v "$CC"  >/dev/null 2>&1 || warn "'$CC' was not found — double-check the path."
+    command -v "$CXX" >/dev/null 2>&1 || warn "'$CXX' was not found — double-check the path."
 fi
 export CC CXX
 
