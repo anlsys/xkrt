@@ -872,11 +872,15 @@ xkrt_cuda_driver_command_batch_init(
             if (pred == entry)
                 continue ;
 
+            constexpr int numdeps = 1;
             CU_SAFE_CALL(cuGraphAddDependencies(
                 handle->graph,
                 &iterators[pred->iterator_index].data.cu_node,  // from
                 cu_node,                                        // to
-                1                                               // num dependencies
+            # if defined(CUDA_VERSION) && CUDA_VERSION >= 13000
+                nullptr,
+            # endif
+                numdeps
             ));
         }
     } /* for each iterator */
