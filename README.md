@@ -19,12 +19,21 @@ Other repository hosts specialization layers built on top of the runtime:
 
 [![XKRT software stack](docs/software-stack.png)](docs/software-stack.pdf)
 
+# Software Versions compatibility
+
+Compatible branches for each software
+
+| LLVM(ANL)      | CGIR         | XKRT           | XKBlas         | XKOMP        | Description  |
+| :------------- | :----------- | :------------- | :------------- | :----------- | :------------|
+| release/v1.1.0 | release/v0.3 | release/v1.1.0 | N/A            | release/v0.2 | CGIR JIT     |
+| release/v1.0.0 | release/v0.2 | release/v1.0.3 | release/v2.0.3 | release/v0.1 | First stable |
+
 # Installation
 
-## Requirements
+## Requirements of XKRT
 - A C/C++ compiler with support for C++20 (the only compiler tested is LLVM >=20.x)
 - hwloc - https://github.com/open-mpi/hwloc
-- CGIR release/v0.1 - https://github.com/JLESC-Tasking-Group/cgir
+- CGIR - https://github.com/JLESC-Tasking-Group/cgir
 
 ## Optional
 - Cuda, HIP, Level Zero, SYCL, OpenCL
