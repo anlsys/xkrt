@@ -614,8 +614,16 @@ driver_device_command_queue_launch_ready(
                 }
                 /* otherwise the driver launches the program via its variadic
                  * launcher, whose function must have been JIT-compiled: the
-                 * 'prog-fuse' pass leaves it NULL and requires the 'jit' pass. */
-                if (cmd->prog.launcher.variadic.fn == NULL)
+                 * 'prog-fuse' pass leaves it NULL and requires the 'jit' pass.
+                 * Exception: a device (GPU) prog is JIT-compiled to PTX by the
+                 * 'jit' pass but keeps fn == NULL here -- the device driver loads
+                 * the PTX (cuModuleLoadData) and resolves fn lazily at launch.
+                 * Let those fall through; only a prog with neither a fn nor a
+                 * loadable PTX source truly "forgot to JIT". */
+                const bool driver_will_load =
+                    cmd->prog.source.type == cgir::COMMAND_PROG_SOURCE_TYPE_PTX &&
+                    cmd->prog.source.content.llvmir.raw != NULL;
+                if (cmd->prog.launcher.variadic.fn == NULL && !driver_will_load)
                     LOGGER_FATAL("PROG command has a NULL function pointer. Did you forget to JIT?");
                 /* else, fallthrough so the driver launch the program */
             }
