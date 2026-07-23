@@ -318,24 +318,46 @@ typedef struct  task_rec_info_t
 
 }               task_rec_info_t;
 
+/*
+ * A taskgroup: a deep-synchronization scope (OpenMP `taskgroup`). Unlike a
+ * taskwait -- which only waits for the current task's direct children (the
+ * per-task `cc` counter) -- a taskgroup waits for its child tasks AND all of
+ * their descendants.
+ *
+ * `count` is the number of tasks bound to the group that have been created but
+ * not yet completed (the whole subtree): it is incremented when a
+ * TASK_FLAG_TASKGROUP task is created (task_new) and decremented at true
+ * completion (__task_complete, so it is exact for host, device and detachable
+ * tasks alike). It is an atomic<uint32_t> so taskgroup_end() can block on it
+ * directly through runtime_t::task_wait(&count), which work-steals until it
+ * drains to 0.
+ *
+ * `parent` chains to the enclosing taskgroup so nested groups restore correctly.
+ */
+struct  taskgroup_t
+{
+    std::atomic<uint32_t> count;
+    taskgroup_t *         parent;
+    taskgroup_t(taskgroup_t * p) : count(0), parent(p) {}
+};
+
+/* per-task taskgroup membership (present iff the task has TASK_FLAG_TASKGROUP) */
+typedef struct  task_grp_info_t
+{
+    /* the taskgroup this task is bound to; its `count` is decremented when the
+     * task completes, see __task_complete */
+    taskgroup_t * taskgroup;
+}               task_grp_info_t;
+
 /* Push a new command in the command records of the passed task */
 command_t * task_put_command_record(task_t * task);
 
-/* fallback if wrong flags parameter -
- * https://stackoverflow.com/questions/20461121/constexpr-error-at-compile-time-but-no-overhead-at-run-time */
-static size_t
-task_get_base_size_fallback(task_flag_bitfield_t flags)
-{
-    LOGGER_FATAL("Invalid task flag combination: `%u`", flags);
-    return 0;
-}
-
 /**
  *  In case of a task with all flags, its memory is
- *   _________________________________________________________________________________________________________________________________________________________
- *  |                                                                                                                                                         |
- *  | task_t | task_acs_info_t | task_det_info | task_dev_info_t | task_dom_info_t | task_mol_info_t | task_gph_info_t | task_rec_info_t | access_t... | args |
- *  |_________________________________________________________________________________________________________________________________________________________|
+ *   ___________________________________________________________________________________________________________________________________________________________________________________
+ *  |                                                                                                                                                                                   |
+ *  | task_t | task_acs_info_t | task_det_info | task_dev_info_t | task_dom_info_t | task_mol_info_t | task_gph_info_t | task_rec_info_t | task_grp_info_t | access_t... | args |
+ *  |___________________________________________________________________________________________________________________________________________________________________________________|
  *
  * if some flags are removed, builing blocks are removed
  */
@@ -347,395 +369,19 @@ task_get_base_size_fallback(task_flag_bitfield_t flags)
 static constexpr size_t
 task_get_extra_size(const task_flag_bitfield_t flags)
 {
-    switch (flags)
-    {
-        case (                  TASK_FLAG_ZERO |             TASK_FLAG_ZERO |             TASK_FLAG_ZERO |             TASK_FLAG_ZERO |             TASK_FLAG_ZERO |             TASK_FLAG_ZERO |             TASK_FLAG_ZERO):
-            return (                         0 +                          0 +                          0 +                          0 +                          0 +                          0 +                          0); // 0.0.0.0.0.0.0
-
-        case (                  TASK_FLAG_ZERO |             TASK_FLAG_ZERO |             TASK_FLAG_ZERO |             TASK_FLAG_ZERO |             TASK_FLAG_ZERO |             TASK_FLAG_ZERO |         TASK_FLAG_ACCESSES):
-            return (                         0 +                          0 +                          0 +                          0 +                          0 +                          0 +    sizeof(task_acs_info_t)); // 0.0.0.0.0.0.1
-
-        case (                  TASK_FLAG_ZERO |             TASK_FLAG_ZERO |             TASK_FLAG_ZERO |             TASK_FLAG_ZERO |             TASK_FLAG_ZERO |       TASK_FLAG_DETACHABLE |             TASK_FLAG_ZERO):
-            return (                         0 +                          0 +                          0 +                          0 +                          0 +    sizeof(task_det_info_t) +                          0); // 0.0.0.0.0.1.0
-
-        case (                  TASK_FLAG_ZERO |             TASK_FLAG_ZERO |             TASK_FLAG_ZERO |             TASK_FLAG_ZERO |             TASK_FLAG_ZERO |       TASK_FLAG_DETACHABLE |         TASK_FLAG_ACCESSES):
-            return (                         0 +                          0 +                          0 +                          0 +                          0 +    sizeof(task_det_info_t) +    sizeof(task_acs_info_t)); // 0.0.0.0.0.1.1
-
-        case (                  TASK_FLAG_ZERO |             TASK_FLAG_ZERO |             TASK_FLAG_ZERO |             TASK_FLAG_ZERO |           TASK_FLAG_DEVICE |             TASK_FLAG_ZERO |             TASK_FLAG_ZERO):
-            return (                         0 +                          0 +                          0 +                          0 +    sizeof(task_dev_info_t) +                          0 +                          0); // 0.0.0.0.1.0.0
-
-        case (                  TASK_FLAG_ZERO |             TASK_FLAG_ZERO |             TASK_FLAG_ZERO |             TASK_FLAG_ZERO |           TASK_FLAG_DEVICE |             TASK_FLAG_ZERO |         TASK_FLAG_ACCESSES):
-            return (                         0 +                          0 +                          0 +                          0 +    sizeof(task_dev_info_t) +                          0 +    sizeof(task_acs_info_t)); // 0.0.0.0.1.0.1
-
-        case (                  TASK_FLAG_ZERO |             TASK_FLAG_ZERO |             TASK_FLAG_ZERO |             TASK_FLAG_ZERO |           TASK_FLAG_DEVICE |       TASK_FLAG_DETACHABLE |             TASK_FLAG_ZERO):
-            return (                         0 +                          0 +                          0 +                          0 +    sizeof(task_dev_info_t) +    sizeof(task_det_info_t) +                          0); // 0.0.0.0.1.1.0
-
-        case (                  TASK_FLAG_ZERO |             TASK_FLAG_ZERO |             TASK_FLAG_ZERO |             TASK_FLAG_ZERO |           TASK_FLAG_DEVICE |       TASK_FLAG_DETACHABLE |         TASK_FLAG_ACCESSES):
-            return (                         0 +                          0 +                          0 +                          0 +    sizeof(task_dev_info_t) +    sizeof(task_det_info_t) +    sizeof(task_acs_info_t)); // 0.0.0.0.1.1.1
-
-        case (                  TASK_FLAG_ZERO |             TASK_FLAG_ZERO |             TASK_FLAG_ZERO |           TASK_FLAG_DOMAIN |             TASK_FLAG_ZERO |             TASK_FLAG_ZERO |             TASK_FLAG_ZERO):
-            return (                         0 +                          0 +                          0 +    sizeof(task_dom_info_t) +                          0 +                          0 +                          0); // 0.0.0.1.0.0.0
-
-        case (                  TASK_FLAG_ZERO |             TASK_FLAG_ZERO |             TASK_FLAG_ZERO |           TASK_FLAG_DOMAIN |             TASK_FLAG_ZERO |             TASK_FLAG_ZERO |         TASK_FLAG_ACCESSES):
-            return (                         0 +                          0 +                          0 +    sizeof(task_dom_info_t) +                          0 +                          0 +    sizeof(task_acs_info_t)); // 0.0.0.1.0.0.1
-
-        case (                  TASK_FLAG_ZERO |             TASK_FLAG_ZERO |             TASK_FLAG_ZERO |           TASK_FLAG_DOMAIN |             TASK_FLAG_ZERO |       TASK_FLAG_DETACHABLE |             TASK_FLAG_ZERO):
-            return (                         0 +                          0 +                          0 +    sizeof(task_dom_info_t) +                          0 +    sizeof(task_det_info_t) +                          0); // 0.0.0.1.0.1.0
-
-        case (                  TASK_FLAG_ZERO |             TASK_FLAG_ZERO |             TASK_FLAG_ZERO |           TASK_FLAG_DOMAIN |             TASK_FLAG_ZERO |       TASK_FLAG_DETACHABLE |         TASK_FLAG_ACCESSES):
-            return (                         0 +                          0 +                          0 +    sizeof(task_dom_info_t) +                          0 +    sizeof(task_det_info_t) +    sizeof(task_acs_info_t)); // 0.0.0.1.0.1.1
-
-        case (                  TASK_FLAG_ZERO |             TASK_FLAG_ZERO |             TASK_FLAG_ZERO |           TASK_FLAG_DOMAIN |           TASK_FLAG_DEVICE |             TASK_FLAG_ZERO |             TASK_FLAG_ZERO):
-            return (                         0 +                          0 +                          0 +    sizeof(task_dom_info_t) +    sizeof(task_dev_info_t) +                          0 +                          0); // 0.0.0.1.1.0.0
-
-        case (                  TASK_FLAG_ZERO |             TASK_FLAG_ZERO |             TASK_FLAG_ZERO |           TASK_FLAG_DOMAIN |           TASK_FLAG_DEVICE |             TASK_FLAG_ZERO |         TASK_FLAG_ACCESSES):
-            return (                         0 +                          0 +                          0 +    sizeof(task_dom_info_t) +    sizeof(task_dev_info_t) +                          0 +    sizeof(task_acs_info_t)); // 0.0.0.1.1.0.1
-
-        case (                  TASK_FLAG_ZERO |             TASK_FLAG_ZERO |             TASK_FLAG_ZERO |           TASK_FLAG_DOMAIN |           TASK_FLAG_DEVICE |       TASK_FLAG_DETACHABLE |             TASK_FLAG_ZERO):
-            return (                         0 +                          0 +                          0 +    sizeof(task_dom_info_t) +    sizeof(task_dev_info_t) +    sizeof(task_det_info_t) +                          0); // 0.0.0.1.1.1.0
-
-        case (                  TASK_FLAG_ZERO |             TASK_FLAG_ZERO |             TASK_FLAG_ZERO |           TASK_FLAG_DOMAIN |           TASK_FLAG_DEVICE |       TASK_FLAG_DETACHABLE |         TASK_FLAG_ACCESSES):
-            return (                         0 +                          0 +                          0 +    sizeof(task_dom_info_t) +    sizeof(task_dev_info_t) +    sizeof(task_det_info_t) +    sizeof(task_acs_info_t)); // 0.0.0.1.1.1.1
-
-        case (                  TASK_FLAG_ZERO |             TASK_FLAG_ZERO |         TASK_FLAG_MOLDABLE |             TASK_FLAG_ZERO |             TASK_FLAG_ZERO |             TASK_FLAG_ZERO |             TASK_FLAG_ZERO):
-            return (                         0 +                          0 +    sizeof(task_mol_info_t) +                          0 +                          0 +                          0 +                          0); // 0.0.1.0.0.0.0
-
-        case (                  TASK_FLAG_ZERO |             TASK_FLAG_ZERO |         TASK_FLAG_MOLDABLE |             TASK_FLAG_ZERO |             TASK_FLAG_ZERO |             TASK_FLAG_ZERO |         TASK_FLAG_ACCESSES):
-            return (                         0 +                          0 +    sizeof(task_mol_info_t) +                          0 +                          0 +                          0 +    sizeof(task_acs_info_t)); // 0.0.1.0.0.0.1
-
-        case (                  TASK_FLAG_ZERO |             TASK_FLAG_ZERO |         TASK_FLAG_MOLDABLE |             TASK_FLAG_ZERO |             TASK_FLAG_ZERO |       TASK_FLAG_DETACHABLE |             TASK_FLAG_ZERO):
-            return (                         0 +                          0 +    sizeof(task_mol_info_t) +                          0 +                          0 +    sizeof(task_det_info_t) +                          0); // 0.0.1.0.0.1.0
-
-        case (                  TASK_FLAG_ZERO |             TASK_FLAG_ZERO |         TASK_FLAG_MOLDABLE |             TASK_FLAG_ZERO |             TASK_FLAG_ZERO |       TASK_FLAG_DETACHABLE |         TASK_FLAG_ACCESSES):
-            return (                         0 +                          0 +    sizeof(task_mol_info_t) +                          0 +                          0 +    sizeof(task_det_info_t) +    sizeof(task_acs_info_t)); // 0.0.1.0.0.1.1
-
-        case (                  TASK_FLAG_ZERO |             TASK_FLAG_ZERO |         TASK_FLAG_MOLDABLE |             TASK_FLAG_ZERO |           TASK_FLAG_DEVICE |             TASK_FLAG_ZERO |             TASK_FLAG_ZERO):
-            return (                         0 +                          0 +    sizeof(task_mol_info_t) +                          0 +    sizeof(task_dev_info_t) +                          0 +                          0); // 0.0.1.0.1.0.0
-
-        case (                  TASK_FLAG_ZERO |             TASK_FLAG_ZERO |         TASK_FLAG_MOLDABLE |             TASK_FLAG_ZERO |           TASK_FLAG_DEVICE |             TASK_FLAG_ZERO |         TASK_FLAG_ACCESSES):
-            return (                         0 +                          0 +    sizeof(task_mol_info_t) +                          0 +    sizeof(task_dev_info_t) +                          0 +    sizeof(task_acs_info_t)); // 0.0.1.0.1.0.1
-
-        case (                  TASK_FLAG_ZERO |             TASK_FLAG_ZERO |         TASK_FLAG_MOLDABLE |             TASK_FLAG_ZERO |           TASK_FLAG_DEVICE |       TASK_FLAG_DETACHABLE |             TASK_FLAG_ZERO):
-            return (                         0 +                          0 +    sizeof(task_mol_info_t) +                          0 +    sizeof(task_dev_info_t) +    sizeof(task_det_info_t) +                          0); // 0.0.1.0.1.1.0
-
-        case (                  TASK_FLAG_ZERO |             TASK_FLAG_ZERO |         TASK_FLAG_MOLDABLE |             TASK_FLAG_ZERO |           TASK_FLAG_DEVICE |       TASK_FLAG_DETACHABLE |         TASK_FLAG_ACCESSES):
-            return (                         0 +                          0 +    sizeof(task_mol_info_t) +                          0 +    sizeof(task_dev_info_t) +    sizeof(task_det_info_t) +    sizeof(task_acs_info_t)); // 0.0.1.0.1.1.1
-
-        case (                  TASK_FLAG_ZERO |             TASK_FLAG_ZERO |         TASK_FLAG_MOLDABLE |           TASK_FLAG_DOMAIN |             TASK_FLAG_ZERO |             TASK_FLAG_ZERO |             TASK_FLAG_ZERO):
-            return (                         0 +                          0 +    sizeof(task_mol_info_t) +    sizeof(task_dom_info_t) +                          0 +                          0 +                          0); // 0.0.1.1.0.0.0
-
-        case (                  TASK_FLAG_ZERO |             TASK_FLAG_ZERO |         TASK_FLAG_MOLDABLE |           TASK_FLAG_DOMAIN |             TASK_FLAG_ZERO |             TASK_FLAG_ZERO |         TASK_FLAG_ACCESSES):
-            return (                         0 +                          0 +    sizeof(task_mol_info_t) +    sizeof(task_dom_info_t) +                          0 +                          0 +    sizeof(task_acs_info_t)); // 0.0.1.1.0.0.1
-
-        case (                  TASK_FLAG_ZERO |             TASK_FLAG_ZERO |         TASK_FLAG_MOLDABLE |           TASK_FLAG_DOMAIN |             TASK_FLAG_ZERO |       TASK_FLAG_DETACHABLE |             TASK_FLAG_ZERO):
-            return (                         0 +                          0 +    sizeof(task_mol_info_t) +    sizeof(task_dom_info_t) +                          0 +    sizeof(task_det_info_t) +                          0); // 0.0.1.1.0.1.0
-
-        case (                  TASK_FLAG_ZERO |             TASK_FLAG_ZERO |         TASK_FLAG_MOLDABLE |           TASK_FLAG_DOMAIN |             TASK_FLAG_ZERO |       TASK_FLAG_DETACHABLE |         TASK_FLAG_ACCESSES):
-            return (                         0 +                          0 +    sizeof(task_mol_info_t) +    sizeof(task_dom_info_t) +                          0 +    sizeof(task_det_info_t) +    sizeof(task_acs_info_t)); // 0.0.1.1.0.1.1
-
-        case (                  TASK_FLAG_ZERO |             TASK_FLAG_ZERO |         TASK_FLAG_MOLDABLE |           TASK_FLAG_DOMAIN |           TASK_FLAG_DEVICE |             TASK_FLAG_ZERO |             TASK_FLAG_ZERO):
-            return (                         0 +                          0 +    sizeof(task_mol_info_t) +    sizeof(task_dom_info_t) +    sizeof(task_dev_info_t) +                          0 +                          0); // 0.0.1.1.1.0.0
-
-        case (                  TASK_FLAG_ZERO |             TASK_FLAG_ZERO |         TASK_FLAG_MOLDABLE |           TASK_FLAG_DOMAIN |           TASK_FLAG_DEVICE |             TASK_FLAG_ZERO |         TASK_FLAG_ACCESSES):
-            return (                         0 +                          0 +    sizeof(task_mol_info_t) +    sizeof(task_dom_info_t) +    sizeof(task_dev_info_t) +                          0 +    sizeof(task_acs_info_t)); // 0.0.1.1.1.0.1
-
-        case (                  TASK_FLAG_ZERO |             TASK_FLAG_ZERO |         TASK_FLAG_MOLDABLE |           TASK_FLAG_DOMAIN |           TASK_FLAG_DEVICE |       TASK_FLAG_DETACHABLE |             TASK_FLAG_ZERO):
-            return (                         0 +                          0 +    sizeof(task_mol_info_t) +    sizeof(task_dom_info_t) +    sizeof(task_dev_info_t) +    sizeof(task_det_info_t) +                          0); // 0.0.1.1.1.1.0
-
-        case (                  TASK_FLAG_ZERO |             TASK_FLAG_ZERO |         TASK_FLAG_MOLDABLE |           TASK_FLAG_DOMAIN |           TASK_FLAG_DEVICE |       TASK_FLAG_DETACHABLE |         TASK_FLAG_ACCESSES):
-            return (                         0 +                          0 +    sizeof(task_mol_info_t) +    sizeof(task_dom_info_t) +    sizeof(task_dev_info_t) +    sizeof(task_det_info_t) +    sizeof(task_acs_info_t)); // 0.0.1.1.1.1.1
-
-        case (                  TASK_FLAG_ZERO |            TASK_FLAG_GRAPH |             TASK_FLAG_ZERO |             TASK_FLAG_ZERO |             TASK_FLAG_ZERO |             TASK_FLAG_ZERO |             TASK_FLAG_ZERO):
-            return (                         0 +    sizeof(task_gph_info_t) +                          0 +                          0 +                          0 +                          0 +                          0); // 0.1.0.0.0.0.0
-
-        case (                  TASK_FLAG_ZERO |            TASK_FLAG_GRAPH |             TASK_FLAG_ZERO |             TASK_FLAG_ZERO |             TASK_FLAG_ZERO |             TASK_FLAG_ZERO |         TASK_FLAG_ACCESSES):
-            return (                         0 +    sizeof(task_gph_info_t) +                          0 +                          0 +                          0 +                          0 +    sizeof(task_acs_info_t)); // 0.1.0.0.0.0.1
-
-        case (                  TASK_FLAG_ZERO |            TASK_FLAG_GRAPH |             TASK_FLAG_ZERO |             TASK_FLAG_ZERO |             TASK_FLAG_ZERO |       TASK_FLAG_DETACHABLE |             TASK_FLAG_ZERO):
-            return (                         0 +    sizeof(task_gph_info_t) +                          0 +                          0 +                          0 +    sizeof(task_det_info_t) +                          0); // 0.1.0.0.0.1.0
-
-        case (                  TASK_FLAG_ZERO |            TASK_FLAG_GRAPH |             TASK_FLAG_ZERO |             TASK_FLAG_ZERO |             TASK_FLAG_ZERO |       TASK_FLAG_DETACHABLE |         TASK_FLAG_ACCESSES):
-            return (                         0 +    sizeof(task_gph_info_t) +                          0 +                          0 +                          0 +    sizeof(task_det_info_t) +    sizeof(task_acs_info_t)); // 0.1.0.0.0.1.1
-
-        case (                  TASK_FLAG_ZERO |            TASK_FLAG_GRAPH |             TASK_FLAG_ZERO |             TASK_FLAG_ZERO |           TASK_FLAG_DEVICE |             TASK_FLAG_ZERO |             TASK_FLAG_ZERO):
-            return (                         0 +    sizeof(task_gph_info_t) +                          0 +                          0 +    sizeof(task_dev_info_t) +                          0 +                          0); // 0.1.0.0.1.0.0
-
-        case (                  TASK_FLAG_ZERO |            TASK_FLAG_GRAPH |             TASK_FLAG_ZERO |             TASK_FLAG_ZERO |           TASK_FLAG_DEVICE |             TASK_FLAG_ZERO |         TASK_FLAG_ACCESSES):
-            return (                         0 +    sizeof(task_gph_info_t) +                          0 +                          0 +    sizeof(task_dev_info_t) +                          0 +    sizeof(task_acs_info_t)); // 0.1.0.0.1.0.1
-
-        case (                  TASK_FLAG_ZERO |            TASK_FLAG_GRAPH |             TASK_FLAG_ZERO |             TASK_FLAG_ZERO |           TASK_FLAG_DEVICE |       TASK_FLAG_DETACHABLE |             TASK_FLAG_ZERO):
-            return (                         0 +    sizeof(task_gph_info_t) +                          0 +                          0 +    sizeof(task_dev_info_t) +    sizeof(task_det_info_t) +                          0); // 0.1.0.0.1.1.0
-
-        case (                  TASK_FLAG_ZERO |            TASK_FLAG_GRAPH |             TASK_FLAG_ZERO |             TASK_FLAG_ZERO |           TASK_FLAG_DEVICE |       TASK_FLAG_DETACHABLE |         TASK_FLAG_ACCESSES):
-            return (                         0 +    sizeof(task_gph_info_t) +                          0 +                          0 +    sizeof(task_dev_info_t) +    sizeof(task_det_info_t) +    sizeof(task_acs_info_t)); // 0.1.0.0.1.1.1
-
-        case (                  TASK_FLAG_ZERO |            TASK_FLAG_GRAPH |             TASK_FLAG_ZERO |           TASK_FLAG_DOMAIN |             TASK_FLAG_ZERO |             TASK_FLAG_ZERO |             TASK_FLAG_ZERO):
-            return (                         0 +    sizeof(task_gph_info_t) +                          0 +    sizeof(task_dom_info_t) +                          0 +                          0 +                          0); // 0.1.0.1.0.0.0
-
-        case (                  TASK_FLAG_ZERO |            TASK_FLAG_GRAPH |             TASK_FLAG_ZERO |           TASK_FLAG_DOMAIN |             TASK_FLAG_ZERO |             TASK_FLAG_ZERO |         TASK_FLAG_ACCESSES):
-            return (                         0 +    sizeof(task_gph_info_t) +                          0 +    sizeof(task_dom_info_t) +                          0 +                          0 +    sizeof(task_acs_info_t)); // 0.1.0.1.0.0.1
-
-        case (                  TASK_FLAG_ZERO |            TASK_FLAG_GRAPH |             TASK_FLAG_ZERO |           TASK_FLAG_DOMAIN |             TASK_FLAG_ZERO |       TASK_FLAG_DETACHABLE |             TASK_FLAG_ZERO):
-            return (                         0 +    sizeof(task_gph_info_t) +                          0 +    sizeof(task_dom_info_t) +                          0 +    sizeof(task_det_info_t) +                          0); // 0.1.0.1.0.1.0
-
-        case (                  TASK_FLAG_ZERO |            TASK_FLAG_GRAPH |             TASK_FLAG_ZERO |           TASK_FLAG_DOMAIN |             TASK_FLAG_ZERO |       TASK_FLAG_DETACHABLE |         TASK_FLAG_ACCESSES):
-            return (                         0 +    sizeof(task_gph_info_t) +                          0 +    sizeof(task_dom_info_t) +                          0 +    sizeof(task_det_info_t) +    sizeof(task_acs_info_t)); // 0.1.0.1.0.1.1
-
-        case (                  TASK_FLAG_ZERO |            TASK_FLAG_GRAPH |             TASK_FLAG_ZERO |           TASK_FLAG_DOMAIN |           TASK_FLAG_DEVICE |             TASK_FLAG_ZERO |             TASK_FLAG_ZERO):
-            return (                         0 +    sizeof(task_gph_info_t) +                          0 +    sizeof(task_dom_info_t) +    sizeof(task_dev_info_t) +                          0 +                          0); // 0.1.0.1.1.0.0
-
-        case (                  TASK_FLAG_ZERO |            TASK_FLAG_GRAPH |             TASK_FLAG_ZERO |           TASK_FLAG_DOMAIN |           TASK_FLAG_DEVICE |             TASK_FLAG_ZERO |         TASK_FLAG_ACCESSES):
-            return (                         0 +    sizeof(task_gph_info_t) +                          0 +    sizeof(task_dom_info_t) +    sizeof(task_dev_info_t) +                          0 +    sizeof(task_acs_info_t)); // 0.1.0.1.1.0.1
-
-        case (                  TASK_FLAG_ZERO |            TASK_FLAG_GRAPH |             TASK_FLAG_ZERO |           TASK_FLAG_DOMAIN |           TASK_FLAG_DEVICE |       TASK_FLAG_DETACHABLE |             TASK_FLAG_ZERO):
-            return (                         0 +    sizeof(task_gph_info_t) +                          0 +    sizeof(task_dom_info_t) +    sizeof(task_dev_info_t) +    sizeof(task_det_info_t) +                          0); // 0.1.0.1.1.1.0
-
-        case (                  TASK_FLAG_ZERO |            TASK_FLAG_GRAPH |             TASK_FLAG_ZERO |           TASK_FLAG_DOMAIN |           TASK_FLAG_DEVICE |       TASK_FLAG_DETACHABLE |         TASK_FLAG_ACCESSES):
-            return (                         0 +    sizeof(task_gph_info_t) +                          0 +    sizeof(task_dom_info_t) +    sizeof(task_dev_info_t) +    sizeof(task_det_info_t) +    sizeof(task_acs_info_t)); // 0.1.0.1.1.1.1
-
-        case (                  TASK_FLAG_ZERO |            TASK_FLAG_GRAPH |         TASK_FLAG_MOLDABLE |             TASK_FLAG_ZERO |             TASK_FLAG_ZERO |             TASK_FLAG_ZERO |             TASK_FLAG_ZERO):
-            return (                         0 +    sizeof(task_gph_info_t) +    sizeof(task_mol_info_t) +                          0 +                          0 +                          0 +                          0); // 0.1.1.0.0.0.0
-
-        case (                  TASK_FLAG_ZERO |            TASK_FLAG_GRAPH |         TASK_FLAG_MOLDABLE |             TASK_FLAG_ZERO |             TASK_FLAG_ZERO |             TASK_FLAG_ZERO |         TASK_FLAG_ACCESSES):
-            return (                         0 +    sizeof(task_gph_info_t) +    sizeof(task_mol_info_t) +                          0 +                          0 +                          0 +    sizeof(task_acs_info_t)); // 0.1.1.0.0.0.1
-
-        case (                  TASK_FLAG_ZERO |            TASK_FLAG_GRAPH |         TASK_FLAG_MOLDABLE |             TASK_FLAG_ZERO |             TASK_FLAG_ZERO |       TASK_FLAG_DETACHABLE |             TASK_FLAG_ZERO):
-            return (                         0 +    sizeof(task_gph_info_t) +    sizeof(task_mol_info_t) +                          0 +                          0 +    sizeof(task_det_info_t) +                          0); // 0.1.1.0.0.1.0
-
-        case (                  TASK_FLAG_ZERO |            TASK_FLAG_GRAPH |         TASK_FLAG_MOLDABLE |             TASK_FLAG_ZERO |             TASK_FLAG_ZERO |       TASK_FLAG_DETACHABLE |         TASK_FLAG_ACCESSES):
-            return (                         0 +    sizeof(task_gph_info_t) +    sizeof(task_mol_info_t) +                          0 +                          0 +    sizeof(task_det_info_t) +    sizeof(task_acs_info_t)); // 0.1.1.0.0.1.1
-
-        case (                  TASK_FLAG_ZERO |            TASK_FLAG_GRAPH |         TASK_FLAG_MOLDABLE |             TASK_FLAG_ZERO |           TASK_FLAG_DEVICE |             TASK_FLAG_ZERO |             TASK_FLAG_ZERO):
-            return (                         0 +    sizeof(task_gph_info_t) +    sizeof(task_mol_info_t) +                          0 +    sizeof(task_dev_info_t) +                          0 +                          0); // 0.1.1.0.1.0.0
-
-        case (                  TASK_FLAG_ZERO |            TASK_FLAG_GRAPH |         TASK_FLAG_MOLDABLE |             TASK_FLAG_ZERO |           TASK_FLAG_DEVICE |             TASK_FLAG_ZERO |         TASK_FLAG_ACCESSES):
-            return (                         0 +    sizeof(task_gph_info_t) +    sizeof(task_mol_info_t) +                          0 +    sizeof(task_dev_info_t) +                          0 +    sizeof(task_acs_info_t)); // 0.1.1.0.1.0.1
-
-        case (                  TASK_FLAG_ZERO |            TASK_FLAG_GRAPH |         TASK_FLAG_MOLDABLE |             TASK_FLAG_ZERO |           TASK_FLAG_DEVICE |       TASK_FLAG_DETACHABLE |             TASK_FLAG_ZERO):
-            return (                         0 +    sizeof(task_gph_info_t) +    sizeof(task_mol_info_t) +                          0 +    sizeof(task_dev_info_t) +    sizeof(task_det_info_t) +                          0); // 0.1.1.0.1.1.0
-
-        case (                  TASK_FLAG_ZERO |            TASK_FLAG_GRAPH |         TASK_FLAG_MOLDABLE |             TASK_FLAG_ZERO |           TASK_FLAG_DEVICE |       TASK_FLAG_DETACHABLE |         TASK_FLAG_ACCESSES):
-            return (                         0 +    sizeof(task_gph_info_t) +    sizeof(task_mol_info_t) +                          0 +    sizeof(task_dev_info_t) +    sizeof(task_det_info_t) +    sizeof(task_acs_info_t)); // 0.1.1.0.1.1.1
-
-        case (                  TASK_FLAG_ZERO |            TASK_FLAG_GRAPH |         TASK_FLAG_MOLDABLE |           TASK_FLAG_DOMAIN |             TASK_FLAG_ZERO |             TASK_FLAG_ZERO |             TASK_FLAG_ZERO):
-            return (                         0 +    sizeof(task_gph_info_t) +    sizeof(task_mol_info_t) +    sizeof(task_dom_info_t) +                          0 +                          0 +                          0); // 0.1.1.1.0.0.0
-
-        case (                  TASK_FLAG_ZERO |            TASK_FLAG_GRAPH |         TASK_FLAG_MOLDABLE |           TASK_FLAG_DOMAIN |             TASK_FLAG_ZERO |             TASK_FLAG_ZERO |         TASK_FLAG_ACCESSES):
-            return (                         0 +    sizeof(task_gph_info_t) +    sizeof(task_mol_info_t) +    sizeof(task_dom_info_t) +                          0 +                          0 +    sizeof(task_acs_info_t)); // 0.1.1.1.0.0.1
-
-        case (                  TASK_FLAG_ZERO |            TASK_FLAG_GRAPH |         TASK_FLAG_MOLDABLE |           TASK_FLAG_DOMAIN |             TASK_FLAG_ZERO |       TASK_FLAG_DETACHABLE |             TASK_FLAG_ZERO):
-            return (                         0 +    sizeof(task_gph_info_t) +    sizeof(task_mol_info_t) +    sizeof(task_dom_info_t) +                          0 +    sizeof(task_det_info_t) +                          0); // 0.1.1.1.0.1.0
-
-        case (                  TASK_FLAG_ZERO |            TASK_FLAG_GRAPH |         TASK_FLAG_MOLDABLE |           TASK_FLAG_DOMAIN |             TASK_FLAG_ZERO |       TASK_FLAG_DETACHABLE |         TASK_FLAG_ACCESSES):
-            return (                         0 +    sizeof(task_gph_info_t) +    sizeof(task_mol_info_t) +    sizeof(task_dom_info_t) +                          0 +    sizeof(task_det_info_t) +    sizeof(task_acs_info_t)); // 0.1.1.1.0.1.1
-
-        case (                  TASK_FLAG_ZERO |            TASK_FLAG_GRAPH |         TASK_FLAG_MOLDABLE |           TASK_FLAG_DOMAIN |           TASK_FLAG_DEVICE |             TASK_FLAG_ZERO |             TASK_FLAG_ZERO):
-            return (                         0 +    sizeof(task_gph_info_t) +    sizeof(task_mol_info_t) +    sizeof(task_dom_info_t) +    sizeof(task_dev_info_t) +                          0 +                          0); // 0.1.1.1.1.0.0
-
-        case (                  TASK_FLAG_ZERO |            TASK_FLAG_GRAPH |         TASK_FLAG_MOLDABLE |           TASK_FLAG_DOMAIN |           TASK_FLAG_DEVICE |             TASK_FLAG_ZERO |         TASK_FLAG_ACCESSES):
-            return (                         0 +    sizeof(task_gph_info_t) +    sizeof(task_mol_info_t) +    sizeof(task_dom_info_t) +    sizeof(task_dev_info_t) +                          0 +    sizeof(task_acs_info_t)); // 0.1.1.1.1.0.1
-
-        case (                  TASK_FLAG_ZERO |            TASK_FLAG_GRAPH |         TASK_FLAG_MOLDABLE |           TASK_FLAG_DOMAIN |           TASK_FLAG_DEVICE |       TASK_FLAG_DETACHABLE |             TASK_FLAG_ZERO):
-            return (                         0 +    sizeof(task_gph_info_t) +    sizeof(task_mol_info_t) +    sizeof(task_dom_info_t) +    sizeof(task_dev_info_t) +    sizeof(task_det_info_t) +                          0); // 0.1.1.1.1.1.0
-
-        case (                  TASK_FLAG_ZERO |            TASK_FLAG_GRAPH |         TASK_FLAG_MOLDABLE |           TASK_FLAG_DOMAIN |           TASK_FLAG_DEVICE |       TASK_FLAG_DETACHABLE |         TASK_FLAG_ACCESSES):
-            return (                         0 +    sizeof(task_gph_info_t) +    sizeof(task_mol_info_t) +    sizeof(task_dom_info_t) +    sizeof(task_dev_info_t) +    sizeof(task_det_info_t) +    sizeof(task_acs_info_t)); // 0.1.1.1.1.1.1
-
-        case (                TASK_FLAG_RECORD |             TASK_FLAG_ZERO |             TASK_FLAG_ZERO |             TASK_FLAG_ZERO |             TASK_FLAG_ZERO |             TASK_FLAG_ZERO |             TASK_FLAG_ZERO):
-            return (   sizeof(task_rec_info_t) +                          0 +                          0 +                          0 +                          0 +                          0 +                          0); // 1.0.0.0.0.0.0
-
-        case (                TASK_FLAG_RECORD |             TASK_FLAG_ZERO |             TASK_FLAG_ZERO |             TASK_FLAG_ZERO |             TASK_FLAG_ZERO |             TASK_FLAG_ZERO |         TASK_FLAG_ACCESSES):
-            return (   sizeof(task_rec_info_t) +                          0 +                          0 +                          0 +                          0 +                          0 +    sizeof(task_acs_info_t)); // 1.0.0.0.0.0.1
-
-        case (                TASK_FLAG_RECORD |             TASK_FLAG_ZERO |             TASK_FLAG_ZERO |             TASK_FLAG_ZERO |             TASK_FLAG_ZERO |       TASK_FLAG_DETACHABLE |             TASK_FLAG_ZERO):
-            return (   sizeof(task_rec_info_t) +                          0 +                          0 +                          0 +                          0 +    sizeof(task_det_info_t) +                          0); // 1.0.0.0.0.1.0
-
-        case (                TASK_FLAG_RECORD |             TASK_FLAG_ZERO |             TASK_FLAG_ZERO |             TASK_FLAG_ZERO |             TASK_FLAG_ZERO |       TASK_FLAG_DETACHABLE |         TASK_FLAG_ACCESSES):
-            return (   sizeof(task_rec_info_t) +                          0 +                          0 +                          0 +                          0 +    sizeof(task_det_info_t) +    sizeof(task_acs_info_t)); // 1.0.0.0.0.1.1
-
-        case (                TASK_FLAG_RECORD |             TASK_FLAG_ZERO |             TASK_FLAG_ZERO |             TASK_FLAG_ZERO |           TASK_FLAG_DEVICE |             TASK_FLAG_ZERO |             TASK_FLAG_ZERO):
-            return (   sizeof(task_rec_info_t) +                          0 +                          0 +                          0 +    sizeof(task_dev_info_t) +                          0 +                          0); // 1.0.0.0.1.0.0
-
-        case (                TASK_FLAG_RECORD |             TASK_FLAG_ZERO |             TASK_FLAG_ZERO |             TASK_FLAG_ZERO |           TASK_FLAG_DEVICE |             TASK_FLAG_ZERO |         TASK_FLAG_ACCESSES):
-            return (   sizeof(task_rec_info_t) +                          0 +                          0 +                          0 +    sizeof(task_dev_info_t) +                          0 +    sizeof(task_acs_info_t)); // 1.0.0.0.1.0.1
-
-        case (                TASK_FLAG_RECORD |             TASK_FLAG_ZERO |             TASK_FLAG_ZERO |             TASK_FLAG_ZERO |           TASK_FLAG_DEVICE |       TASK_FLAG_DETACHABLE |             TASK_FLAG_ZERO):
-            return (   sizeof(task_rec_info_t) +                          0 +                          0 +                          0 +    sizeof(task_dev_info_t) +    sizeof(task_det_info_t) +                          0); // 1.0.0.0.1.1.0
-
-        case (                TASK_FLAG_RECORD |             TASK_FLAG_ZERO |             TASK_FLAG_ZERO |             TASK_FLAG_ZERO |           TASK_FLAG_DEVICE |       TASK_FLAG_DETACHABLE |         TASK_FLAG_ACCESSES):
-            return (   sizeof(task_rec_info_t) +                          0 +                          0 +                          0 +    sizeof(task_dev_info_t) +    sizeof(task_det_info_t) +    sizeof(task_acs_info_t)); // 1.0.0.0.1.1.1
-
-        case (                TASK_FLAG_RECORD |             TASK_FLAG_ZERO |             TASK_FLAG_ZERO |           TASK_FLAG_DOMAIN |             TASK_FLAG_ZERO |             TASK_FLAG_ZERO |             TASK_FLAG_ZERO):
-            return (   sizeof(task_rec_info_t) +                          0 +                          0 +    sizeof(task_dom_info_t) +                          0 +                          0 +                          0); // 1.0.0.1.0.0.0
-
-        case (                TASK_FLAG_RECORD |             TASK_FLAG_ZERO |             TASK_FLAG_ZERO |           TASK_FLAG_DOMAIN |             TASK_FLAG_ZERO |             TASK_FLAG_ZERO |         TASK_FLAG_ACCESSES):
-            return (   sizeof(task_rec_info_t) +                          0 +                          0 +    sizeof(task_dom_info_t) +                          0 +                          0 +    sizeof(task_acs_info_t)); // 1.0.0.1.0.0.1
-
-        case (                TASK_FLAG_RECORD |             TASK_FLAG_ZERO |             TASK_FLAG_ZERO |           TASK_FLAG_DOMAIN |             TASK_FLAG_ZERO |       TASK_FLAG_DETACHABLE |             TASK_FLAG_ZERO):
-            return (   sizeof(task_rec_info_t) +                          0 +                          0 +    sizeof(task_dom_info_t) +                          0 +    sizeof(task_det_info_t) +                          0); // 1.0.0.1.0.1.0
-
-        case (                TASK_FLAG_RECORD |             TASK_FLAG_ZERO |             TASK_FLAG_ZERO |           TASK_FLAG_DOMAIN |             TASK_FLAG_ZERO |       TASK_FLAG_DETACHABLE |         TASK_FLAG_ACCESSES):
-            return (   sizeof(task_rec_info_t) +                          0 +                          0 +    sizeof(task_dom_info_t) +                          0 +    sizeof(task_det_info_t) +    sizeof(task_acs_info_t)); // 1.0.0.1.0.1.1
-
-        case (                TASK_FLAG_RECORD |             TASK_FLAG_ZERO |             TASK_FLAG_ZERO |           TASK_FLAG_DOMAIN |           TASK_FLAG_DEVICE |             TASK_FLAG_ZERO |             TASK_FLAG_ZERO):
-            return (   sizeof(task_rec_info_t) +                          0 +                          0 +    sizeof(task_dom_info_t) +    sizeof(task_dev_info_t) +                          0 +                          0); // 1.0.0.1.1.0.0
-
-        case (                TASK_FLAG_RECORD |             TASK_FLAG_ZERO |             TASK_FLAG_ZERO |           TASK_FLAG_DOMAIN |           TASK_FLAG_DEVICE |             TASK_FLAG_ZERO |         TASK_FLAG_ACCESSES):
-            return (   sizeof(task_rec_info_t) +                          0 +                          0 +    sizeof(task_dom_info_t) +    sizeof(task_dev_info_t) +                          0 +    sizeof(task_acs_info_t)); // 1.0.0.1.1.0.1
-
-        case (                TASK_FLAG_RECORD |             TASK_FLAG_ZERO |             TASK_FLAG_ZERO |           TASK_FLAG_DOMAIN |           TASK_FLAG_DEVICE |       TASK_FLAG_DETACHABLE |             TASK_FLAG_ZERO):
-            return (   sizeof(task_rec_info_t) +                          0 +                          0 +    sizeof(task_dom_info_t) +    sizeof(task_dev_info_t) +    sizeof(task_det_info_t) +                          0); // 1.0.0.1.1.1.0
-
-        case (                TASK_FLAG_RECORD |             TASK_FLAG_ZERO |             TASK_FLAG_ZERO |           TASK_FLAG_DOMAIN |           TASK_FLAG_DEVICE |       TASK_FLAG_DETACHABLE |         TASK_FLAG_ACCESSES):
-            return (   sizeof(task_rec_info_t) +                          0 +                          0 +    sizeof(task_dom_info_t) +    sizeof(task_dev_info_t) +    sizeof(task_det_info_t) +    sizeof(task_acs_info_t)); // 1.0.0.1.1.1.1
-
-        case (                TASK_FLAG_RECORD |             TASK_FLAG_ZERO |         TASK_FLAG_MOLDABLE |             TASK_FLAG_ZERO |             TASK_FLAG_ZERO |             TASK_FLAG_ZERO |             TASK_FLAG_ZERO):
-            return (   sizeof(task_rec_info_t) +                          0 +    sizeof(task_mol_info_t) +                          0 +                          0 +                          0 +                          0); // 1.0.1.0.0.0.0
-
-        case (                TASK_FLAG_RECORD |             TASK_FLAG_ZERO |         TASK_FLAG_MOLDABLE |             TASK_FLAG_ZERO |             TASK_FLAG_ZERO |             TASK_FLAG_ZERO |         TASK_FLAG_ACCESSES):
-            return (   sizeof(task_rec_info_t) +                          0 +    sizeof(task_mol_info_t) +                          0 +                          0 +                          0 +    sizeof(task_acs_info_t)); // 1.0.1.0.0.0.1
-
-        case (                TASK_FLAG_RECORD |             TASK_FLAG_ZERO |         TASK_FLAG_MOLDABLE |             TASK_FLAG_ZERO |             TASK_FLAG_ZERO |       TASK_FLAG_DETACHABLE |             TASK_FLAG_ZERO):
-            return (   sizeof(task_rec_info_t) +                          0 +    sizeof(task_mol_info_t) +                          0 +                          0 +    sizeof(task_det_info_t) +                          0); // 1.0.1.0.0.1.0
-
-        case (                TASK_FLAG_RECORD |             TASK_FLAG_ZERO |         TASK_FLAG_MOLDABLE |             TASK_FLAG_ZERO |             TASK_FLAG_ZERO |       TASK_FLAG_DETACHABLE |         TASK_FLAG_ACCESSES):
-            return (   sizeof(task_rec_info_t) +                          0 +    sizeof(task_mol_info_t) +                          0 +                          0 +    sizeof(task_det_info_t) +    sizeof(task_acs_info_t)); // 1.0.1.0.0.1.1
-
-        case (                TASK_FLAG_RECORD |             TASK_FLAG_ZERO |         TASK_FLAG_MOLDABLE |             TASK_FLAG_ZERO |           TASK_FLAG_DEVICE |             TASK_FLAG_ZERO |             TASK_FLAG_ZERO):
-            return (   sizeof(task_rec_info_t) +                          0 +    sizeof(task_mol_info_t) +                          0 +    sizeof(task_dev_info_t) +                          0 +                          0); // 1.0.1.0.1.0.0
-
-        case (                TASK_FLAG_RECORD |             TASK_FLAG_ZERO |         TASK_FLAG_MOLDABLE |             TASK_FLAG_ZERO |           TASK_FLAG_DEVICE |             TASK_FLAG_ZERO |         TASK_FLAG_ACCESSES):
-            return (   sizeof(task_rec_info_t) +                          0 +    sizeof(task_mol_info_t) +                          0 +    sizeof(task_dev_info_t) +                          0 +    sizeof(task_acs_info_t)); // 1.0.1.0.1.0.1
-
-        case (                TASK_FLAG_RECORD |             TASK_FLAG_ZERO |         TASK_FLAG_MOLDABLE |             TASK_FLAG_ZERO |           TASK_FLAG_DEVICE |       TASK_FLAG_DETACHABLE |             TASK_FLAG_ZERO):
-            return (   sizeof(task_rec_info_t) +                          0 +    sizeof(task_mol_info_t) +                          0 +    sizeof(task_dev_info_t) +    sizeof(task_det_info_t) +                          0); // 1.0.1.0.1.1.0
-
-        case (                TASK_FLAG_RECORD |             TASK_FLAG_ZERO |         TASK_FLAG_MOLDABLE |             TASK_FLAG_ZERO |           TASK_FLAG_DEVICE |       TASK_FLAG_DETACHABLE |         TASK_FLAG_ACCESSES):
-            return (   sizeof(task_rec_info_t) +                          0 +    sizeof(task_mol_info_t) +                          0 +    sizeof(task_dev_info_t) +    sizeof(task_det_info_t) +    sizeof(task_acs_info_t)); // 1.0.1.0.1.1.1
-
-        case (                TASK_FLAG_RECORD |             TASK_FLAG_ZERO |         TASK_FLAG_MOLDABLE |           TASK_FLAG_DOMAIN |             TASK_FLAG_ZERO |             TASK_FLAG_ZERO |             TASK_FLAG_ZERO):
-            return (   sizeof(task_rec_info_t) +                          0 +    sizeof(task_mol_info_t) +    sizeof(task_dom_info_t) +                          0 +                          0 +                          0); // 1.0.1.1.0.0.0
-
-        case (                TASK_FLAG_RECORD |             TASK_FLAG_ZERO |         TASK_FLAG_MOLDABLE |           TASK_FLAG_DOMAIN |             TASK_FLAG_ZERO |             TASK_FLAG_ZERO |         TASK_FLAG_ACCESSES):
-            return (   sizeof(task_rec_info_t) +                          0 +    sizeof(task_mol_info_t) +    sizeof(task_dom_info_t) +                          0 +                          0 +    sizeof(task_acs_info_t)); // 1.0.1.1.0.0.1
-
-        case (                TASK_FLAG_RECORD |             TASK_FLAG_ZERO |         TASK_FLAG_MOLDABLE |           TASK_FLAG_DOMAIN |             TASK_FLAG_ZERO |       TASK_FLAG_DETACHABLE |             TASK_FLAG_ZERO):
-            return (   sizeof(task_rec_info_t) +                          0 +    sizeof(task_mol_info_t) +    sizeof(task_dom_info_t) +                          0 +    sizeof(task_det_info_t) +                          0); // 1.0.1.1.0.1.0
-
-        case (                TASK_FLAG_RECORD |             TASK_FLAG_ZERO |         TASK_FLAG_MOLDABLE |           TASK_FLAG_DOMAIN |             TASK_FLAG_ZERO |       TASK_FLAG_DETACHABLE |         TASK_FLAG_ACCESSES):
-            return (   sizeof(task_rec_info_t) +                          0 +    sizeof(task_mol_info_t) +    sizeof(task_dom_info_t) +                          0 +    sizeof(task_det_info_t) +    sizeof(task_acs_info_t)); // 1.0.1.1.0.1.1
-
-        case (                TASK_FLAG_RECORD |             TASK_FLAG_ZERO |         TASK_FLAG_MOLDABLE |           TASK_FLAG_DOMAIN |           TASK_FLAG_DEVICE |             TASK_FLAG_ZERO |             TASK_FLAG_ZERO):
-            return (   sizeof(task_rec_info_t) +                          0 +    sizeof(task_mol_info_t) +    sizeof(task_dom_info_t) +    sizeof(task_dev_info_t) +                          0 +                          0); // 1.0.1.1.1.0.0
-
-        case (                TASK_FLAG_RECORD |             TASK_FLAG_ZERO |         TASK_FLAG_MOLDABLE |           TASK_FLAG_DOMAIN |           TASK_FLAG_DEVICE |             TASK_FLAG_ZERO |         TASK_FLAG_ACCESSES):
-            return (   sizeof(task_rec_info_t) +                          0 +    sizeof(task_mol_info_t) +    sizeof(task_dom_info_t) +    sizeof(task_dev_info_t) +                          0 +    sizeof(task_acs_info_t)); // 1.0.1.1.1.0.1
-
-        case (                TASK_FLAG_RECORD |             TASK_FLAG_ZERO |         TASK_FLAG_MOLDABLE |           TASK_FLAG_DOMAIN |           TASK_FLAG_DEVICE |       TASK_FLAG_DETACHABLE |             TASK_FLAG_ZERO):
-            return (   sizeof(task_rec_info_t) +                          0 +    sizeof(task_mol_info_t) +    sizeof(task_dom_info_t) +    sizeof(task_dev_info_t) +    sizeof(task_det_info_t) +                          0); // 1.0.1.1.1.1.0
-
-        case (                TASK_FLAG_RECORD |             TASK_FLAG_ZERO |         TASK_FLAG_MOLDABLE |           TASK_FLAG_DOMAIN |           TASK_FLAG_DEVICE |       TASK_FLAG_DETACHABLE |         TASK_FLAG_ACCESSES):
-            return (   sizeof(task_rec_info_t) +                          0 +    sizeof(task_mol_info_t) +    sizeof(task_dom_info_t) +    sizeof(task_dev_info_t) +    sizeof(task_det_info_t) +    sizeof(task_acs_info_t)); // 1.0.1.1.1.1.1
-
-        case (                TASK_FLAG_RECORD |            TASK_FLAG_GRAPH |             TASK_FLAG_ZERO |             TASK_FLAG_ZERO |             TASK_FLAG_ZERO |             TASK_FLAG_ZERO |             TASK_FLAG_ZERO):
-            return (   sizeof(task_rec_info_t) +    sizeof(task_gph_info_t) +                          0 +                          0 +                          0 +                          0 +                          0); // 1.1.0.0.0.0.0
-
-        case (                TASK_FLAG_RECORD |            TASK_FLAG_GRAPH |             TASK_FLAG_ZERO |             TASK_FLAG_ZERO |             TASK_FLAG_ZERO |             TASK_FLAG_ZERO |         TASK_FLAG_ACCESSES):
-            return (   sizeof(task_rec_info_t) +    sizeof(task_gph_info_t) +                          0 +                          0 +                          0 +                          0 +    sizeof(task_acs_info_t)); // 1.1.0.0.0.0.1
-
-        case (                TASK_FLAG_RECORD |            TASK_FLAG_GRAPH |             TASK_FLAG_ZERO |             TASK_FLAG_ZERO |             TASK_FLAG_ZERO |       TASK_FLAG_DETACHABLE |             TASK_FLAG_ZERO):
-            return (   sizeof(task_rec_info_t) +    sizeof(task_gph_info_t) +                          0 +                          0 +                          0 +    sizeof(task_det_info_t) +                          0); // 1.1.0.0.0.1.0
-
-        case (                TASK_FLAG_RECORD |            TASK_FLAG_GRAPH |             TASK_FLAG_ZERO |             TASK_FLAG_ZERO |             TASK_FLAG_ZERO |       TASK_FLAG_DETACHABLE |         TASK_FLAG_ACCESSES):
-            return (   sizeof(task_rec_info_t) +    sizeof(task_gph_info_t) +                          0 +                          0 +                          0 +    sizeof(task_det_info_t) +    sizeof(task_acs_info_t)); // 1.1.0.0.0.1.1
-
-        case (                TASK_FLAG_RECORD |            TASK_FLAG_GRAPH |             TASK_FLAG_ZERO |             TASK_FLAG_ZERO |           TASK_FLAG_DEVICE |             TASK_FLAG_ZERO |             TASK_FLAG_ZERO):
-            return (   sizeof(task_rec_info_t) +    sizeof(task_gph_info_t) +                          0 +                          0 +    sizeof(task_dev_info_t) +                          0 +                          0); // 1.1.0.0.1.0.0
-
-        case (                TASK_FLAG_RECORD |            TASK_FLAG_GRAPH |             TASK_FLAG_ZERO |             TASK_FLAG_ZERO |           TASK_FLAG_DEVICE |             TASK_FLAG_ZERO |         TASK_FLAG_ACCESSES):
-            return (   sizeof(task_rec_info_t) +    sizeof(task_gph_info_t) +                          0 +                          0 +    sizeof(task_dev_info_t) +                          0 +    sizeof(task_acs_info_t)); // 1.1.0.0.1.0.1
-
-        case (                TASK_FLAG_RECORD |            TASK_FLAG_GRAPH |             TASK_FLAG_ZERO |             TASK_FLAG_ZERO |           TASK_FLAG_DEVICE |       TASK_FLAG_DETACHABLE |             TASK_FLAG_ZERO):
-            return (   sizeof(task_rec_info_t) +    sizeof(task_gph_info_t) +                          0 +                          0 +    sizeof(task_dev_info_t) +    sizeof(task_det_info_t) +                          0); // 1.1.0.0.1.1.0
-
-        case (                TASK_FLAG_RECORD |            TASK_FLAG_GRAPH |             TASK_FLAG_ZERO |             TASK_FLAG_ZERO |           TASK_FLAG_DEVICE |       TASK_FLAG_DETACHABLE |         TASK_FLAG_ACCESSES):
-            return (   sizeof(task_rec_info_t) +    sizeof(task_gph_info_t) +                          0 +                          0 +    sizeof(task_dev_info_t) +    sizeof(task_det_info_t) +    sizeof(task_acs_info_t)); // 1.1.0.0.1.1.1
-
-        case (                TASK_FLAG_RECORD |            TASK_FLAG_GRAPH |             TASK_FLAG_ZERO |           TASK_FLAG_DOMAIN |             TASK_FLAG_ZERO |             TASK_FLAG_ZERO |             TASK_FLAG_ZERO):
-            return (   sizeof(task_rec_info_t) +    sizeof(task_gph_info_t) +                          0 +    sizeof(task_dom_info_t) +                          0 +                          0 +                          0); // 1.1.0.1.0.0.0
-
-        case (                TASK_FLAG_RECORD |            TASK_FLAG_GRAPH |             TASK_FLAG_ZERO |           TASK_FLAG_DOMAIN |             TASK_FLAG_ZERO |             TASK_FLAG_ZERO |         TASK_FLAG_ACCESSES):
-            return (   sizeof(task_rec_info_t) +    sizeof(task_gph_info_t) +                          0 +    sizeof(task_dom_info_t) +                          0 +                          0 +    sizeof(task_acs_info_t)); // 1.1.0.1.0.0.1
-
-        case (                TASK_FLAG_RECORD |            TASK_FLAG_GRAPH |             TASK_FLAG_ZERO |           TASK_FLAG_DOMAIN |             TASK_FLAG_ZERO |       TASK_FLAG_DETACHABLE |             TASK_FLAG_ZERO):
-            return (   sizeof(task_rec_info_t) +    sizeof(task_gph_info_t) +                          0 +    sizeof(task_dom_info_t) +                          0 +    sizeof(task_det_info_t) +                          0); // 1.1.0.1.0.1.0
-
-        case (                TASK_FLAG_RECORD |            TASK_FLAG_GRAPH |             TASK_FLAG_ZERO |           TASK_FLAG_DOMAIN |             TASK_FLAG_ZERO |       TASK_FLAG_DETACHABLE |         TASK_FLAG_ACCESSES):
-            return (   sizeof(task_rec_info_t) +    sizeof(task_gph_info_t) +                          0 +    sizeof(task_dom_info_t) +                          0 +    sizeof(task_det_info_t) +    sizeof(task_acs_info_t)); // 1.1.0.1.0.1.1
-
-        case (                TASK_FLAG_RECORD |            TASK_FLAG_GRAPH |             TASK_FLAG_ZERO |           TASK_FLAG_DOMAIN |           TASK_FLAG_DEVICE |             TASK_FLAG_ZERO |             TASK_FLAG_ZERO):
-            return (   sizeof(task_rec_info_t) +    sizeof(task_gph_info_t) +                          0 +    sizeof(task_dom_info_t) +    sizeof(task_dev_info_t) +                          0 +                          0); // 1.1.0.1.1.0.0
-
-        case (                TASK_FLAG_RECORD |            TASK_FLAG_GRAPH |             TASK_FLAG_ZERO |           TASK_FLAG_DOMAIN |           TASK_FLAG_DEVICE |             TASK_FLAG_ZERO |         TASK_FLAG_ACCESSES):
-            return (   sizeof(task_rec_info_t) +    sizeof(task_gph_info_t) +                          0 +    sizeof(task_dom_info_t) +    sizeof(task_dev_info_t) +                          0 +    sizeof(task_acs_info_t)); // 1.1.0.1.1.0.1
-
-        case (                TASK_FLAG_RECORD |            TASK_FLAG_GRAPH |             TASK_FLAG_ZERO |           TASK_FLAG_DOMAIN |           TASK_FLAG_DEVICE |       TASK_FLAG_DETACHABLE |             TASK_FLAG_ZERO):
-            return (   sizeof(task_rec_info_t) +    sizeof(task_gph_info_t) +                          0 +    sizeof(task_dom_info_t) +    sizeof(task_dev_info_t) +    sizeof(task_det_info_t) +                          0); // 1.1.0.1.1.1.0
-
-        case (                TASK_FLAG_RECORD |            TASK_FLAG_GRAPH |             TASK_FLAG_ZERO |           TASK_FLAG_DOMAIN |           TASK_FLAG_DEVICE |       TASK_FLAG_DETACHABLE |         TASK_FLAG_ACCESSES):
-            return (   sizeof(task_rec_info_t) +    sizeof(task_gph_info_t) +                          0 +    sizeof(task_dom_info_t) +    sizeof(task_dev_info_t) +    sizeof(task_det_info_t) +    sizeof(task_acs_info_t)); // 1.1.0.1.1.1.1
-
-        case (                TASK_FLAG_RECORD |            TASK_FLAG_GRAPH |         TASK_FLAG_MOLDABLE |             TASK_FLAG_ZERO |             TASK_FLAG_ZERO |             TASK_FLAG_ZERO |             TASK_FLAG_ZERO):
-            return (   sizeof(task_rec_info_t) +    sizeof(task_gph_info_t) +    sizeof(task_mol_info_t) +                          0 +                          0 +                          0 +                          0); // 1.1.1.0.0.0.0
-
-        case (                TASK_FLAG_RECORD |            TASK_FLAG_GRAPH |         TASK_FLAG_MOLDABLE |             TASK_FLAG_ZERO |             TASK_FLAG_ZERO |             TASK_FLAG_ZERO |         TASK_FLAG_ACCESSES):
-            return (   sizeof(task_rec_info_t) +    sizeof(task_gph_info_t) +    sizeof(task_mol_info_t) +                          0 +                          0 +                          0 +    sizeof(task_acs_info_t)); // 1.1.1.0.0.0.1
-
-        case (                TASK_FLAG_RECORD |            TASK_FLAG_GRAPH |         TASK_FLAG_MOLDABLE |             TASK_FLAG_ZERO |             TASK_FLAG_ZERO |       TASK_FLAG_DETACHABLE |             TASK_FLAG_ZERO):
-            return (   sizeof(task_rec_info_t) +    sizeof(task_gph_info_t) +    sizeof(task_mol_info_t) +                          0 +                          0 +    sizeof(task_det_info_t) +                          0); // 1.1.1.0.0.1.0
-
-        case (                TASK_FLAG_RECORD |            TASK_FLAG_GRAPH |         TASK_FLAG_MOLDABLE |             TASK_FLAG_ZERO |             TASK_FLAG_ZERO |       TASK_FLAG_DETACHABLE |         TASK_FLAG_ACCESSES):
-            return (   sizeof(task_rec_info_t) +    sizeof(task_gph_info_t) +    sizeof(task_mol_info_t) +                          0 +                          0 +    sizeof(task_det_info_t) +    sizeof(task_acs_info_t)); // 1.1.1.0.0.1.1
-
-        case (                TASK_FLAG_RECORD |            TASK_FLAG_GRAPH |         TASK_FLAG_MOLDABLE |             TASK_FLAG_ZERO |           TASK_FLAG_DEVICE |             TASK_FLAG_ZERO |             TASK_FLAG_ZERO):
-            return (   sizeof(task_rec_info_t) +    sizeof(task_gph_info_t) +    sizeof(task_mol_info_t) +                          0 +    sizeof(task_dev_info_t) +                          0 +                          0); // 1.1.1.0.1.0.0
-
-        case (                TASK_FLAG_RECORD |            TASK_FLAG_GRAPH |         TASK_FLAG_MOLDABLE |             TASK_FLAG_ZERO |           TASK_FLAG_DEVICE |             TASK_FLAG_ZERO |         TASK_FLAG_ACCESSES):
-            return (   sizeof(task_rec_info_t) +    sizeof(task_gph_info_t) +    sizeof(task_mol_info_t) +                          0 +    sizeof(task_dev_info_t) +                          0 +    sizeof(task_acs_info_t)); // 1.1.1.0.1.0.1
-
-        case (                TASK_FLAG_RECORD |            TASK_FLAG_GRAPH |         TASK_FLAG_MOLDABLE |             TASK_FLAG_ZERO |           TASK_FLAG_DEVICE |       TASK_FLAG_DETACHABLE |             TASK_FLAG_ZERO):
-            return (   sizeof(task_rec_info_t) +    sizeof(task_gph_info_t) +    sizeof(task_mol_info_t) +                          0 +    sizeof(task_dev_info_t) +    sizeof(task_det_info_t) +                          0); // 1.1.1.0.1.1.0
-
-        case (                TASK_FLAG_RECORD |            TASK_FLAG_GRAPH |         TASK_FLAG_MOLDABLE |             TASK_FLAG_ZERO |           TASK_FLAG_DEVICE |       TASK_FLAG_DETACHABLE |         TASK_FLAG_ACCESSES):
-            return (   sizeof(task_rec_info_t) +    sizeof(task_gph_info_t) +    sizeof(task_mol_info_t) +                          0 +    sizeof(task_dev_info_t) +    sizeof(task_det_info_t) +    sizeof(task_acs_info_t)); // 1.1.1.0.1.1.1
-
-        case (                TASK_FLAG_RECORD |            TASK_FLAG_GRAPH |         TASK_FLAG_MOLDABLE |           TASK_FLAG_DOMAIN |             TASK_FLAG_ZERO |             TASK_FLAG_ZERO |             TASK_FLAG_ZERO):
-            return (   sizeof(task_rec_info_t) +    sizeof(task_gph_info_t) +    sizeof(task_mol_info_t) +    sizeof(task_dom_info_t) +                          0 +                          0 +                          0); // 1.1.1.1.0.0.0
-
-        case (                TASK_FLAG_RECORD |            TASK_FLAG_GRAPH |         TASK_FLAG_MOLDABLE |           TASK_FLAG_DOMAIN |             TASK_FLAG_ZERO |             TASK_FLAG_ZERO |         TASK_FLAG_ACCESSES):
-            return (   sizeof(task_rec_info_t) +    sizeof(task_gph_info_t) +    sizeof(task_mol_info_t) +    sizeof(task_dom_info_t) +                          0 +                          0 +    sizeof(task_acs_info_t)); // 1.1.1.1.0.0.1
-
-        case (                TASK_FLAG_RECORD |            TASK_FLAG_GRAPH |         TASK_FLAG_MOLDABLE |           TASK_FLAG_DOMAIN |             TASK_FLAG_ZERO |       TASK_FLAG_DETACHABLE |             TASK_FLAG_ZERO):
-            return (   sizeof(task_rec_info_t) +    sizeof(task_gph_info_t) +    sizeof(task_mol_info_t) +    sizeof(task_dom_info_t) +                          0 +    sizeof(task_det_info_t) +                          0); // 1.1.1.1.0.1.0
-
-        case (                TASK_FLAG_RECORD |            TASK_FLAG_GRAPH |         TASK_FLAG_MOLDABLE |           TASK_FLAG_DOMAIN |             TASK_FLAG_ZERO |       TASK_FLAG_DETACHABLE |         TASK_FLAG_ACCESSES):
-            return (   sizeof(task_rec_info_t) +    sizeof(task_gph_info_t) +    sizeof(task_mol_info_t) +    sizeof(task_dom_info_t) +                          0 +    sizeof(task_det_info_t) +    sizeof(task_acs_info_t)); // 1.1.1.1.0.1.1
-
-        case (                TASK_FLAG_RECORD |            TASK_FLAG_GRAPH |         TASK_FLAG_MOLDABLE |           TASK_FLAG_DOMAIN |           TASK_FLAG_DEVICE |             TASK_FLAG_ZERO |             TASK_FLAG_ZERO):
-            return (   sizeof(task_rec_info_t) +    sizeof(task_gph_info_t) +    sizeof(task_mol_info_t) +    sizeof(task_dom_info_t) +    sizeof(task_dev_info_t) +                          0 +                          0); // 1.1.1.1.1.0.0
-
-        case (                TASK_FLAG_RECORD |            TASK_FLAG_GRAPH |         TASK_FLAG_MOLDABLE |           TASK_FLAG_DOMAIN |           TASK_FLAG_DEVICE |             TASK_FLAG_ZERO |         TASK_FLAG_ACCESSES):
-            return (   sizeof(task_rec_info_t) +    sizeof(task_gph_info_t) +    sizeof(task_mol_info_t) +    sizeof(task_dom_info_t) +    sizeof(task_dev_info_t) +                          0 +    sizeof(task_acs_info_t)); // 1.1.1.1.1.0.1
-
-        case (                TASK_FLAG_RECORD |            TASK_FLAG_GRAPH |         TASK_FLAG_MOLDABLE |           TASK_FLAG_DOMAIN |           TASK_FLAG_DEVICE |       TASK_FLAG_DETACHABLE |             TASK_FLAG_ZERO):
-            return (   sizeof(task_rec_info_t) +    sizeof(task_gph_info_t) +    sizeof(task_mol_info_t) +    sizeof(task_dom_info_t) +    sizeof(task_dev_info_t) +    sizeof(task_det_info_t) +                          0); // 1.1.1.1.1.1.0
-
-        case (                TASK_FLAG_RECORD |            TASK_FLAG_GRAPH |         TASK_FLAG_MOLDABLE |           TASK_FLAG_DOMAIN |           TASK_FLAG_DEVICE |       TASK_FLAG_DETACHABLE |         TASK_FLAG_ACCESSES):
-            return (   sizeof(task_rec_info_t) +    sizeof(task_gph_info_t) +    sizeof(task_mol_info_t) +    sizeof(task_dom_info_t) +    sizeof(task_dev_info_t) +    sizeof(task_det_info_t) +    sizeof(task_acs_info_t)); // 1.1.1.1.1.1.1
-
-        default:
-            return task_get_base_size_fallback(flags);
-    }
+    // XKRT invariant: a task cannot be both a dependency domain and a device task
+    assert(!((flags & TASK_FLAG_DOMAIN) && (flags & TASK_FLAG_DEVICE)));
+
+    size_t size = 0;
+    if (flags & TASK_FLAG_ACCESSES) size += sizeof(task_acs_info_t);
+    if (flags & TASK_FLAG_DETACHABLE) size += sizeof(task_det_info_t);
+    if (flags & TASK_FLAG_DEVICE) size += sizeof(task_dev_info_t);
+    if (flags & TASK_FLAG_DOMAIN) size += sizeof(task_dom_info_t);
+    if (flags & TASK_FLAG_MOLDABLE) size += sizeof(task_mol_info_t);
+    if (flags & TASK_FLAG_GRAPH) size += sizeof(task_gph_info_t);
+    if (flags & TASK_FLAG_RECORD) size += sizeof(task_rec_info_t);
+    if (flags & TASK_FLAG_TASKGROUP) size += sizeof(task_grp_info_t);
+    return size;
 }
 
 static constexpr task_acs_info_t *
@@ -869,6 +515,33 @@ static inline task_rec_info_t *
 TASK_REC_INFO(const task_t * task)
 {
     return TASK_REC_INFO(task, task->flags);
+}
+
+static constexpr task_grp_info_t *
+TASK_GRP_INFO(const task_t * task, const task_flag_bitfield_t flags)
+{
+    assert(flags & TASK_FLAG_TASKGROUP);
+    if (flags & TASK_FLAG_RECORD)
+        return (task_grp_info_t *) (TASK_REC_INFO(task, flags) + 1);
+    if (flags & TASK_FLAG_GRAPH)
+        return (task_grp_info_t *) (TASK_GPH_INFO(task, flags) + 1);
+    if (flags & TASK_FLAG_MOLDABLE)
+        return (task_grp_info_t *) (TASK_MOL_INFO(task, flags) + 1);
+    if (flags & TASK_FLAG_DOMAIN)
+        return (task_grp_info_t *) (TASK_DOM_INFO(task, flags) + 1);
+    if (flags & TASK_FLAG_DEVICE)
+        return (task_grp_info_t *) (TASK_DEV_INFO(task, flags) + 1);
+    if (flags & TASK_FLAG_DETACHABLE)
+        return (task_grp_info_t *) (TASK_DET_INFO(task, flags) + 1);
+    if (flags & TASK_FLAG_ACCESSES)
+        return (task_grp_info_t *) (TASK_ACS_INFO(task, flags) + 1);
+    return (task_grp_info_t *) (task + 1);
+}
+
+static inline task_grp_info_t *
+TASK_GRP_INFO(const task_t * task)
+{
+    return TASK_GRP_INFO(task, task->flags);
 }
 
 //////////////////////////////////

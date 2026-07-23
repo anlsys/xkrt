@@ -56,17 +56,18 @@ typedef enum    xkrt_task_flags_t
     TASK_FLAG_MOLDABLE              = (1 <<  4),    // may be split
     TASK_FLAG_GRAPH                 = (1 <<  5),    // children tasks must be recorded
     TASK_FLAG_RECORD                = (1 <<  6),    // has a record - which implies buffering of emitted command
+    TASK_FLAG_TASKGROUP             = (1 <<  7),    // bound to a taskgroup (see task_grp_info_t / taskgroup_t)
 
     // These flags are run-time indicators
     // They can be dynamically set/unset, even after task creation
 
-    TASK_FLAG_GRAPH_RECORDING       = (1 <<  7),    // currently recording a graph
-    TASK_FLAG_GRAPH_EXECUTE_COMMAND = (1 <<  8),    // recorded commands are also executed
-    TASK_FLAG_REQUEUE               = (1 <<  9),    // must be re-queued after returning from its routine
+    TASK_FLAG_GRAPH_RECORDING       = (1 <<  8),    // currently recording a graph
+    TASK_FLAG_GRAPH_EXECUTE_COMMAND = (1 <<  9),    // recorded commands are also executed
+    TASK_FLAG_REQUEUE               = (1 << 10),    // must be re-queued after returning from its routine
 
     // Use for debugging
 
-    TASK_FLAG_MAX                   = (1 << 10)
+    TASK_FLAG_MAX                   = (1 << 11)
 
     // support me in the future
       // TASK_FLAG_CANCEL        = (1 << X), // cancelled

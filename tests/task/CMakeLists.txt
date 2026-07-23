@@ -20,6 +20,9 @@ xkrt_add_test(NAME task-moldable-split     SOURCE task-moldable-split.cc     LAB
 # --- detachable tasks (completion gated on a reference counter) ---
 xkrt_add_test(NAME task-detachable SOURCE task-detachable.cc LABELS task detachable)
 
+# --- taskgroup (deep synchronization of a task subtree) ---
+xkrt_add_test(NAME taskgroup SOURCE taskgroup.cc LABELS task taskgroup)
+
 # --- recursive tasking (fibonacci) ---
 # these are tasking stress benchmarks; run a small input so they stay well
 # within the default timeout (correctness is checked for any N).

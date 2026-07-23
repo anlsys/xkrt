@@ -100,6 +100,13 @@ struct alignas(xkrt_pagesize) thread_t
         /* the current task record */
         task_t * current_task_record;
 
+        /* the innermost taskgroup active on this thread's current execution
+         * context (NULL if none). Read when a task is created to bind it to its
+         * group, and re-installed from a task's group while its body runs (see
+         * task_execute) so descendants created on any worker inherit the group.
+         * Pushed/popped by runtime_t::taskgroup_begin / taskgroup_end. */
+        taskgroup_t * current_taskgroup;
+
         # if XKRT_SUPPORT_DEBUG
         std::vector<task_t *> tasks;
         # endif /* XKRT_SUPPORT_DEBUG */
@@ -175,6 +182,7 @@ struct alignas(xkrt_pagesize) thread_t
             // set current task
             this->current_task = &this->implicit_task;
             this->current_task_record = NULL;
+            this->current_taskgroup = NULL;
 
             // initialize sync primitives
             pthread_mutex_init(&this->sleep.lock, 0);
