@@ -633,6 +633,32 @@ XKRT_DRIVER_ENTRYPOINT(command_queue_suggest)(
     }
 }
 
+/* A JIT-fused device kernel arrives as PTX in the PROG source with the launcher fn
+ * unresolved (cgir's jit pass emits PTX; the driver compiles it). On first launch,
+ * load the PTX module (the CUDA driver JIT-compiles it to SASS) and resolve the
+ * entry (source.symbol), caching the CUfunction in the launcher so replays reuse
+ * it. The module is kept for the process lifetime (as the host JIT does). A no-op
+ * for precompiled device kernels (fn already set) and non-PTX sources. */
+static void
+cu_ensure_prog_loaded(device_driver_id_t device_driver_id, cgir::command_t * command)
+{
+    auto & prog = command->prog;
+    if (prog.launcher.variadic.fn != NULL)
+        return ;
+    if (prog.source.type != cgir::COMMAND_PROG_SOURCE_TYPE_PTX ||
+        prog.source.content.llvmir.raw == NULL)
+        return ;
+
+    cu_set_context(device_driver_id);
+    CUmodule mod = NULL;
+    CU_SAFE_CALL(cuModuleLoadData(&mod, prog.source.content.llvmir.raw));
+    const char * sym = prog.source.content.llvmir.symbol
+        ? prog.source.content.llvmir.symbol : "__fused_wrapper";
+    CUfunction fn = NULL;
+    CU_SAFE_CALL(cuModuleGetFunction(&fn, mod, sym));
+    prog.launcher.variadic.fn = reinterpret_cast<void (*)(void **)>(fn);
+}
+
 /* Return a handle to the druver's internal representation of the batch */
 void *
 xkrt_cuda_driver_command_batch_init(
@@ -697,6 +723,9 @@ xkrt_cuda_driver_command_batch_init(
                     {
                         CUDA_KERNEL_NODE_PARAMS params;
                         memset(&params, 0, sizeof(params));
+                        /* JIT-fused device kernels arrive as PTX: load + resolve on
+                         * first use (no-op otherwise). */
+                        cu_ensure_prog_loaded(device_driver_id, command);
                         /* fn is CGIR's uniform void(void**) program pointer; for a
                          * device kernel it actually holds the CUfunction handle
                          * (function<->object pointer reinterpret is POSIX-safe). */
@@ -948,6 +977,10 @@ XKRT_DRIVER_ENTRYPOINT(command_launch_with_stream)(
         case (cgir::COMMAND_TYPE_PROG):
         {
             constexpr size_t sharedmemory = 0;
+
+            /* JIT-fused device kernels arrive as PTX: load + resolve on first use
+             * (no-op for precompiled kernels / non-PTX sources). */
+            cu_ensure_prog_loaded(device_driver_id, command);
 
             /* Two arg forms (see command_prog_function_prototype_t):
              *  - VARIADIC: `args` is the kernelParams pointer array.
