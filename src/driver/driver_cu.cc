@@ -788,12 +788,12 @@ xkrt_cuda_driver_command_batch_init(
                         CUDA_MEMCPY3D cpy = {0};
 
                         cpy.srcMemoryType = CU_MEMORYTYPE_DEVICE;
-                        cpy.srcDevice     = (CUdeviceptr) command->copy_1D.dst_device_addr;
+                        cpy.srcDevice     = (CUdeviceptr) command->copy_1D.src_device_addr;
                         cpy.srcPitch      = command->copy_1D.size;
                         cpy.srcHeight     = 1;
 
                         cpy.dstMemoryType = CU_MEMORYTYPE_HOST;
-                        cpy.dstHost       = (void *) command->copy_1D.src_device_addr;
+                        cpy.dstHost       = (void *) command->copy_1D.dst_device_addr;
                         cpy.dstPitch      = command->copy_1D.size;
                         cpy.dstHeight     = 1;
 
