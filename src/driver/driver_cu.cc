@@ -651,7 +651,27 @@ cu_ensure_prog_loaded(device_driver_id_t device_driver_id, cgir::command_t * com
 
     cu_set_context(device_driver_id);
     CUmodule mod = NULL;
-    CU_SAFE_CALL(cuModuleLoadData(&mod, prog.source.content.llvmir.raw));
+    /* Load via cuModuleLoadDataEx with JIT log buffers so a PTX compile/link
+     * failure (e.g. an unresolved extern such as __kmpc_target_init from the
+     * OpenMP device runtime) is reported with the ptxas diagnostic instead of an
+     * opaque CUDA_ERROR_INVALID_PTX (218). */
+    char jit_info[8192]; jit_info[0] = '\0';
+    char jit_err [8192]; jit_err [0] = '\0';
+    CUjit_option jit_opts[] = {
+        CU_JIT_INFO_LOG_BUFFER,  CU_JIT_INFO_LOG_BUFFER_SIZE_BYTES,
+        CU_JIT_ERROR_LOG_BUFFER, CU_JIT_ERROR_LOG_BUFFER_SIZE_BYTES,
+    };
+    void * jit_optvals[] = {
+        (void *) jit_info, (void *) (uintptr_t) sizeof(jit_info),
+        (void *) jit_err,  (void *) (uintptr_t) sizeof(jit_err),
+    };
+    CUresult lres = cuModuleLoadDataEx(&mod, prog.source.content.llvmir.raw,
+        (unsigned int) (sizeof(jit_opts) / sizeof(jit_opts[0])), jit_opts, jit_optvals);
+    if (lres != CUDA_SUCCESS)
+        LOGGER_FATAL("cuModuleLoadDataEx failed (%d) for JIT'd device program:\n%s%s",
+            (int) lres,
+            jit_err[0]  ? jit_err  : "(no JIT error log)\n",
+            jit_info[0] ? jit_info : "");
     const char * sym = prog.source.content.llvmir.symbol
         ? prog.source.content.llvmir.symbol : "__fused_wrapper";
     CUfunction fn = NULL;
