@@ -64,14 +64,14 @@ typedef enum    xkrt_task_flags_t
     TASK_FLAG_GRAPH_RECORDING       = (1 <<  8),    // currently recording a graph
     TASK_FLAG_GRAPH_EXECUTE_COMMAND = (1 <<  9),    // recorded commands are also executed
     TASK_FLAG_REQUEUE               = (1 << 10),    // must be re-queued after returning from its routine
+    TASK_FLAG_UNDEFERABLE           = (1 << 11),    // undeferred task (OpenMP `if(0)`): scheduled normally (any thread may run it), but the encountering thread suspends until it completed (see runtime_t::task_wait(task_t*))
 
     // Use for debugging
 
-    TASK_FLAG_MAX                   = (1 << 11)
+    TASK_FLAG_MAX                   = (1 << 12)
 
     // support me in the future
       // TASK_FLAG_CANCEL        = (1 << X), // cancelled
-      // TASK_FLAG_UNDEFERED     = (1 << Y), // suspend the current task execution until that task completed
       // TASK_FLAG_PERSISTENT    = (1 << Z), // persistence
 
 }               xkrt_task_flags_t;

@@ -767,6 +767,12 @@ struct  runtime_t
     /* wait for children tasks of the current task to complete */
     void task_wait(void);
 
+    /* block (work-stealing meanwhile) until a SPECIFIC task has completed. The
+     * task follows the normal scheduling path -- any thread may execute it -- so
+     * this is used e.g. for OpenMP undeferred tasks (`if(0)`): the encountering
+     * thread commits the task normally, then suspends here until it completed. */
+    void task_wait(task_t * task);
+
     /* open a taskgroup region on the calling thread: subsequently created tasks
      * (and their descendants) are bound to it */
     void taskgroup_begin(void);
