@@ -106,10 +106,10 @@ var menudata={children:[
 {text:"File Members",url:"globals.html",children:[
 {text:"All",url:"globals.html",children:[
 {text:"_",url:"globals.html#index__5F"},
-{text:"a",url:"globals.html#index_a"},
-{text:"c",url:"globals.html#index_c"},
-{text:"t",url:"globals.html#index_t"},
-{text:"x",url:"globals.html#index_x"}]},
+{text:"a",url:"globals_a.html#index_a"},
+{text:"c",url:"globals_c.html#index_c"},
+{text:"t",url:"globals_t.html#index_t"},
+{text:"x",url:"globals_x.html#index_x"}]},
 {text:"Functions",url:"globals_func.html",children:[
 {text:"x",url:"globals_func.html#index_x"}]},
 {text:"Typedefs",url:"globals_type.html"},

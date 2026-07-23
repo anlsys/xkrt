@@ -23,6 +23,7 @@ var structxkrt_1_1driver__t =
     [ "f_device_cpuset", "structxkrt_1_1driver__t.html#aafdbaeffb8d9ee13b44c56868a0c62f3", null ],
     [ "f_device_create", "structxkrt_1_1driver__t.html#af5d531f8edd33b1d2f72c33f3d1ec6a2", null ],
     [ "f_device_destroy", "structxkrt_1_1driver__t.html#af4fa8cec12e8ccbfa5aacdd49205ce06", null ],
+    [ "f_device_get_target", "structxkrt_1_1driver__t.html#a341ec4c4f4bc07b9c4504f76b2955571", null ],
     [ "f_device_info", "structxkrt_1_1driver__t.html#a71b48ded4913ed088b302c30779db174", null ],
     [ "f_device_init", "structxkrt_1_1driver__t.html#ac811ebf3b454e37cb465ecee040c9721", null ],
     [ "f_finalize", "structxkrt_1_1driver__t.html#af506fa8930632607509bff9cfb303004", null ],

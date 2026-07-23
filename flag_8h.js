@@ -11,9 +11,11 @@ var flag_8h =
       [ "TASK_FLAG_MOLDABLE", "flag_8h.html#a46cf87370af170b282b31fcfb2309d8da12bea0ae6a92ac8d08d162d5ffbdae2c", null ],
       [ "TASK_FLAG_GRAPH", "flag_8h.html#a46cf87370af170b282b31fcfb2309d8da45fcb065726fa2f8381cc2d06fae964e", null ],
       [ "TASK_FLAG_RECORD", "flag_8h.html#a46cf87370af170b282b31fcfb2309d8dacc5299d16ad02c794c08b45609270837", null ],
+      [ "TASK_FLAG_TASKGROUP", "flag_8h.html#a46cf87370af170b282b31fcfb2309d8da6dab36952d4a12688d3dbcc8766be8f3", null ],
       [ "TASK_FLAG_GRAPH_RECORDING", "flag_8h.html#a46cf87370af170b282b31fcfb2309d8da8826c8b2b3d84ad23fa119a10f651019", null ],
       [ "TASK_FLAG_GRAPH_EXECUTE_COMMAND", "flag_8h.html#a46cf87370af170b282b31fcfb2309d8daaf15f4d0d8ceede9ad20a7da2b2d57c8", null ],
       [ "TASK_FLAG_REQUEUE", "flag_8h.html#a46cf87370af170b282b31fcfb2309d8da4a4dfbfda7d66a246c1505d7117bc5a3", null ],
+      [ "TASK_FLAG_UNDEFERABLE", "flag_8h.html#a46cf87370af170b282b31fcfb2309d8da311a1dbdba24b3093e4777413085d702", null ],
       [ "TASK_FLAG_MAX", "flag_8h.html#a46cf87370af170b282b31fcfb2309d8dacc036ce06bd8ec4a9db5d21880020b51", null ]
     ] ]
 ];
