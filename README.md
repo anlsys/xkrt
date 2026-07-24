@@ -23,11 +23,12 @@ Other repository hosts specialization layers built on top of the runtime:
 
 Compatible branches for each software
 
-| LLVM(ANL)      | CGIR         | XKRT           | XKBlas         | XKOMP        | Description        |
-| :------------- | :----------- | :------------- | :------------- | :----------- | :------------------|
-| release/v1.2.0 | release/v0.4 | release/v1.2.0 | N/A            | release/v0.3 | CGIR JIT (PTX)     |
-| release/v1.1.0 | release/v0.3 | release/v1.1.0 | N/A            | release/v0.2 | CGIR JIT (LLVMIR)  |
-| release/v1.0.0 | release/v0.2 | release/v1.0.3 | release/v2.0.3 | release/v0.1 | First stable       |
+| LLVM(ANL)      | CGIR         | XKRT           | XKBlas         | XKOMP        | XK.jl              | Description        |
+| :------------- | :----------- | :------------- | :------------- | :----------- | :------------------| :------------------|
+| release/v1.2.0 | release/v0.4 | release/v1.2.0 | N/A            | release/v0.3 | N/A                | CGIR JIT (PTX)     |
+| release/v1.1.0 | release/v0.3 | release/v1.1.0 | N/A            | release/v0.2 | N/A                | CGIR JIT (LLVMIR)  |
+| release/v1.0.0 | release/v0.2 | release/v1.0.3 | release/v2.0.3 | release/v0.1 | N/A                | First stable       |
+| N/A            | N/A          | release/v1.0.2 | release/v2.0.2 | N/A          | release/v1.0       | XK.jl release      |
 
 # Installation
 
