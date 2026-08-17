@@ -342,6 +342,8 @@ Public Member Functions</h2></td></tr>
 <tr class="memitem:a292e3e1eacdbb8d8fb95d09dcc052dd8"><td class="memTemplItemLeft" align="right" valign="top"><a class="el" href="structxkrt_1_1runtime__t.html#add93925e88380913859ca1c8c0b96611">void</a>&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="structxkrt_1_1runtime__t.html#a292e3e1eacdbb8d8fb95d09dcc052dd8">team_task_spawn</a> (<a class="el" href="structxkrt_1_1runtime__t.html#add93925e88380913859ca1c8c0b96611">team_t</a> *team, <a class="el" href="structxkrt_1_1runtime__t.html#add93925e88380913859ca1c8c0b96611">const</a> <a class="el" href="namespacexkrt.html#a1a1e98dcb6976b625ebe34485d97e277">device_unique_id_t</a> <a class="el" href="structxkrt_1_1runtime__t.html#add93925e88380913859ca1c8c0b96611">device_unique_id</a>, <a class="el" href="structxkrt_1_1runtime__t.html#add93925e88380913859ca1c8c0b96611">const</a> <a class="el" href="namespacexkrt.html#a7535f08cfb7c45101bc9f2eec32e6acc">task_access_counter_t</a> <a class="el" href="structxkrt_1_1runtime__t.html#add93925e88380913859ca1c8c0b96611">ac</a>, <a class="el" href="structxkrt_1_1runtime__t.html#add93925e88380913859ca1c8c0b96611">const</a> <a class="el" href="structxkrt_1_1runtime__t.html#a3c65166cb6913648afcc9eba67fcc46f">task_accesses_setter_t</a> &amp;<a class="el" href="structxkrt_1_1runtime__t.html#add93925e88380913859ca1c8c0b96611">set_accesses</a>, <a class="el" href="structxkrt_1_1runtime__t.html#add93925e88380913859ca1c8c0b96611">const</a> <a class="el" href="structxkrt_1_1runtime__t.html#a3790fd79b1e3de2aecd41507626e4522">task_split_condition_t</a> &amp;<a class="el" href="structxkrt_1_1runtime__t.html#add93925e88380913859ca1c8c0b96611">split_condition</a>, <a class="el" href="structxkrt_1_1runtime__t.html#add93925e88380913859ca1c8c0b96611">const</a> std::function&lt; <a class="el" href="structxkrt_1_1runtime__t.html#add93925e88380913859ca1c8c0b96611">void</a>(<a class="el" href="structxkrt_1_1runtime__t.html">runtime_t</a> *, <a class="el" href="structxkrt_1_1runtime__t.html#add93925e88380913859ca1c8c0b96611">device_t</a> *, <a class="el" href="structxkrt_1_1runtime__t.html#add93925e88380913859ca1c8c0b96611">task_t</a> *)&gt; &amp;f)</td></tr>
 <tr class="memdesc:a292e3e1eacdbb8d8fb95d09dcc052dd8"><td class="mdescLeft">&#160;</td><td class="mdescRight">Spawn a task within a specific team.  <br /></td></tr>
 <tr class="separator:a292e3e1eacdbb8d8fb95d09dcc052dd8"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ac85256aef26a89da0caf54468865b0de" id="r_ac85256aef26a89da0caf54468865b0de"><td class="memItemLeft" align="right" valign="top"><a class="el" href="structxkrt_1_1runtime__t.html#add93925e88380913859ca1c8c0b96611">void</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structxkrt_1_1runtime__t.html#ac85256aef26a89da0caf54468865b0de">team_task_spawn</a> (<a class="el" href="structxkrt_1_1runtime__t.html#add93925e88380913859ca1c8c0b96611">team_t</a> *team, <a class="el" href="structxkrt_1_1runtime__t.html#add93925e88380913859ca1c8c0b96611">const</a> <a class="el" href="structxkrt_1_1runtime__t.html#aedaf8ce21fd9faa551e305e54980f22b">task_routine_t</a> &amp;f)</td></tr>
+<tr class="separator:ac85256aef26a89da0caf54468865b0de"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ac2e7e4dc2b853b4c9e076c78ad31d60c" id="r_ac2e7e4dc2b853b4c9e076c78ad31d60c"><td class="memItemLeft" align="right" valign="top"><a class="el" href="structxkrt_1_1runtime__t.html#add93925e88380913859ca1c8c0b96611">team_t</a> *&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structxkrt_1_1runtime__t.html#ac2e7e4dc2b853b4c9e076c78ad31d60c">team_get</a> (<a class="el" href="structxkrt_1_1runtime__t.html#add93925e88380913859ca1c8c0b96611">const</a> <a class="el" href="driver-type_8h.html#af236039d4eac12c454238e2651925dcb">driver_type_t</a> type, <a class="el" href="structxkrt_1_1runtime__t.html#add93925e88380913859ca1c8c0b96611">const</a> <a class="el" href="namespacexkrt.html#a637d05e3a8431f017c741801af010a0d">device_driver_id_t</a> <a class="el" href="structxkrt_1_1runtime__t.html#add93925e88380913859ca1c8c0b96611">device_driver_id</a>)</td></tr>
 <tr class="memdesc:ac2e7e4dc2b853b4c9e076c78ad31d60c"><td class="mdescLeft">&#160;</td><td class="mdescRight">Retrieve the thread team for a specific device.  <br /></td></tr>
 <tr class="separator:ac2e7e4dc2b853b4c9e076c78ad31d60c"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -396,6 +398,8 @@ Public Member Functions</h2></td></tr>
 <tr class="separator:a0e6a96fff1facdbc62b7de9fae01eba7"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a00db54b87df7fc7538e854287d5337d6" id="r_a00db54b87df7fc7538e854287d5337d6"><td class="memItemLeft" align="right" valign="top"><a class="el" href="structxkrt_1_1runtime__t.html#add93925e88380913859ca1c8c0b96611">void</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structxkrt_1_1runtime__t.html#a00db54b87df7fc7538e854287d5337d6">task_dependency_graph_record_stop</a> (<a class="el" href="structxkrt_1_1runtime__t.html#add93925e88380913859ca1c8c0b96611">void</a>)</td></tr>
 <tr class="separator:a00db54b87df7fc7538e854287d5337d6"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ad4d3cdcfc597a401d0beba8d53ecc7a9" id="r_ad4d3cdcfc597a401d0beba8d53ecc7a9"><td class="memItemLeft" align="right" valign="top"><a class="el" href="structxkrt_1_1runtime__t.html#add93925e88380913859ca1c8c0b96611">bool</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structxkrt_1_1runtime__t.html#ad4d3cdcfc597a401d0beba8d53ecc7a9">task_dependency_graph_is_recording</a> (<a class="el" href="structxkrt_1_1runtime__t.html#add93925e88380913859ca1c8c0b96611">void</a>)</td></tr>
+<tr class="separator:ad4d3cdcfc597a401d0beba8d53ecc7a9"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aa626318a932ed604563b2b3de7c01df6" id="r_aa626318a932ed604563b2b3de7c01df6"><td class="memItemLeft" align="right" valign="top"><a class="el" href="structxkrt_1_1runtime__t.html#add93925e88380913859ca1c8c0b96611">void</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structxkrt_1_1runtime__t.html#aa626318a932ed604563b2b3de7c01df6">task_dependency_graph_destroy</a> (<a class="el" href="structxkrt_1_1runtime__t.html#add93925e88380913859ca1c8c0b96611">task_dependency_graph_t</a> *<a class="el" href="structxkrt_1_1runtime__t.html#add93925e88380913859ca1c8c0b96611">tdg</a>)</td></tr>
 <tr class="separator:aa626318a932ed604563b2b3de7c01df6"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a63f9278f7aed1fac63445d9f94248ccc" id="r_a63f9278f7aed1fac63445d9f94248ccc"><td class="memItemLeft" align="right" valign="top"><a class="el" href="structxkrt_1_1runtime__t.html#add93925e88380913859ca1c8c0b96611">void</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structxkrt_1_1runtime__t.html#a63f9278f7aed1fac63445d9f94248ccc">command_graph_from_task_dependency_graph</a> (<a class="el" href="structxkrt_1_1runtime__t.html#add93925e88380913859ca1c8c0b96611">task_dependency_graph_t</a> *<a class="el" href="structxkrt_1_1runtime__t.html#add93925e88380913859ca1c8c0b96611">tdg</a>, <a class="el" href="structxkrt_1_1runtime__t.html#add93925e88380913859ca1c8c0b96611">command_graph_t</a> *<a class="el" href="structxkrt_1_1runtime__t.html#add93925e88380913859ca1c8c0b96611">cg</a>)</td></tr>
@@ -3222,6 +3226,25 @@ template&lt;typename... Args&gt; </div>
 
 </div>
 </div>
+<a id="ad4d3cdcfc597a401d0beba8d53ecc7a9" name="ad4d3cdcfc597a401d0beba8d53ecc7a9"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ad4d3cdcfc597a401d0beba8d53ecc7a9">&#9670;&#160;</a></span>task_dependency_graph_is_recording()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="structxkrt_1_1runtime__t.html#add93925e88380913859ca1c8c0b96611">bool</a> xkrt::runtime_t::task_dependency_graph_is_recording </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="structxkrt_1_1runtime__t.html#add93925e88380913859ca1c8c0b96611">void</a>&#160;</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+<p>Return true iff the currently executing task is recording a task dependency graph (i.e. has the 'TASK_FLAG_GRAPH_RECORDING' bit set). </p>
+
+</div>
+</div>
 <a id="a61990c49f0487a98fe0e68d8dd10f937" name="a61990c49f0487a98fe0e68d8dd10f937"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a61990c49f0487a98fe0e68d8dd10f937">&#9670;&#160;</a></span>task_dependency_graph_record_start()</h2>
 
@@ -4703,7 +4726,7 @@ template&lt;<a class="el" href="structxkrt_1_1runtime__t.html#add93925e883809138
 </div>
 </div>
 <a id="a292e3e1eacdbb8d8fb95d09dcc052dd8" name="a292e3e1eacdbb8d8fb95d09dcc052dd8"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a292e3e1eacdbb8d8fb95d09dcc052dd8">&#9670;&#160;</a></span>team_task_spawn()</h2>
+<h2 class="memtitle"><span class="permalink"><a href="#a292e3e1eacdbb8d8fb95d09dcc052dd8">&#9670;&#160;</a></span>team_task_spawn() <span class="overload">[1/2]</span></h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -4782,6 +4805,46 @@ template&lt;<a class="el" href="namespacexkrt.html#ad90aebe39bc0ce74286eefec4d60
 </dl>
 
 <p class="definition">Definition at line <a class="el" href="runtime_8h_source.html#l01156">1156</a> of file <a class="el" href="runtime_8h_source.html">runtime.h</a>.</p>
+
+</div>
+</div>
+<a id="ac85256aef26a89da0caf54468865b0de" name="ac85256aef26a89da0caf54468865b0de"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ac85256aef26a89da0caf54468865b0de">&#9670;&#160;</a></span>team_task_spawn() <span class="overload">[2/2]</span></h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="structxkrt_1_1runtime__t.html#add93925e88380913859ca1c8c0b96611">void</a> xkrt::runtime_t::team_task_spawn </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="structxkrt_1_1runtime__t.html#add93925e88380913859ca1c8c0b96611">team_t</a> *&#160;</td>
+          <td class="paramname"><em>team</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="structxkrt_1_1runtime__t.html#add93925e88380913859ca1c8c0b96611">const</a> <a class="el" href="structxkrt_1_1runtime__t.html#aedaf8ce21fd9faa551e305e54980f22b">task_routine_t</a> &amp;&#160;</td>
+          <td class="paramname"><em>f</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p class="definition">Definition at line <a class="el" href="runtime_8h_source.html#l01175">1175</a> of file <a class="el" href="runtime_8h_source.html">runtime.h</a>.</p>
+
+<p class="reference">References <a class="el" href="consts_8h_source.html#l00065">XKRT_UNSPECIFIED_DEVICE_UNIQUE_ID</a>.</p>
 
 </div>
 </div>
@@ -4919,7 +4982,7 @@ template&lt;<a class="el" href="namespacexkrt.html#ad90aebe39bc0ce74286eefec4d60
 <p>Device-side advised allocations. </p>
 <p>Device-side prefetched data. </p>
 
-<p class="definition">Definition at line <a class="el" href="runtime_8h_source.html#l01406">1406</a> of file <a class="el" href="runtime_8h_source.html">runtime.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="runtime_8h_source.html#l01420">1420</a> of file <a class="el" href="runtime_8h_source.html">runtime.h</a>.</p>
 
 </div>
 </div>
@@ -5022,7 +5085,7 @@ template&lt;<a class="el" href="namespacexkrt.html#ad90aebe39bc0ce74286eefec4d60
 <p>Host-side advised allocations. </p>
 <p>Host-side prefetched data. </p>
 
-<p class="definition">Definition at line <a class="el" href="runtime_8h_source.html#l01407">1407</a> of file <a class="el" href="runtime_8h_source.html">runtime.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="runtime_8h_source.html#l01421">1421</a> of file <a class="el" href="runtime_8h_source.html">runtime.h</a>.</p>
 
 </div>
 </div>
@@ -5158,7 +5221,7 @@ template&lt;<a class="el" href="namespacexkrt.html#ad90aebe39bc0ce74286eefec4d60
 
 <p>Memory regions registered. </p>
 
-<p class="definition">Definition at line <a class="el" href="runtime_8h_source.html#l01402">1402</a> of file <a class="el" href="runtime_8h_source.html">runtime.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="runtime_8h_source.html#l01416">1416</a> of file <a class="el" href="runtime_8h_source.html">runtime.h</a>.</p>
 
 </div>
 </div>
@@ -5230,7 +5293,7 @@ template&lt;<a class="el" href="namespacexkrt.html#ad90aebe39bc0ce74286eefec4d60
 
 <p>Number of edges set. </p>
 
-<p class="definition">Definition at line <a class="el" href="runtime_8h_source.html#l01398">1398</a> of file <a class="el" href="runtime_8h_source.html">runtime.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="runtime_8h_source.html#l01412">1412</a> of file <a class="el" href="runtime_8h_source.html">runtime.h</a>.</p>
 
 </div>
 </div>
@@ -5248,7 +5311,7 @@ template&lt;<a class="el" href="namespacexkrt.html#ad90aebe39bc0ce74286eefec4d60
 
 <p>Number of edges skipped. </p>
 
-<p class="definition">Definition at line <a class="el" href="runtime_8h_source.html#l01397">1397</a> of file <a class="el" href="runtime_8h_source.html">runtime.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="runtime_8h_source.html#l01411">1411</a> of file <a class="el" href="runtime_8h_source.html">runtime.h</a>.</p>
 
 </div>
 </div>
@@ -5300,7 +5363,7 @@ template&lt;<a class="el" href="namespacexkrt.html#ad90aebe39bc0ce74286eefec4d60
 
 <p>Per-format task counters (one entry per format) </p>
 
-<p class="definition">Definition at line <a class="el" href="runtime_8h_source.html#l01394">1394</a> of file <a class="el" href="runtime_8h_source.html">runtime.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="runtime_8h_source.html#l01408">1408</a> of file <a class="el" href="runtime_8h_source.html">runtime.h</a>.</p>
 
 </div>
 </div>
@@ -5350,7 +5413,7 @@ template&lt;<a class="el" href="namespacexkrt.html#ad90aebe39bc0ce74286eefec4d60
 
 <p>Memory regions unregistered. </p>
 
-<p class="definition">Definition at line <a class="el" href="runtime_8h_source.html#l01403">1403</a> of file <a class="el" href="runtime_8h_source.html">runtime.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="runtime_8h_source.html#l01417">1417</a> of file <a class="el" href="runtime_8h_source.html">runtime.h</a>.</p>
 
 </div>
 </div>
