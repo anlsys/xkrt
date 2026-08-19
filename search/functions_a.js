@@ -8,7 +8,7 @@ var searchData=
   ['xkrt_5fdevice_5fdriver_5fid_5fget_5',['xkrt_device_driver_id_get',['../xkrt_8h.html#acf47320dd5b23ae0aa2c7bf4c2e253ea',1,'xkrt.h']]],
   ['xkrt_5fdevice_5fget_6',['xkrt_device_get',['../xkrt_8h.html#aae8050a8ea075d96eb6f332b0e4b0cbe',1,'xkrt.h']]],
   ['xkrt_5fdriver_5fcommand_5fqueue_5fcreate_7',['xkrt_driver_command_queue_create',['../xkrt_8h.html#a6173be5320ccd197e02adc496777bc4d',1,'xkrt.h']]],
-  ['xkrt_5fdriver_5fcommand_5fqueue_5fdelete_8',['xkrt_driver_command_queue_delete',['../xkrt_8h.html#ac038a4f5346137b584cfef734d1ba872',1,'xkrt.h']]],
+  ['xkrt_5fdriver_5fcommand_5fqueue_5fdelete_8',['xkrt_driver_command_queue_delete',['../xkrt_8h.html#a3a5997612a8235df755d4d204a14c6d7',1,'xkrt.h']]],
   ['xkrt_5fdriver_5fcommand_5fqueue_5fsuggest_9',['xkrt_driver_command_queue_suggest',['../xkrt_8h.html#afc042dff0acc4bb86fe5613bb3f959f0',1,'xkrt.h']]],
   ['xkrt_5fdriver_5fdevice_5fcommit_10',['xkrt_driver_device_commit',['../xkrt_8h.html#a24f1f32610317d4f90d55dffb915a359',1,'xkrt.h']]],
   ['xkrt_5fdriver_5fdevice_5fcreate_11',['xkrt_driver_device_create',['../xkrt_8h.html#a1ae65a7ae40a5810978ba9e5c3a7dbbd',1,'xkrt.h']]],

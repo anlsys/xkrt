@@ -13,7 +13,7 @@ var structxkrt_1_1driver__t =
     [ "devices", "structxkrt_1_1driver__t.html#a8d7e86be50c270fd5b157e8206dd6077", null ],
     [ "f_command_execute", "structxkrt_1_1driver__t.html#a0935a4cfb62bd7e3e256db7bd083dc81", null ],
     [ "f_command_queue_create", "structxkrt_1_1driver__t.html#a5d29dceb411a0a2bd8b287a779f3968f", null ],
-    [ "f_command_queue_delete", "structxkrt_1_1driver__t.html#a67d7310a165db41ca0ed25ac8b2fb73c", null ],
+    [ "f_command_queue_delete", "structxkrt_1_1driver__t.html#ac7fb0c33184bf677da97a7ae02f08e36", null ],
     [ "f_command_queue_launch", "structxkrt_1_1driver__t.html#af66d1f805e30917864ca744a5c892a2f", null ],
     [ "f_command_queue_progress", "structxkrt_1_1driver__t.html#a3bc17bac8078c6cd68cf3bf80ebdad8c", null ],
     [ "f_command_queue_suggest", "structxkrt_1_1driver__t.html#aa1e9dffad1914bb251caab1ad1b21fcb", null ],

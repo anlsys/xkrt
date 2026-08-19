@@ -19,7 +19,7 @@ var xkrt_8h =
     [ "xkrt_device_driver_id_get", "xkrt_8h.html#acf47320dd5b23ae0aa2c7bf4c2e253ea", null ],
     [ "xkrt_device_get", "xkrt_8h.html#aae8050a8ea075d96eb6f332b0e4b0cbe", null ],
     [ "xkrt_driver_command_queue_create", "xkrt_8h.html#a6173be5320ccd197e02adc496777bc4d", null ],
-    [ "xkrt_driver_command_queue_delete", "xkrt_8h.html#ac038a4f5346137b584cfef734d1ba872", null ],
+    [ "xkrt_driver_command_queue_delete", "xkrt_8h.html#a3a5997612a8235df755d4d204a14c6d7", null ],
     [ "xkrt_driver_command_queue_suggest", "xkrt_8h.html#afc042dff0acc4bb86fe5613bb3f959f0", null ],
     [ "xkrt_driver_device_commit", "xkrt_8h.html#a24f1f32610317d4f90d55dffb915a359", null ],
     [ "xkrt_driver_device_create", "xkrt_8h.html#a1ae65a7ae40a5810978ba9e5c3a7dbbd", null ],

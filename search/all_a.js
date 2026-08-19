@@ -3,7 +3,7 @@ var searchData=
   ['f_0',['f',['../structxkrt__task__format__t.html#a25d97c1789a88dc66a09b39bb30fb658',1,'xkrt_task_format_t']]],
   ['f_5fcommand_5fexecute_1',['f_command_execute',['../structxkrt_1_1driver__t.html#a0935a4cfb62bd7e3e256db7bd083dc81',1,'xkrt::driver_t']]],
   ['f_5fcommand_5fqueue_5fcreate_2',['f_command_queue_create',['../structxkrt_1_1driver__t.html#a5d29dceb411a0a2bd8b287a779f3968f',1,'xkrt::driver_t']]],
-  ['f_5fcommand_5fqueue_5fdelete_3',['f_command_queue_delete',['../structxkrt_1_1driver__t.html#a67d7310a165db41ca0ed25ac8b2fb73c',1,'xkrt::driver_t']]],
+  ['f_5fcommand_5fqueue_5fdelete_3',['f_command_queue_delete',['../structxkrt_1_1driver__t.html#ac7fb0c33184bf677da97a7ae02f08e36',1,'xkrt::driver_t']]],
   ['f_5fcommand_5fqueue_5flaunch_4',['f_command_queue_launch',['../structxkrt_1_1driver__t.html#af66d1f805e30917864ca744a5c892a2f',1,'xkrt::driver_t']]],
   ['f_5fcommand_5fqueue_5fprogress_5',['f_command_queue_progress',['../structxkrt_1_1driver__t.html#a3bc17bac8078c6cd68cf3bf80ebdad8c',1,'xkrt::driver_t']]],
   ['f_5fcommand_5fqueue_5fsuggest_6',['f_command_queue_suggest',['../structxkrt_1_1driver__t.html#aa1e9dffad1914bb251caab1ad1b21fcb',1,'xkrt::driver_t']]],

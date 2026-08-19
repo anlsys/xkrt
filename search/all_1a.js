@@ -33,7 +33,7 @@ var searchData=
   ['xkrt_5fdistribution_5ftype_5fcyclic2d_30',['XKRT_DISTRIBUTION_TYPE_CYCLIC2D',['../namespacexkrt.html#a4ffa74150286e0bf3cc14aeef0c20991a9a51e09e5eb952c37990f075c49f0e03',1,'xkrt']]],
   ['xkrt_5fdistribution_5ftype_5fcyclic2dblock_31',['XKRT_DISTRIBUTION_TYPE_CYCLIC2DBLOCK',['../namespacexkrt.html#a4ffa74150286e0bf3cc14aeef0c20991aa4ea8046c92cab6b68fdb1f49330b944',1,'xkrt']]],
   ['xkrt_5fdriver_5fcommand_5fqueue_5fcreate_32',['xkrt_driver_command_queue_create',['../xkrt_8h.html#a6173be5320ccd197e02adc496777bc4d',1,'xkrt.h']]],
-  ['xkrt_5fdriver_5fcommand_5fqueue_5fdelete_33',['xkrt_driver_command_queue_delete',['../xkrt_8h.html#ac038a4f5346137b584cfef734d1ba872',1,'xkrt.h']]],
+  ['xkrt_5fdriver_5fcommand_5fqueue_5fdelete_33',['xkrt_driver_command_queue_delete',['../xkrt_8h.html#a3a5997612a8235df755d4d204a14c6d7',1,'xkrt.h']]],
   ['xkrt_5fdriver_5fcommand_5fqueue_5fsuggest_34',['xkrt_driver_command_queue_suggest',['../xkrt_8h.html#afc042dff0acc4bb86fe5613bb3f959f0',1,'xkrt.h']]],
   ['xkrt_5fdriver_5fdevice_5fcommit_35',['xkrt_driver_device_commit',['../xkrt_8h.html#a24f1f32610317d4f90d55dffb915a359',1,'xkrt.h']]],
   ['xkrt_5fdriver_5fdevice_5fcreate_36',['xkrt_driver_device_create',['../xkrt_8h.html#a1ae65a7ae40a5810978ba9e5c3a7dbbd',1,'xkrt.h']]],

@@ -209,8 +209,8 @@ Public Attributes</h2></td></tr>
 <tr class="separator:aa1e9dffad1914bb251caab1ad1b21fcb"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a5d29dceb411a0a2bd8b287a779f3968f" id="r_a5d29dceb411a0a2bd8b287a779f3968f"><td class="memItemLeft" align="right" valign="top">command_queue_t *(*&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structxkrt_1_1driver__t.html#a5d29dceb411a0a2bd8b287a779f3968f">f_command_queue_create</a> )(device_t *device, <a class="el" href="namespacexkrt.html#ab8ae08fcb7fc641f4a7fff34087ac870">command_queue_type_t</a> qtype, xkrt_command_queue_list_counter_t capacity)</td></tr>
 <tr class="separator:a5d29dceb411a0a2bd8b287a779f3968f"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a67d7310a165db41ca0ed25ac8b2fb73c" id="r_a67d7310a165db41ca0ed25ac8b2fb73c"><td class="memItemLeft" align="right" valign="top">void(*&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structxkrt_1_1driver__t.html#a67d7310a165db41ca0ed25ac8b2fb73c">f_command_queue_delete</a> )(command_queue_t *iqueue)</td></tr>
-<tr class="separator:a67d7310a165db41ca0ed25ac8b2fb73c"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ac7fb0c33184bf677da97a7ae02f08e36" id="r_ac7fb0c33184bf677da97a7ae02f08e36"><td class="memItemLeft" align="right" valign="top">void(*&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structxkrt_1_1driver__t.html#ac7fb0c33184bf677da97a7ae02f08e36">f_command_queue_delete</a> )(device_t *device, command_queue_t *iqueue)</td></tr>
+<tr class="separator:ac7fb0c33184bf677da97a7ae02f08e36"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:af66d1f805e30917864ca744a5c892a2f" id="r_af66d1f805e30917864ca744a5c892a2f"><td class="memItemLeft" align="right" valign="top">int(*&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structxkrt_1_1driver__t.html#af66d1f805e30917864ca744a5c892a2f">f_command_queue_launch</a> )(<a class="el" href="namespacexkrt.html#a637d05e3a8431f017c741801af010a0d">device_driver_id_t</a> device_driver_id, command_queue_t *queue, <a class="el" href="xkrt_8h.html#a4e7d8612246bf19e9536cab9df0b2de3">command_t</a> *cmd, xkrt_command_queue_list_counter_t idx)</td></tr>
 <tr class="separator:af66d1f805e30917864ca744a5c892a2f"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a3bc17bac8078c6cd68cf3bf80ebdad8c" id="r_a3bc17bac8078c6cd68cf3bf80ebdad8c"><td class="memItemLeft" align="right" valign="top">int(*&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structxkrt_1_1driver__t.html#a3bc17bac8078c6cd68cf3bf80ebdad8c">f_command_queue_progress</a> )(command_queue_t *queue)</td></tr>
@@ -541,14 +541,14 @@ template&lt;bool blocking = false&gt; </div>
 
 </div>
 </div>
-<a id="a67d7310a165db41ca0ed25ac8b2fb73c" name="a67d7310a165db41ca0ed25ac8b2fb73c"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a67d7310a165db41ca0ed25ac8b2fb73c">&#9670;&#160;</a></span>f_command_queue_delete</h2>
+<a id="ac7fb0c33184bf677da97a7ae02f08e36" name="ac7fb0c33184bf677da97a7ae02f08e36"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ac7fb0c33184bf677da97a7ae02f08e36">&#9670;&#160;</a></span>f_command_queue_delete</h2>
 
 <div class="memitem">
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname">void(* xkrt::driver_t::f_command_queue_delete) (command_queue_t *iqueue)</td>
+          <td class="memname">void(* xkrt::driver_t::f_command_queue_delete) (device_t *device, command_queue_t *iqueue)</td>
         </tr>
       </table>
 </div><div class="memdoc">
