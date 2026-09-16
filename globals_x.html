@@ -120,6 +120,12 @@ $(document).ready(function(){initNavTree('globals_x.html',''); initResizable(); 
 <li>xkrt_driver_command_queue_create()&#160;:&#160;<a class="el" href="xkrt_8h.html#a6173be5320ccd197e02adc496777bc4d">xkrt.h</a></li>
 <li>xkrt_driver_command_queue_delete()&#160;:&#160;<a class="el" href="xkrt_8h.html#a3a5997612a8235df755d4d204a14c6d7">xkrt.h</a></li>
 <li>xkrt_driver_command_queue_suggest()&#160;:&#160;<a class="el" href="xkrt_8h.html#afc042dff0acc4bb86fe5613bb3f959f0">xkrt.h</a></li>
+<li>xkrt_driver_copy_d2d()&#160;:&#160;<a class="el" href="xkrt_8h.html#acfc5ec2c70ab75c2bd3adb2960402f4f">xkrt.h</a></li>
+<li>xkrt_driver_copy_d2d_async()&#160;:&#160;<a class="el" href="xkrt_8h.html#af045bd821efe33fbb5e44bd1b0bb76a8">xkrt.h</a></li>
+<li>xkrt_driver_copy_d2h()&#160;:&#160;<a class="el" href="xkrt_8h.html#a68f7d5d67c72eed02fa1c35650e93df6">xkrt.h</a></li>
+<li>xkrt_driver_copy_d2h_async()&#160;:&#160;<a class="el" href="xkrt_8h.html#aa21b82a32dfd6e7b61aaee5c4c71b14b">xkrt.h</a></li>
+<li>xkrt_driver_copy_h2d()&#160;:&#160;<a class="el" href="xkrt_8h.html#a8e10bb98f11c2f105b7513954dc46028">xkrt.h</a></li>
+<li>xkrt_driver_copy_h2d_async()&#160;:&#160;<a class="el" href="xkrt_8h.html#a89770387d24255ce96bb95d9eb0a837b">xkrt.h</a></li>
 <li>xkrt_driver_device_commit()&#160;:&#160;<a class="el" href="xkrt_8h.html#a24f1f32610317d4f90d55dffb915a359">xkrt.h</a></li>
 <li>xkrt_driver_device_create()&#160;:&#160;<a class="el" href="xkrt_8h.html#a1ae65a7ae40a5810978ba9e5c3a7dbbd">xkrt.h</a></li>
 <li>xkrt_driver_device_destroy()&#160;:&#160;<a class="el" href="xkrt_8h.html#a3a6e36c0da8ac4ba60bb7355e3600174">xkrt.h</a></li>
@@ -150,12 +156,6 @@ $(document).ready(function(){initNavTree('globals_x.html',''); initResizable(); 
 <li>xkrt_driver_power_stop()&#160;:&#160;<a class="el" href="xkrt_8h.html#a6e897b9b6c937ff93428c58d23a7a90a">xkrt.h</a></li>
 <li>xkrt_driver_supported()&#160;:&#160;<a class="el" href="driver-type_8h.html#aac287ecb346e9b2a70e015dfd541f711">driver-type.h</a></li>
 <li>xkrt_driver_t&#160;:&#160;<a class="el" href="xkrt_8h.html#a313d0acc81cceafafc88074411b5b23f">xkrt.h</a></li>
-<li>xkrt_driver_transfer_d2d()&#160;:&#160;<a class="el" href="xkrt_8h.html#a789145bc8f9f35e8552d9fc54a2d6070">xkrt.h</a></li>
-<li>xkrt_driver_transfer_d2d_async()&#160;:&#160;<a class="el" href="xkrt_8h.html#aadd36a0acf2f61a896bff885e20a2f20">xkrt.h</a></li>
-<li>xkrt_driver_transfer_d2h()&#160;:&#160;<a class="el" href="xkrt_8h.html#aee2c4a1a0a1a75e19d18559c5c5f59cc">xkrt.h</a></li>
-<li>xkrt_driver_transfer_d2h_async()&#160;:&#160;<a class="el" href="xkrt_8h.html#a3c737f292eb04430f91dd4b3166ae3db">xkrt.h</a></li>
-<li>xkrt_driver_transfer_h2d()&#160;:&#160;<a class="el" href="xkrt_8h.html#a4245d6def49d6521adfcd519500ffbe8">xkrt.h</a></li>
-<li>xkrt_driver_transfer_h2d_async()&#160;:&#160;<a class="el" href="xkrt_8h.html#a3143b73a326976031e12c860c0d7581f">xkrt.h</a></li>
 <li>xkrt_driver_type_bitfield_t&#160;:&#160;<a class="el" href="driver-type_8h.html#a0f5a0ef45fe9f1d967d8ed593565c6c0">driver-type.h</a></li>
 <li>XKRT_DRIVER_TYPE_CL&#160;:&#160;<a class="el" href="driver-type_8h.html#af236039d4eac12c454238e2651925dcba764de9527023b26a426e440c94a418ae">driver-type.h</a></li>
 <li>XKRT_DRIVER_TYPE_CUDA&#160;:&#160;<a class="el" href="driver-type_8h.html#af236039d4eac12c454238e2651925dcba64d0d94b0c3020695310064af2d8d833">driver-type.h</a></li>
@@ -179,6 +179,7 @@ $(document).ready(function(){initNavTree('globals_x.html',''); initResizable(); 
 <li>xkrt_logger_info()&#160;:&#160;<a class="el" href="xkrt_8h.html#a2eacbeeddf5e5827a56870bba11e30cc">xkrt.h</a></li>
 <li>xkrt_logger_warn()&#160;:&#160;<a class="el" href="xkrt_8h.html#a8b7d0602f7eb7e0783e17c0b656f22ce">xkrt.h</a></li>
 <li>XKRT_MAX_THREADS_PER_DEVICE&#160;:&#160;<a class="el" href="consts_8h.html#a5e6669aea0610344ed975fffd1660cf6">consts.h</a></li>
+<li>xkrt_memory_copy()&#160;:&#160;<a class="el" href="xkrt_8h.html#a1c6d5183f5086088b2fdffc1d9c65917">xkrt.h</a></li>
 <li>xkrt_memory_device_allocate()&#160;:&#160;<a class="el" href="xkrt_8h.html#ac674b063cf13ad6ea5e6ffc44ec5aa79">xkrt.h</a></li>
 <li>xkrt_memory_device_deallocate()&#160;:&#160;<a class="el" href="xkrt_8h.html#af8f96c55cd49e18acf411a84bfd0f088">xkrt.h</a></li>
 <li>xkrt_memory_host_allocate()&#160;:&#160;<a class="el" href="xkrt_8h.html#a0a254c204e9fd196cc3c2f708c940d5b">xkrt.h</a></li>

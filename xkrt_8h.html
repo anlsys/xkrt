@@ -166,6 +166,8 @@ Functions</h2></td></tr>
 <tr class="separator:aedca0991896fb858faf330f1d9f77b10"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ad9e8d1b448a387f552e278312fb03dd0" id="r_ad9e8d1b448a387f552e278312fb03dd0"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="xkrt_8h.html#ad9e8d1b448a387f552e278312fb03dd0">xkrt_memory_unregister_async</a> (<a class="el" href="xkrt_8h.html#a1dae686a82fcfa648fd4cb1c3af15713">xkrt_runtime_t</a> *runtime, void *ptr, size_t size)</td></tr>
 <tr class="separator:ad9e8d1b448a387f552e278312fb03dd0"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a1c6d5183f5086088b2fdffc1d9c65917" id="r_a1c6d5183f5086088b2fdffc1d9c65917"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="xkrt_8h.html#a1c6d5183f5086088b2fdffc1d9c65917">xkrt_memory_copy</a> (<a class="el" href="xkrt_8h.html#a1dae686a82fcfa648fd4cb1c3af15713">xkrt_runtime_t</a> *runtime, const size_t size, const <a class="el" href="consts_8h.html#abd0e48fa5fb1c01d5fa446200b4b8b3f">xkrt_device_unique_id_t</a> dst_device_unique_id, const uintptr_t dst_device_addr, const <a class="el" href="consts_8h.html#abd0e48fa5fb1c01d5fa446200b4b8b3f">xkrt_device_unique_id_t</a> src_device_unique_id, const uintptr_t src_device_addr)</td></tr>
+<tr class="separator:a1c6d5183f5086088b2fdffc1d9c65917"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a3e12fdf8a151dcfedf67554a50eb0c62" id="r_a3e12fdf8a151dcfedf67554a50eb0c62"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="xkrt_8h.html#a3e12fdf8a151dcfedf67554a50eb0c62">xkrt_file_read_async</a> (<a class="el" href="xkrt_8h.html#a1dae686a82fcfa648fd4cb1c3af15713">xkrt_runtime_t</a> *runtime, int fd, void *buffer, size_t n, unsigned int nchunks)</td></tr>
 <tr class="separator:a3e12fdf8a151dcfedf67554a50eb0c62"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a6400fd5a48884646b3aa71998d448001" id="r_a6400fd5a48884646b3aa71998d448001"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="xkrt_8h.html#a6400fd5a48884646b3aa71998d448001">xkrt_file_write_async</a> (<a class="el" href="xkrt_8h.html#a1dae686a82fcfa648fd4cb1c3af15713">xkrt_runtime_t</a> *runtime, int fd, void *buffer, size_t n, unsigned int nchunks)</td></tr>
@@ -282,18 +284,18 @@ Functions</h2></td></tr>
 <tr class="separator:a1323b7affa95f6d1dcd81bfc6efca9c8"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a0db58e9981f058ad1f6705aadb01aa91" id="r_a0db58e9981f058ad1f6705aadb01aa91"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="xkrt_8h.html#a0db58e9981f058ad1f6705aadb01aa91">xkrt_driver_memory_unified_prefetch_host</a> (<a class="el" href="xkrt_8h.html#a313d0acc81cceafafc88074411b5b23f">xkrt_driver_t</a> *driver, const void *addr, const size_t size)</td></tr>
 <tr class="separator:a0db58e9981f058ad1f6705aadb01aa91"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a4245d6def49d6521adfcd519500ffbe8" id="r_a4245d6def49d6521adfcd519500ffbe8"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="xkrt_8h.html#a4245d6def49d6521adfcd519500ffbe8">xkrt_driver_transfer_h2d</a> (<a class="el" href="xkrt_8h.html#a313d0acc81cceafafc88074411b5b23f">xkrt_driver_t</a> *driver, void *dst, void *src, const size_t size)</td></tr>
-<tr class="separator:a4245d6def49d6521adfcd519500ffbe8"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:aee2c4a1a0a1a75e19d18559c5c5f59cc" id="r_aee2c4a1a0a1a75e19d18559c5c5f59cc"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="xkrt_8h.html#aee2c4a1a0a1a75e19d18559c5c5f59cc">xkrt_driver_transfer_d2h</a> (<a class="el" href="xkrt_8h.html#a313d0acc81cceafafc88074411b5b23f">xkrt_driver_t</a> *driver, void *dst, void *src, const size_t size)</td></tr>
-<tr class="separator:aee2c4a1a0a1a75e19d18559c5c5f59cc"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a789145bc8f9f35e8552d9fc54a2d6070" id="r_a789145bc8f9f35e8552d9fc54a2d6070"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="xkrt_8h.html#a789145bc8f9f35e8552d9fc54a2d6070">xkrt_driver_transfer_d2d</a> (<a class="el" href="xkrt_8h.html#a313d0acc81cceafafc88074411b5b23f">xkrt_driver_t</a> *driver, void *dst, void *src, const size_t size)</td></tr>
-<tr class="separator:a789145bc8f9f35e8552d9fc54a2d6070"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a3143b73a326976031e12c860c0d7581f" id="r_a3143b73a326976031e12c860c0d7581f"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="xkrt_8h.html#a3143b73a326976031e12c860c0d7581f">xkrt_driver_transfer_h2d_async</a> (<a class="el" href="xkrt_8h.html#a313d0acc81cceafafc88074411b5b23f">xkrt_driver_t</a> *driver, void *dst, void *src, const size_t size, <a class="el" href="xkrt_8h.html#af931d2965d8ad59b980b26abd4cf6ae4">xkrt_command_queue_t</a> *queue)</td></tr>
-<tr class="separator:a3143b73a326976031e12c860c0d7581f"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a3c737f292eb04430f91dd4b3166ae3db" id="r_a3c737f292eb04430f91dd4b3166ae3db"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="xkrt_8h.html#a3c737f292eb04430f91dd4b3166ae3db">xkrt_driver_transfer_d2h_async</a> (<a class="el" href="xkrt_8h.html#a313d0acc81cceafafc88074411b5b23f">xkrt_driver_t</a> *driver, void *dst, void *src, const size_t size, <a class="el" href="xkrt_8h.html#af931d2965d8ad59b980b26abd4cf6ae4">xkrt_command_queue_t</a> *queue)</td></tr>
-<tr class="separator:a3c737f292eb04430f91dd4b3166ae3db"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:aadd36a0acf2f61a896bff885e20a2f20" id="r_aadd36a0acf2f61a896bff885e20a2f20"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="xkrt_8h.html#aadd36a0acf2f61a896bff885e20a2f20">xkrt_driver_transfer_d2d_async</a> (<a class="el" href="xkrt_8h.html#a313d0acc81cceafafc88074411b5b23f">xkrt_driver_t</a> *driver, void *dst, void *src, const size_t size, <a class="el" href="xkrt_8h.html#af931d2965d8ad59b980b26abd4cf6ae4">xkrt_command_queue_t</a> *queue)</td></tr>
-<tr class="separator:aadd36a0acf2f61a896bff885e20a2f20"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a8e10bb98f11c2f105b7513954dc46028" id="r_a8e10bb98f11c2f105b7513954dc46028"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="xkrt_8h.html#a8e10bb98f11c2f105b7513954dc46028">xkrt_driver_copy_h2d</a> (<a class="el" href="xkrt_8h.html#a313d0acc81cceafafc88074411b5b23f">xkrt_driver_t</a> *driver, void *dst, void *src, const size_t size)</td></tr>
+<tr class="separator:a8e10bb98f11c2f105b7513954dc46028"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a68f7d5d67c72eed02fa1c35650e93df6" id="r_a68f7d5d67c72eed02fa1c35650e93df6"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="xkrt_8h.html#a68f7d5d67c72eed02fa1c35650e93df6">xkrt_driver_copy_d2h</a> (<a class="el" href="xkrt_8h.html#a313d0acc81cceafafc88074411b5b23f">xkrt_driver_t</a> *driver, void *dst, void *src, const size_t size)</td></tr>
+<tr class="separator:a68f7d5d67c72eed02fa1c35650e93df6"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:acfc5ec2c70ab75c2bd3adb2960402f4f" id="r_acfc5ec2c70ab75c2bd3adb2960402f4f"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="xkrt_8h.html#acfc5ec2c70ab75c2bd3adb2960402f4f">xkrt_driver_copy_d2d</a> (<a class="el" href="xkrt_8h.html#a313d0acc81cceafafc88074411b5b23f">xkrt_driver_t</a> *driver, void *dst, void *src, const size_t size)</td></tr>
+<tr class="separator:acfc5ec2c70ab75c2bd3adb2960402f4f"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a89770387d24255ce96bb95d9eb0a837b" id="r_a89770387d24255ce96bb95d9eb0a837b"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="xkrt_8h.html#a89770387d24255ce96bb95d9eb0a837b">xkrt_driver_copy_h2d_async</a> (<a class="el" href="xkrt_8h.html#a313d0acc81cceafafc88074411b5b23f">xkrt_driver_t</a> *driver, void *dst, void *src, const size_t size, <a class="el" href="xkrt_8h.html#af931d2965d8ad59b980b26abd4cf6ae4">xkrt_command_queue_t</a> *queue)</td></tr>
+<tr class="separator:a89770387d24255ce96bb95d9eb0a837b"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aa21b82a32dfd6e7b61aaee5c4c71b14b" id="r_aa21b82a32dfd6e7b61aaee5c4c71b14b"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="xkrt_8h.html#aa21b82a32dfd6e7b61aaee5c4c71b14b">xkrt_driver_copy_d2h_async</a> (<a class="el" href="xkrt_8h.html#a313d0acc81cceafafc88074411b5b23f">xkrt_driver_t</a> *driver, void *dst, void *src, const size_t size, <a class="el" href="xkrt_8h.html#af931d2965d8ad59b980b26abd4cf6ae4">xkrt_command_queue_t</a> *queue)</td></tr>
+<tr class="separator:aa21b82a32dfd6e7b61aaee5c4c71b14b"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:af045bd821efe33fbb5e44bd1b0bb76a8" id="r_af045bd821efe33fbb5e44bd1b0bb76a8"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="xkrt_8h.html#af045bd821efe33fbb5e44bd1b0bb76a8">xkrt_driver_copy_d2d_async</a> (<a class="el" href="xkrt_8h.html#a313d0acc81cceafafc88074411b5b23f">xkrt_driver_t</a> *driver, void *dst, void *src, const size_t size, <a class="el" href="xkrt_8h.html#af931d2965d8ad59b980b26abd4cf6ae4">xkrt_command_queue_t</a> *queue)</td></tr>
+<tr class="separator:af045bd821efe33fbb5e44bd1b0bb76a8"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:afc042dff0acc4bb86fe5613bb3f959f0" id="r_afc042dff0acc4bb86fe5613bb3f959f0"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="xkrt_8h.html#afc042dff0acc4bb86fe5613bb3f959f0">xkrt_driver_command_queue_suggest</a> (<a class="el" href="xkrt_8h.html#a313d0acc81cceafafc88074411b5b23f">xkrt_driver_t</a> *driver, <a class="el" href="consts_8h.html#a098121d4ee40a66dd8dd6549fae6b791">xkrt_device_driver_id_t</a> device_driver_id, xkrt_command_queue_type_t qtype)</td></tr>
 <tr class="separator:afc042dff0acc4bb86fe5613bb3f959f0"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a6173be5320ccd197e02adc496777bc4d" id="r_a6173be5320ccd197e02adc496777bc4d"><td class="memItemLeft" align="right" valign="top"><a class="el" href="xkrt_8h.html#af931d2965d8ad59b980b26abd4cf6ae4">xkrt_command_queue_t</a> *&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="xkrt_8h.html#a6173be5320ccd197e02adc496777bc4d">xkrt_driver_command_queue_create</a> (<a class="el" href="xkrt_8h.html#a313d0acc81cceafafc88074411b5b23f">xkrt_driver_t</a> *driver, <a class="el" href="xkrt_8h.html#a8524b441894128021bac334fc9976655">xkrt_device_t</a> *device, xkrt_command_queue_type_t qtype, xkrt_command_queue_list_counter_t capacity)</td></tr>
@@ -664,6 +666,264 @@ Functions</h2></td></tr>
           <td></td>
           <td class="paramtype">xkrt_command_queue_type_t&#160;</td>
           <td class="paramname"><em>qtype</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="acfc5ec2c70ab75c2bd3adb2960402f4f" name="acfc5ec2c70ab75c2bd3adb2960402f4f"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#acfc5ec2c70ab75c2bd3adb2960402f4f">&#9670;&#160;</a></span>xkrt_driver_copy_d2d()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">int xkrt_driver_copy_d2d </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="xkrt_8h.html#a313d0acc81cceafafc88074411b5b23f">xkrt_driver_t</a> *&#160;</td>
+          <td class="paramname"><em>driver</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">void *&#160;</td>
+          <td class="paramname"><em>dst</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">void *&#160;</td>
+          <td class="paramname"><em>src</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const size_t&#160;</td>
+          <td class="paramname"><em>size</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="af045bd821efe33fbb5e44bd1b0bb76a8" name="af045bd821efe33fbb5e44bd1b0bb76a8"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#af045bd821efe33fbb5e44bd1b0bb76a8">&#9670;&#160;</a></span>xkrt_driver_copy_d2d_async()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">int xkrt_driver_copy_d2d_async </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="xkrt_8h.html#a313d0acc81cceafafc88074411b5b23f">xkrt_driver_t</a> *&#160;</td>
+          <td class="paramname"><em>driver</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">void *&#160;</td>
+          <td class="paramname"><em>dst</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">void *&#160;</td>
+          <td class="paramname"><em>src</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const size_t&#160;</td>
+          <td class="paramname"><em>size</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="xkrt_8h.html#af931d2965d8ad59b980b26abd4cf6ae4">xkrt_command_queue_t</a> *&#160;</td>
+          <td class="paramname"><em>queue</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a68f7d5d67c72eed02fa1c35650e93df6" name="a68f7d5d67c72eed02fa1c35650e93df6"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a68f7d5d67c72eed02fa1c35650e93df6">&#9670;&#160;</a></span>xkrt_driver_copy_d2h()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">int xkrt_driver_copy_d2h </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="xkrt_8h.html#a313d0acc81cceafafc88074411b5b23f">xkrt_driver_t</a> *&#160;</td>
+          <td class="paramname"><em>driver</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">void *&#160;</td>
+          <td class="paramname"><em>dst</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">void *&#160;</td>
+          <td class="paramname"><em>src</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const size_t&#160;</td>
+          <td class="paramname"><em>size</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="aa21b82a32dfd6e7b61aaee5c4c71b14b" name="aa21b82a32dfd6e7b61aaee5c4c71b14b"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aa21b82a32dfd6e7b61aaee5c4c71b14b">&#9670;&#160;</a></span>xkrt_driver_copy_d2h_async()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">int xkrt_driver_copy_d2h_async </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="xkrt_8h.html#a313d0acc81cceafafc88074411b5b23f">xkrt_driver_t</a> *&#160;</td>
+          <td class="paramname"><em>driver</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">void *&#160;</td>
+          <td class="paramname"><em>dst</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">void *&#160;</td>
+          <td class="paramname"><em>src</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const size_t&#160;</td>
+          <td class="paramname"><em>size</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="xkrt_8h.html#af931d2965d8ad59b980b26abd4cf6ae4">xkrt_command_queue_t</a> *&#160;</td>
+          <td class="paramname"><em>queue</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a8e10bb98f11c2f105b7513954dc46028" name="a8e10bb98f11c2f105b7513954dc46028"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a8e10bb98f11c2f105b7513954dc46028">&#9670;&#160;</a></span>xkrt_driver_copy_h2d()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">int xkrt_driver_copy_h2d </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="xkrt_8h.html#a313d0acc81cceafafc88074411b5b23f">xkrt_driver_t</a> *&#160;</td>
+          <td class="paramname"><em>driver</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">void *&#160;</td>
+          <td class="paramname"><em>dst</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">void *&#160;</td>
+          <td class="paramname"><em>src</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const size_t&#160;</td>
+          <td class="paramname"><em>size</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a89770387d24255ce96bb95d9eb0a837b" name="a89770387d24255ce96bb95d9eb0a837b"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a89770387d24255ce96bb95d9eb0a837b">&#9670;&#160;</a></span>xkrt_driver_copy_h2d_async()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">int xkrt_driver_copy_h2d_async </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="xkrt_8h.html#a313d0acc81cceafafc88074411b5b23f">xkrt_driver_t</a> *&#160;</td>
+          <td class="paramname"><em>driver</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">void *&#160;</td>
+          <td class="paramname"><em>dst</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">void *&#160;</td>
+          <td class="paramname"><em>src</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const size_t&#160;</td>
+          <td class="paramname"><em>size</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="xkrt_8h.html#af931d2965d8ad59b980b26abd4cf6ae4">xkrt_command_queue_t</a> *&#160;</td>
+          <td class="paramname"><em>queue</em>&#160;</td>
         </tr>
         <tr>
           <td></td>
@@ -1575,264 +1835,6 @@ Functions</h2></td></tr>
 
 </div>
 </div>
-<a id="a789145bc8f9f35e8552d9fc54a2d6070" name="a789145bc8f9f35e8552d9fc54a2d6070"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a789145bc8f9f35e8552d9fc54a2d6070">&#9670;&#160;</a></span>xkrt_driver_transfer_d2d()</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">int xkrt_driver_transfer_d2d </td>
-          <td>(</td>
-          <td class="paramtype"><a class="el" href="xkrt_8h.html#a313d0acc81cceafafc88074411b5b23f">xkrt_driver_t</a> *&#160;</td>
-          <td class="paramname"><em>driver</em>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">void *&#160;</td>
-          <td class="paramname"><em>dst</em>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">void *&#160;</td>
-          <td class="paramname"><em>src</em>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">const size_t&#160;</td>
-          <td class="paramname"><em>size</em>&#160;</td>
-        </tr>
-        <tr>
-          <td></td>
-          <td>)</td>
-          <td></td><td></td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="aadd36a0acf2f61a896bff885e20a2f20" name="aadd36a0acf2f61a896bff885e20a2f20"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#aadd36a0acf2f61a896bff885e20a2f20">&#9670;&#160;</a></span>xkrt_driver_transfer_d2d_async()</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">int xkrt_driver_transfer_d2d_async </td>
-          <td>(</td>
-          <td class="paramtype"><a class="el" href="xkrt_8h.html#a313d0acc81cceafafc88074411b5b23f">xkrt_driver_t</a> *&#160;</td>
-          <td class="paramname"><em>driver</em>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">void *&#160;</td>
-          <td class="paramname"><em>dst</em>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">void *&#160;</td>
-          <td class="paramname"><em>src</em>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">const size_t&#160;</td>
-          <td class="paramname"><em>size</em>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype"><a class="el" href="xkrt_8h.html#af931d2965d8ad59b980b26abd4cf6ae4">xkrt_command_queue_t</a> *&#160;</td>
-          <td class="paramname"><em>queue</em>&#160;</td>
-        </tr>
-        <tr>
-          <td></td>
-          <td>)</td>
-          <td></td><td></td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="aee2c4a1a0a1a75e19d18559c5c5f59cc" name="aee2c4a1a0a1a75e19d18559c5c5f59cc"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#aee2c4a1a0a1a75e19d18559c5c5f59cc">&#9670;&#160;</a></span>xkrt_driver_transfer_d2h()</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">int xkrt_driver_transfer_d2h </td>
-          <td>(</td>
-          <td class="paramtype"><a class="el" href="xkrt_8h.html#a313d0acc81cceafafc88074411b5b23f">xkrt_driver_t</a> *&#160;</td>
-          <td class="paramname"><em>driver</em>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">void *&#160;</td>
-          <td class="paramname"><em>dst</em>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">void *&#160;</td>
-          <td class="paramname"><em>src</em>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">const size_t&#160;</td>
-          <td class="paramname"><em>size</em>&#160;</td>
-        </tr>
-        <tr>
-          <td></td>
-          <td>)</td>
-          <td></td><td></td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="a3c737f292eb04430f91dd4b3166ae3db" name="a3c737f292eb04430f91dd4b3166ae3db"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a3c737f292eb04430f91dd4b3166ae3db">&#9670;&#160;</a></span>xkrt_driver_transfer_d2h_async()</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">int xkrt_driver_transfer_d2h_async </td>
-          <td>(</td>
-          <td class="paramtype"><a class="el" href="xkrt_8h.html#a313d0acc81cceafafc88074411b5b23f">xkrt_driver_t</a> *&#160;</td>
-          <td class="paramname"><em>driver</em>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">void *&#160;</td>
-          <td class="paramname"><em>dst</em>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">void *&#160;</td>
-          <td class="paramname"><em>src</em>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">const size_t&#160;</td>
-          <td class="paramname"><em>size</em>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype"><a class="el" href="xkrt_8h.html#af931d2965d8ad59b980b26abd4cf6ae4">xkrt_command_queue_t</a> *&#160;</td>
-          <td class="paramname"><em>queue</em>&#160;</td>
-        </tr>
-        <tr>
-          <td></td>
-          <td>)</td>
-          <td></td><td></td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="a4245d6def49d6521adfcd519500ffbe8" name="a4245d6def49d6521adfcd519500ffbe8"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a4245d6def49d6521adfcd519500ffbe8">&#9670;&#160;</a></span>xkrt_driver_transfer_h2d()</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">int xkrt_driver_transfer_h2d </td>
-          <td>(</td>
-          <td class="paramtype"><a class="el" href="xkrt_8h.html#a313d0acc81cceafafc88074411b5b23f">xkrt_driver_t</a> *&#160;</td>
-          <td class="paramname"><em>driver</em>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">void *&#160;</td>
-          <td class="paramname"><em>dst</em>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">void *&#160;</td>
-          <td class="paramname"><em>src</em>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">const size_t&#160;</td>
-          <td class="paramname"><em>size</em>&#160;</td>
-        </tr>
-        <tr>
-          <td></td>
-          <td>)</td>
-          <td></td><td></td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="a3143b73a326976031e12c860c0d7581f" name="a3143b73a326976031e12c860c0d7581f"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a3143b73a326976031e12c860c0d7581f">&#9670;&#160;</a></span>xkrt_driver_transfer_h2d_async()</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">int xkrt_driver_transfer_h2d_async </td>
-          <td>(</td>
-          <td class="paramtype"><a class="el" href="xkrt_8h.html#a313d0acc81cceafafc88074411b5b23f">xkrt_driver_t</a> *&#160;</td>
-          <td class="paramname"><em>driver</em>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">void *&#160;</td>
-          <td class="paramname"><em>dst</em>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">void *&#160;</td>
-          <td class="paramname"><em>src</em>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">const size_t&#160;</td>
-          <td class="paramname"><em>size</em>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype"><a class="el" href="xkrt_8h.html#af931d2965d8ad59b980b26abd4cf6ae4">xkrt_command_queue_t</a> *&#160;</td>
-          <td class="paramname"><em>queue</em>&#160;</td>
-        </tr>
-        <tr>
-          <td></td>
-          <td>)</td>
-          <td></td><td></td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
 <a id="a3e12fdf8a151dcfedf67554a50eb0c62" name="a3e12fdf8a151dcfedf67554a50eb0c62"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a3e12fdf8a151dcfedf67554a50eb0c62">&#9670;&#160;</a></span>xkrt_file_read_async()</h2>
 
@@ -2063,6 +2065,58 @@ Functions</h2></td></tr>
           <td class="paramtype">const char *&#160;</td>
           <td class="paramname"><em>msg</em></td><td>)</td>
           <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a1c6d5183f5086088b2fdffc1d9c65917" name="a1c6d5183f5086088b2fdffc1d9c65917"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a1c6d5183f5086088b2fdffc1d9c65917">&#9670;&#160;</a></span>xkrt_memory_copy()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">void xkrt_memory_copy </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="xkrt_8h.html#a1dae686a82fcfa648fd4cb1c3af15713">xkrt_runtime_t</a> *&#160;</td>
+          <td class="paramname"><em>runtime</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const size_t&#160;</td>
+          <td class="paramname"><em>size</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const <a class="el" href="consts_8h.html#abd0e48fa5fb1c01d5fa446200b4b8b3f">xkrt_device_unique_id_t</a>&#160;</td>
+          <td class="paramname"><em>dst_device_unique_id</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const uintptr_t&#160;</td>
+          <td class="paramname"><em>dst_device_addr</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const <a class="el" href="consts_8h.html#abd0e48fa5fb1c01d5fa446200b4b8b3f">xkrt_device_unique_id_t</a>&#160;</td>
+          <td class="paramname"><em>src_device_unique_id</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const uintptr_t&#160;</td>
+          <td class="paramname"><em>src_device_addr</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
         </tr>
       </table>
 </div><div class="memdoc">

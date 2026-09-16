@@ -163,6 +163,10 @@ Public Attributes</h2></td></tr>
 <tr class="separator:a71b48ded4913ed088b302c30779db174"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a341ec4c4f4bc07b9c4504f76b2955571" id="r_a341ec4c4f4bc07b9c4504f76b2955571"><td class="memItemLeft" align="right" valign="top">void(*&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structxkrt_1_1driver__t.html#a341ec4c4f4bc07b9c4504f76b2955571">f_device_get_target</a> )(<a class="el" href="namespacexkrt.html#a637d05e3a8431f017c741801af010a0d">device_driver_id_t</a> device_driver_id, const char **triple, const char **arch)</td></tr>
 <tr class="separator:a341ec4c4f4bc07b9c4504f76b2955571"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ad49bf7e947ab12600815260083f5de2f" id="r_ad49bf7e947ab12600815260083f5de2f"><td class="memItemLeft" align="right" valign="top">unsigned int(*&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structxkrt_1_1driver__t.html#ad49bf7e947ab12600815260083f5de2f">f_prog_max_blocks_per_sm</a> )(<a class="el" href="namespacexkrt.html#a637d05e3a8431f017c741801af010a0d">device_driver_id_t</a> device_driver_id, void *fn, unsigned int block_threads, size_t dyn_smem)</td></tr>
+<tr class="separator:ad49bf7e947ab12600815260083f5de2f"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a69397a2c0230f66c9ae498fdc5d3190f" id="r_a69397a2c0230f66c9ae498fdc5d3190f"><td class="memItemLeft" align="right" valign="top">unsigned int(*&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structxkrt_1_1driver__t.html#a69397a2c0230f66c9ae498fdc5d3190f">f_device_compute_units</a> )(<a class="el" href="namespacexkrt.html#a637d05e3a8431f017c741801af010a0d">device_driver_id_t</a> device_driver_id)</td></tr>
+<tr class="separator:a69397a2c0230f66c9ae498fdc5d3190f"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a96ae4e80a759778ae1bdac829eea8559" id="r_a96ae4e80a759778ae1bdac829eea8559"><td class="memItemLeft" align="right" valign="top">void(*&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structxkrt_1_1driver__t.html#a96ae4e80a759778ae1bdac829eea8559">f_memory_device_info</a> )(<a class="el" href="namespacexkrt.html#a637d05e3a8431f017c741801af010a0d">device_driver_id_t</a> device_driver_id, device_memory_info_t info[<a class="el" href="consts_8h.html#a6ec50d702241d793dba18dcca440d169">XKRT_DEVICE_MEMORIES_MAX</a>], int *nmemories)</td></tr>
 <tr class="separator:a96ae4e80a759778ae1bdac829eea8559"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a7b01b2ae2acef97fc778bf46cf699b2e" id="r_a7b01b2ae2acef97fc778bf46cf699b2e"><td class="memItemLeft" align="right" valign="top">void *(*&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structxkrt_1_1driver__t.html#a7b01b2ae2acef97fc778bf46cf699b2e">f_memory_device_allocate</a> )(<a class="el" href="namespacexkrt.html#a637d05e3a8431f017c741801af010a0d">device_driver_id_t</a> device_driver_id, const size_t size, int area_idx)</td></tr>
@@ -189,18 +193,18 @@ Public Attributes</h2></td></tr>
 <tr class="separator:a8c33646841f248481f13dd0bf2dd5167"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a6c337b9abeffc5f0fa4dcf2681317068" id="r_a6c337b9abeffc5f0fa4dcf2681317068"><td class="memItemLeft" align="right" valign="top">int(*&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structxkrt_1_1driver__t.html#a6c337b9abeffc5f0fa4dcf2681317068">f_memory_unified_prefetch_host</a> )(const void *addr, const size_t size)</td></tr>
 <tr class="separator:a6c337b9abeffc5f0fa4dcf2681317068"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ab40eb556ef4f7e8d751f091470b9b5d4" id="r_ab40eb556ef4f7e8d751f091470b9b5d4"><td class="memItemLeft" align="right" valign="top">int(*&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structxkrt_1_1driver__t.html#ab40eb556ef4f7e8d751f091470b9b5d4">f_transfer_h2d</a> )(void *dst, void *src, const size_t size)</td></tr>
-<tr class="separator:ab40eb556ef4f7e8d751f091470b9b5d4"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ab46925d975dcc4d01b9a17f500a158be" id="r_ab46925d975dcc4d01b9a17f500a158be"><td class="memItemLeft" align="right" valign="top">int(*&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structxkrt_1_1driver__t.html#ab46925d975dcc4d01b9a17f500a158be">f_transfer_d2h</a> )(void *dst, void *src, const size_t size)</td></tr>
-<tr class="separator:ab46925d975dcc4d01b9a17f500a158be"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ab8ed38a9a73864540e057d63e31df7ed" id="r_ab8ed38a9a73864540e057d63e31df7ed"><td class="memItemLeft" align="right" valign="top">int(*&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structxkrt_1_1driver__t.html#ab8ed38a9a73864540e057d63e31df7ed">f_transfer_d2d</a> )(void *dst, void *src, const size_t size)</td></tr>
-<tr class="separator:ab8ed38a9a73864540e057d63e31df7ed"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a3ec7b2464f59d7fd5c8da576e7067f4b" id="r_a3ec7b2464f59d7fd5c8da576e7067f4b"><td class="memItemLeft" align="right" valign="top">int(*&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structxkrt_1_1driver__t.html#a3ec7b2464f59d7fd5c8da576e7067f4b">f_transfer_h2d_async</a> )(void *dst, void *src, const size_t size, command_queue_t *iqueue)</td></tr>
-<tr class="separator:a3ec7b2464f59d7fd5c8da576e7067f4b"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a31fbbf09439e3de066b745cbcab35f4c" id="r_a31fbbf09439e3de066b745cbcab35f4c"><td class="memItemLeft" align="right" valign="top">int(*&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structxkrt_1_1driver__t.html#a31fbbf09439e3de066b745cbcab35f4c">f_transfer_d2h_async</a> )(void *dst, void *src, const size_t size, command_queue_t *iqueue)</td></tr>
-<tr class="separator:a31fbbf09439e3de066b745cbcab35f4c"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ab99eae5dd63dc53d165720adaa847af7" id="r_ab99eae5dd63dc53d165720adaa847af7"><td class="memItemLeft" align="right" valign="top">int(*&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structxkrt_1_1driver__t.html#ab99eae5dd63dc53d165720adaa847af7">f_transfer_d2d_async</a> )(void *dst, void *src, const size_t size, command_queue_t *iqueue)</td></tr>
-<tr class="separator:ab99eae5dd63dc53d165720adaa847af7"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a9b92e3aa529f8819f973f99dd8cc452b" id="r_a9b92e3aa529f8819f973f99dd8cc452b"><td class="memItemLeft" align="right" valign="top">int(*&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structxkrt_1_1driver__t.html#a9b92e3aa529f8819f973f99dd8cc452b">f_copy_h2d</a> )(void *dst, void *src, const size_t size)</td></tr>
+<tr class="separator:a9b92e3aa529f8819f973f99dd8cc452b"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ae47d96e3e7cbc9d0ba1e989d1552d1bb" id="r_ae47d96e3e7cbc9d0ba1e989d1552d1bb"><td class="memItemLeft" align="right" valign="top">int(*&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structxkrt_1_1driver__t.html#ae47d96e3e7cbc9d0ba1e989d1552d1bb">f_copy_d2h</a> )(void *dst, void *src, const size_t size)</td></tr>
+<tr class="separator:ae47d96e3e7cbc9d0ba1e989d1552d1bb"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ad078665d2e50a5005ef201164332f131" id="r_ad078665d2e50a5005ef201164332f131"><td class="memItemLeft" align="right" valign="top">int(*&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structxkrt_1_1driver__t.html#ad078665d2e50a5005ef201164332f131">f_copy_d2d</a> )(void *dst, void *src, const size_t size)</td></tr>
+<tr class="separator:ad078665d2e50a5005ef201164332f131"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a1d7606723d2a02fdec5d8b3cec3c0b5a" id="r_a1d7606723d2a02fdec5d8b3cec3c0b5a"><td class="memItemLeft" align="right" valign="top">int(*&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structxkrt_1_1driver__t.html#a1d7606723d2a02fdec5d8b3cec3c0b5a">f_copy_h2d_async</a> )(void *dst, void *src, const size_t size, command_queue_t *iqueue)</td></tr>
+<tr class="separator:a1d7606723d2a02fdec5d8b3cec3c0b5a"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a287666694c0ab2a48ca8bcb6149376d3" id="r_a287666694c0ab2a48ca8bcb6149376d3"><td class="memItemLeft" align="right" valign="top">int(*&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structxkrt_1_1driver__t.html#a287666694c0ab2a48ca8bcb6149376d3">f_copy_d2h_async</a> )(void *dst, void *src, const size_t size, command_queue_t *iqueue)</td></tr>
+<tr class="separator:a287666694c0ab2a48ca8bcb6149376d3"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ad91df55a749816bdcebb76a5843be722" id="r_ad91df55a749816bdcebb76a5843be722"><td class="memItemLeft" align="right" valign="top">int(*&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structxkrt_1_1driver__t.html#ad91df55a749816bdcebb76a5843be722">f_copy_d2d_async</a> )(void *dst, void *src, const size_t size, command_queue_t *iqueue)</td></tr>
+<tr class="separator:ad91df55a749816bdcebb76a5843be722"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a0935a4cfb62bd7e3e256db7bd083dc81" id="r_a0935a4cfb62bd7e3e256db7bd083dc81"><td class="memItemLeft" align="right" valign="top">int(*&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structxkrt_1_1driver__t.html#a0935a4cfb62bd7e3e256db7bd083dc81">f_command_execute</a> )(<a class="el" href="namespacexkrt.html#a637d05e3a8431f017c741801af010a0d">device_driver_id_t</a> device_driver_id, <a class="el" href="xkrt_8h.html#a4e7d8612246bf19e9536cab9df0b2de3">command_t</a> *command)</td></tr>
 <tr class="separator:a0935a4cfb62bd7e3e256db7bd083dc81"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aafdbaeffb8d9ee13b44c56868a0c62f3" id="r_aafdbaeffb8d9ee13b44c56868a0c62f3"><td class="memItemLeft" align="right" valign="top">int(*&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structxkrt_1_1driver__t.html#aafdbaeffb8d9ee13b44c56868a0c62f3">f_device_cpuset</a> )(hwloc_topology_t topology, cpu_set_t *cpuset, <a class="el" href="namespacexkrt.html#a637d05e3a8431f017c741801af010a0d">device_driver_id_t</a> device_driver_id)</td></tr>
@@ -521,7 +525,7 @@ template&lt;bool blocking = false&gt; </div>
       </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="driver_8h_source.html#l00190">190</a> of file <a class="el" href="driver_8h_source.html">driver.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="driver_8h_source.html#l00215">215</a> of file <a class="el" href="driver_8h_source.html">driver.h</a>.</p>
 
 </div>
 </div>
@@ -537,7 +541,7 @@ template&lt;bool blocking = false&gt; </div>
       </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="driver_8h_source.html#l00207">207</a> of file <a class="el" href="driver_8h_source.html">driver.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="driver_8h_source.html#l00232">232</a> of file <a class="el" href="driver_8h_source.html">driver.h</a>.</p>
 
 </div>
 </div>
@@ -553,7 +557,7 @@ template&lt;bool blocking = false&gt; </div>
       </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="driver_8h_source.html#l00210">210</a> of file <a class="el" href="driver_8h_source.html">driver.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="driver_8h_source.html#l00235">235</a> of file <a class="el" href="driver_8h_source.html">driver.h</a>.</p>
 
 </div>
 </div>
@@ -569,7 +573,7 @@ template&lt;bool blocking = false&gt; </div>
       </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="driver_8h_source.html#l00213">213</a> of file <a class="el" href="driver_8h_source.html">driver.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="driver_8h_source.html#l00238">238</a> of file <a class="el" href="driver_8h_source.html">driver.h</a>.</p>
 
 </div>
 </div>
@@ -585,7 +589,7 @@ template&lt;bool blocking = false&gt; </div>
       </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="driver_8h_source.html#l00216">216</a> of file <a class="el" href="driver_8h_source.html">driver.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="driver_8h_source.html#l00241">241</a> of file <a class="el" href="driver_8h_source.html">driver.h</a>.</p>
 
 </div>
 </div>
@@ -601,7 +605,7 @@ template&lt;bool blocking = false&gt; </div>
       </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="driver_8h_source.html#l00204">204</a> of file <a class="el" href="driver_8h_source.html">driver.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="driver_8h_source.html#l00229">229</a> of file <a class="el" href="driver_8h_source.html">driver.h</a>.</p>
 
 </div>
 </div>
@@ -617,7 +621,7 @@ template&lt;bool blocking = false&gt; </div>
       </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="driver_8h_source.html#l00222">222</a> of file <a class="el" href="driver_8h_source.html">driver.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="driver_8h_source.html#l00247">247</a> of file <a class="el" href="driver_8h_source.html">driver.h</a>.</p>
 
 </div>
 </div>
@@ -633,7 +637,103 @@ template&lt;bool blocking = false&gt; </div>
       </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="driver_8h_source.html#l00219">219</a> of file <a class="el" href="driver_8h_source.html">driver.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="driver_8h_source.html#l00244">244</a> of file <a class="el" href="driver_8h_source.html">driver.h</a>.</p>
+
+</div>
+</div>
+<a id="ad078665d2e50a5005ef201164332f131" name="ad078665d2e50a5005ef201164332f131"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ad078665d2e50a5005ef201164332f131">&#9670;&#160;</a></span>f_copy_d2d</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">int(* xkrt::driver_t::f_copy_d2d) (void *dst, void *src, const size_t size)</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p class="definition">Definition at line <a class="el" href="driver_8h_source.html#l00204">204</a> of file <a class="el" href="driver_8h_source.html">driver.h</a>.</p>
+
+</div>
+</div>
+<a id="ad91df55a749816bdcebb76a5843be722" name="ad91df55a749816bdcebb76a5843be722"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ad91df55a749816bdcebb76a5843be722">&#9670;&#160;</a></span>f_copy_d2d_async</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">int(* xkrt::driver_t::f_copy_d2d_async) (void *dst, void *src, const size_t size, command_queue_t *iqueue)</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p class="definition">Definition at line <a class="el" href="driver_8h_source.html#l00209">209</a> of file <a class="el" href="driver_8h_source.html">driver.h</a>.</p>
+
+</div>
+</div>
+<a id="ae47d96e3e7cbc9d0ba1e989d1552d1bb" name="ae47d96e3e7cbc9d0ba1e989d1552d1bb"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ae47d96e3e7cbc9d0ba1e989d1552d1bb">&#9670;&#160;</a></span>f_copy_d2h</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">int(* xkrt::driver_t::f_copy_d2h) (void *dst, void *src, const size_t size)</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p class="definition">Definition at line <a class="el" href="driver_8h_source.html#l00203">203</a> of file <a class="el" href="driver_8h_source.html">driver.h</a>.</p>
+
+</div>
+</div>
+<a id="a287666694c0ab2a48ca8bcb6149376d3" name="a287666694c0ab2a48ca8bcb6149376d3"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a287666694c0ab2a48ca8bcb6149376d3">&#9670;&#160;</a></span>f_copy_d2h_async</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">int(* xkrt::driver_t::f_copy_d2h_async) (void *dst, void *src, const size_t size, command_queue_t *iqueue)</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p class="definition">Definition at line <a class="el" href="driver_8h_source.html#l00208">208</a> of file <a class="el" href="driver_8h_source.html">driver.h</a>.</p>
+
+</div>
+</div>
+<a id="a9b92e3aa529f8819f973f99dd8cc452b" name="a9b92e3aa529f8819f973f99dd8cc452b"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a9b92e3aa529f8819f973f99dd8cc452b">&#9670;&#160;</a></span>f_copy_h2d</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">int(* xkrt::driver_t::f_copy_h2d) (void *dst, void *src, const size_t size)</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p class="definition">Definition at line <a class="el" href="driver_8h_source.html#l00202">202</a> of file <a class="el" href="driver_8h_source.html">driver.h</a>.</p>
+
+</div>
+</div>
+<a id="a1d7606723d2a02fdec5d8b3cec3c0b5a" name="a1d7606723d2a02fdec5d8b3cec3c0b5a"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a1d7606723d2a02fdec5d8b3cec3c0b5a">&#9670;&#160;</a></span>f_copy_h2d_async</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">int(* xkrt::driver_t::f_copy_h2d_async) (void *dst, void *src, const size_t size, command_queue_t *iqueue)</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p class="definition">Definition at line <a class="el" href="driver_8h_source.html#l00207">207</a> of file <a class="el" href="driver_8h_source.html">driver.h</a>.</p>
 
 </div>
 </div>
@@ -653,6 +753,22 @@ template&lt;bool blocking = false&gt; </div>
 
 </div>
 </div>
+<a id="a69397a2c0230f66c9ae498fdc5d3190f" name="a69397a2c0230f66c9ae498fdc5d3190f"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a69397a2c0230f66c9ae498fdc5d3190f">&#9670;&#160;</a></span>f_device_compute_units</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">unsigned int(* xkrt::driver_t::f_device_compute_units) (<a class="el" href="namespacexkrt.html#a637d05e3a8431f017c741801af010a0d">device_driver_id_t</a> device_driver_id)</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p class="definition">Definition at line <a class="el" href="driver_8h_source.html#l00161">161</a> of file <a class="el" href="driver_8h_source.html">driver.h</a>.</p>
+
+</div>
+</div>
 <a id="aafdbaeffb8d9ee13b44c56868a0c62f3" name="aafdbaeffb8d9ee13b44c56868a0c62f3"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#aafdbaeffb8d9ee13b44c56868a0c62f3">&#9670;&#160;</a></span>f_device_cpuset</h2>
 
@@ -665,7 +781,7 @@ template&lt;bool blocking = false&gt; </div>
       </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="driver_8h_source.html#l00197">197</a> of file <a class="el" href="driver_8h_source.html">driver.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="driver_8h_source.html#l00222">222</a> of file <a class="el" href="driver_8h_source.html">driver.h</a>.</p>
 
 </div>
 </div>
@@ -825,7 +941,7 @@ template&lt;bool blocking = false&gt; </div>
       </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="driver_8h_source.html#l00150">150</a> of file <a class="el" href="driver_8h_source.html">driver.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="driver_8h_source.html#l00171">171</a> of file <a class="el" href="driver_8h_source.html">driver.h</a>.</p>
 
 </div>
 </div>
@@ -841,7 +957,7 @@ template&lt;bool blocking = false&gt; </div>
       </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="driver_8h_source.html#l00151">151</a> of file <a class="el" href="driver_8h_source.html">driver.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="driver_8h_source.html#l00172">172</a> of file <a class="el" href="driver_8h_source.html">driver.h</a>.</p>
 
 </div>
 </div>
@@ -857,7 +973,7 @@ template&lt;bool blocking = false&gt; </div>
       </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="driver_8h_source.html#l00147">147</a> of file <a class="el" href="driver_8h_source.html">driver.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="driver_8h_source.html#l00168">168</a> of file <a class="el" href="driver_8h_source.html">driver.h</a>.</p>
 
 </div>
 </div>
@@ -873,7 +989,7 @@ template&lt;bool blocking = false&gt; </div>
       </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="driver_8h_source.html#l00154">154</a> of file <a class="el" href="driver_8h_source.html">driver.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="driver_8h_source.html#l00175">175</a> of file <a class="el" href="driver_8h_source.html">driver.h</a>.</p>
 
 </div>
 </div>
@@ -889,7 +1005,7 @@ template&lt;bool blocking = false&gt; </div>
       </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="driver_8h_source.html#l00155">155</a> of file <a class="el" href="driver_8h_source.html">driver.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="driver_8h_source.html#l00176">176</a> of file <a class="el" href="driver_8h_source.html">driver.h</a>.</p>
 
 </div>
 </div>
@@ -905,7 +1021,7 @@ template&lt;bool blocking = false&gt; </div>
       </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="driver_8h_source.html#l00162">162</a> of file <a class="el" href="driver_8h_source.html">driver.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="driver_8h_source.html#l00183">183</a> of file <a class="el" href="driver_8h_source.html">driver.h</a>.</p>
 
 </div>
 </div>
@@ -921,7 +1037,7 @@ template&lt;bool blocking = false&gt; </div>
       </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="driver_8h_source.html#l00163">163</a> of file <a class="el" href="driver_8h_source.html">driver.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="driver_8h_source.html#l00184">184</a> of file <a class="el" href="driver_8h_source.html">driver.h</a>.</p>
 
 </div>
 </div>
@@ -937,7 +1053,7 @@ template&lt;bool blocking = false&gt; </div>
       </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="driver_8h_source.html#l00166">166</a> of file <a class="el" href="driver_8h_source.html">driver.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="driver_8h_source.html#l00187">187</a> of file <a class="el" href="driver_8h_source.html">driver.h</a>.</p>
 
 </div>
 </div>
@@ -953,7 +1069,7 @@ template&lt;bool blocking = false&gt; </div>
       </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="driver_8h_source.html#l00167">167</a> of file <a class="el" href="driver_8h_source.html">driver.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="driver_8h_source.html#l00188">188</a> of file <a class="el" href="driver_8h_source.html">driver.h</a>.</p>
 
 </div>
 </div>
@@ -969,7 +1085,7 @@ template&lt;bool blocking = false&gt; </div>
       </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="driver_8h_source.html#l00158">158</a> of file <a class="el" href="driver_8h_source.html">driver.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="driver_8h_source.html#l00179">179</a> of file <a class="el" href="driver_8h_source.html">driver.h</a>.</p>
 
 </div>
 </div>
@@ -985,7 +1101,7 @@ template&lt;bool blocking = false&gt; </div>
       </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="driver_8h_source.html#l00159">159</a> of file <a class="el" href="driver_8h_source.html">driver.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="driver_8h_source.html#l00180">180</a> of file <a class="el" href="driver_8h_source.html">driver.h</a>.</p>
 
 </div>
 </div>
@@ -1001,7 +1117,7 @@ template&lt;bool blocking = false&gt; </div>
       </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="driver_8h_source.html#l00170">170</a> of file <a class="el" href="driver_8h_source.html">driver.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="driver_8h_source.html#l00191">191</a> of file <a class="el" href="driver_8h_source.html">driver.h</a>.</p>
 
 </div>
 </div>
@@ -1017,7 +1133,7 @@ template&lt;bool blocking = false&gt; </div>
       </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="driver_8h_source.html#l00171">171</a> of file <a class="el" href="driver_8h_source.html">driver.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="driver_8h_source.html#l00192">192</a> of file <a class="el" href="driver_8h_source.html">driver.h</a>.</p>
 
 </div>
 </div>
@@ -1033,7 +1149,7 @@ template&lt;bool blocking = false&gt; </div>
       </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="driver_8h_source.html#l00250">250</a> of file <a class="el" href="driver_8h_source.html">driver.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="driver_8h_source.html#l00275">275</a> of file <a class="el" href="driver_8h_source.html">driver.h</a>.</p>
 
 </div>
 </div>
@@ -1049,7 +1165,7 @@ template&lt;bool blocking = false&gt; </div>
       </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="driver_8h_source.html#l00248">248</a> of file <a class="el" href="driver_8h_source.html">driver.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="driver_8h_source.html#l00273">273</a> of file <a class="el" href="driver_8h_source.html">driver.h</a>.</p>
 
 </div>
 </div>
@@ -1065,7 +1181,7 @@ template&lt;bool blocking = false&gt; </div>
       </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="driver_8h_source.html#l00249">249</a> of file <a class="el" href="driver_8h_source.html">driver.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="driver_8h_source.html#l00274">274</a> of file <a class="el" href="driver_8h_source.html">driver.h</a>.</p>
 
 </div>
 </div>
@@ -1081,7 +1197,7 @@ template&lt;bool blocking = false&gt; </div>
       </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="driver_8h_source.html#l00257">257</a> of file <a class="el" href="driver_8h_source.html">driver.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="driver_8h_source.html#l00282">282</a> of file <a class="el" href="driver_8h_source.html">driver.h</a>.</p>
 
 </div>
 </div>
@@ -1097,103 +1213,23 @@ template&lt;bool blocking = false&gt; </div>
       </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="driver_8h_source.html#l00260">260</a> of file <a class="el" href="driver_8h_source.html">driver.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="driver_8h_source.html#l00285">285</a> of file <a class="el" href="driver_8h_source.html">driver.h</a>.</p>
 
 </div>
 </div>
-<a id="ab8ed38a9a73864540e057d63e31df7ed" name="ab8ed38a9a73864540e057d63e31df7ed"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#ab8ed38a9a73864540e057d63e31df7ed">&#9670;&#160;</a></span>f_transfer_d2d</h2>
+<a id="ad49bf7e947ab12600815260083f5de2f" name="ad49bf7e947ab12600815260083f5de2f"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ad49bf7e947ab12600815260083f5de2f">&#9670;&#160;</a></span>f_prog_max_blocks_per_sm</h2>
 
 <div class="memitem">
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname">int(* xkrt::driver_t::f_transfer_d2d) (void *dst, void *src, const size_t size)</td>
+          <td class="memname">unsigned int(* xkrt::driver_t::f_prog_max_blocks_per_sm) (<a class="el" href="namespacexkrt.html#a637d05e3a8431f017c741801af010a0d">device_driver_id_t</a> device_driver_id, void *fn, unsigned int block_threads, size_t dyn_smem)</td>
         </tr>
       </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="driver_8h_source.html#l00181">181</a> of file <a class="el" href="driver_8h_source.html">driver.h</a>.</p>
-
-</div>
-</div>
-<a id="ab99eae5dd63dc53d165720adaa847af7" name="ab99eae5dd63dc53d165720adaa847af7"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#ab99eae5dd63dc53d165720adaa847af7">&#9670;&#160;</a></span>f_transfer_d2d_async</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">int(* xkrt::driver_t::f_transfer_d2d_async) (void *dst, void *src, const size_t size, command_queue_t *iqueue)</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-<p class="definition">Definition at line <a class="el" href="driver_8h_source.html#l00184">184</a> of file <a class="el" href="driver_8h_source.html">driver.h</a>.</p>
-
-</div>
-</div>
-<a id="ab46925d975dcc4d01b9a17f500a158be" name="ab46925d975dcc4d01b9a17f500a158be"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#ab46925d975dcc4d01b9a17f500a158be">&#9670;&#160;</a></span>f_transfer_d2h</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">int(* xkrt::driver_t::f_transfer_d2h) (void *dst, void *src, const size_t size)</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-<p class="definition">Definition at line <a class="el" href="driver_8h_source.html#l00180">180</a> of file <a class="el" href="driver_8h_source.html">driver.h</a>.</p>
-
-</div>
-</div>
-<a id="a31fbbf09439e3de066b745cbcab35f4c" name="a31fbbf09439e3de066b745cbcab35f4c"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a31fbbf09439e3de066b745cbcab35f4c">&#9670;&#160;</a></span>f_transfer_d2h_async</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">int(* xkrt::driver_t::f_transfer_d2h_async) (void *dst, void *src, const size_t size, command_queue_t *iqueue)</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-<p class="definition">Definition at line <a class="el" href="driver_8h_source.html#l00183">183</a> of file <a class="el" href="driver_8h_source.html">driver.h</a>.</p>
-
-</div>
-</div>
-<a id="ab40eb556ef4f7e8d751f091470b9b5d4" name="ab40eb556ef4f7e8d751f091470b9b5d4"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#ab40eb556ef4f7e8d751f091470b9b5d4">&#9670;&#160;</a></span>f_transfer_h2d</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">int(* xkrt::driver_t::f_transfer_h2d) (void *dst, void *src, const size_t size)</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-<p class="definition">Definition at line <a class="el" href="driver_8h_source.html#l00179">179</a> of file <a class="el" href="driver_8h_source.html">driver.h</a>.</p>
-
-</div>
-</div>
-<a id="a3ec7b2464f59d7fd5c8da576e7067f4b" name="a3ec7b2464f59d7fd5c8da576e7067f4b"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a3ec7b2464f59d7fd5c8da576e7067f4b">&#9670;&#160;</a></span>f_transfer_h2d_async</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">int(* xkrt::driver_t::f_transfer_h2d_async) (void *dst, void *src, const size_t size, command_queue_t *iqueue)</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-<p class="definition">Definition at line <a class="el" href="driver_8h_source.html#l00182">182</a> of file <a class="el" href="driver_8h_source.html">driver.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="driver_8h_source.html#l00152">152</a> of file <a class="el" href="driver_8h_source.html">driver.h</a>.</p>
 
 </div>
 </div>
