@@ -177,6 +177,8 @@ Available environment variable</h1>
 <h1><a class="anchor" id="autotoc_md9"></a>
 Directions for improvements / known issues</h1>
 <ul>
+<li>Submit not ready device task and synchronize via events</li>
+<li>Figure-out how to build multi-GPU CUDA graphs programatically (i.e., without record as shown in <a href="https://www.nvidia.com/en-us/on-demand/session/gtc26-s81859/">https://www.nvidia.com/en-us/on-demand/session/gtc26-s81859/</a> - if possible at all) - look at <a href="https://forums.developer.nvidia.com/t/cudagraph-t-and-multiple-devices/360949">https://forums.developer.nvidia.com/t/cudagraph-t-and-multiple-devices/360949</a></li>
 <li>There is currently 1x coherence controller per couple <code>(LD, sizeof(TYPE))</code> while there should be for <code>LD * sizeof(TYPE)</code> - which can be useful for in-place mixed-precision conversions</li>
 <li>Add a memory coherency controller for 'point' accesses, to retrieve original xkblas/kaapi behavior - that is a decentralized and tile-base coherence protocol</li>
 <li>Stuff from <code>xkrt-init</code> could be moved for lazier initializations</li>
